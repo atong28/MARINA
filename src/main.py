@@ -10,14 +10,9 @@ from .modules import (
     SPECTRE,
     SPECTREArgs,
     SPECTREDataModule,
-    DiffMS,
-    DiffMSArgs,
-    DiffMSDataModule,
     parse_args,
     train_marina,
     test_marina,
-    train_diffms,
-    test_diffms,
     benchmark_marina
 )
 from .modules.util import (
@@ -41,34 +36,6 @@ MARINA_DATAMODULE_CLASSES = {
     "MARINA": MARINADataModule,
     "SPECTRE": SPECTREDataModule,
 }
-
-DIFFMS_MODEL_CLASSES = {
-    "DiffMS": DiffMS,
-}
-
-DIFFMS_DATAMODULE_CLASSES = {
-    "DiffMS": DiffMSDataModule,
-}
-
-def launch_diffms(args: DiffMSArgs, today: str):
-    model_class = DIFFMS_MODEL_CLASSES[args.project_name]
-    data_module_class = DIFFMS_DATAMODULE_CLASSES[args.project_name]
-    data_module: DiffMSDataModule = data_module_class(args)
-    dataset_info, visualization_tools, extra_features, domain_features = data_module.get_infos_and_features()
-    model = model_class(args, dataset_info, visualization_tools, extra_features, domain_features)
-    # paths to output data
-    results_path, final_path = get_data_paths(args, today)
-    logger = get_logger(__file__)
-    wandb_run = configure_wandb(args, results_path, today)
-    if args.train:
-        train_diffms(args, data_module, model, results_path, wandb_run=wandb_run)
-    elif args.test:
-        test_diffms(args, data_module, model, results_path, ckpt_path=args.load_from_checkpoint, wandb_run=wandb_run)
-    elif args.benchmark:
-        raise NotImplementedError("[Main] DiffMS: Benchmarking is not implemented yet!")
-    else:
-        raise ValueError("[Main] DiffMS: Nothing to do!")
-    write_results(args, final_path, results_path, logger, wandb_run)
 
 def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
     fp_loader = make_fp_loader(
@@ -137,12 +104,9 @@ def main():
     # the results directory and capture stdout/stderr into it)
     today = os.environ.get("SMART_RUN_ID") or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # parse the args
-    args: MARINAArgs | SPECTREArgs | DiffMSArgs = parse_args()
+    args: MARINAArgs | SPECTREArgs = parse_args()
     set_global_seed(args.seed)
-    if isinstance(args, DiffMSArgs):
-        launch_diffms(args, today)
-    else:
-        launch_marina(args, today)
+    launch_marina(args, today)
 
 if __name__ == "__main__":
     main()
