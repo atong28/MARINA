@@ -6,9 +6,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from .marina import MARINA, MARINAArgs, MARINADataModule
 from .spectre import SPECTRE, SPECTREArgs
-from .diffms import DiffMS, DiffMSArgs, DiffMSDataModule
 from .log import get_logger, ErrorLoggingCallback
-from .test import test_marina, test_diffms
+from .test import test_marina
 from .data.fp_loader import EntropyFPLoader
 
 logger = get_logger(__file__)

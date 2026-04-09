@@ -8,7 +8,6 @@ import pytorch_lightning as pl
 
 from .marina import MARINA, MARINAArgs, MARINADataModule
 from .spectre import SPECTRE, SPECTREArgs
-from .diffms import DiffMS, DiffMSArgs, DiffMSDataModule
 from .benchmark import benchmark_marina
 from .data.fp_loader import EntropyFPLoader
 
