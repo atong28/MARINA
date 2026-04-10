@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   usePredict, useSmilesSearch, useHealth, useCustomSmilesCard, cancelInFlight,
   type SpectralInput, type PredictRequest, type SmilesSearchRequest,
 } from '../services/api'
 import { useAppStore } from '../store/store'
+import { getAvailableExamples, loadExample, type ExampleMeta } from '../services/exampleLoader'
 import ModelSelector from '../components/common/ModelSelector'
 import StatusIndicator from '../components/common/StatusIndicator'
 import SpreadsheetTable from '../components/spreadsheet/SpreadsheetTable'
@@ -26,6 +27,11 @@ function MainPage() {
   const [hasInvalidSpreadsheet, setHasInvalidSpreadsheet] = useState(false)
   const [customSmilesInput, setCustomSmilesInput] = useState('')
   const [customError, setCustomError] = useState<string | null>(null)
+
+  // Example loading
+  const [availableExamples, setAvailableExamples] = useState<ExampleMeta[]>([])
+  const [selectedExampleStem, setSelectedExampleStem] = useState('')
+  const [isLoadingExample, setIsLoadingExample] = useState(false)
 
   const {
     selectedModelId,
@@ -137,6 +143,28 @@ function MainPage() {
       model_id: selectedModelId ?? undefined,
     })
   }, [customSmilesInput, resultSource, predictedFp, queryFp, selectedModelId, customCardMutation])
+
+  // Populate example list on mount
+  useEffect(() => {
+    getAvailableExamples().then(setAvailableExamples).catch(console.error)
+  }, [])
+
+  const handleLoadExample = useCallback(async () => {
+    if (!selectedExampleStem) return
+    setIsLoadingExample(true)
+    try {
+      const data = await loadExample(selectedExampleStem)
+      setHSQC(data.hsqc ?? [])
+      setHNMR(data.h_nmr ?? [])
+      setCNMR(data.c_nmr ?? [])
+      setMassSpec(data.mass_spec ?? [])
+      setMW(data.mw ?? null)
+    } catch (err) {
+      console.error('Failed to load example:', err)
+    } finally {
+      setIsLoadingExample(false)
+    }
+  }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMW])
 
   const isPending = predictMutation.isPending || smilesSearchMutation.isPending
   const searchError = predictMutation.error ?? smilesSearchMutation.error
@@ -255,6 +283,32 @@ function MainPage() {
               </span>
             )}
           </div>
+
+          {/* Example loader */}
+          {availableExamples.length > 0 && (
+            <div className="main-page__example-row">
+              <select
+                className="main-page__example-select"
+                value={selectedExampleStem}
+                onChange={(e) => setSelectedExampleStem(e.target.value)}
+                disabled={isLoadingExample}
+              >
+                <option value="">Load an example…</option>
+                {availableExamples.map((ex) => (
+                  <option key={ex.stem} value={ex.stem}>
+                    {ex.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="main-page__btn main-page__btn--secondary"
+                onClick={handleLoadExample}
+                disabled={!selectedExampleStem || isLoadingExample}
+              >
+                {isLoadingExample ? 'Loading…' : 'Load'}
+              </button>
+            </div>
+          )}
         </section>
       )}
 

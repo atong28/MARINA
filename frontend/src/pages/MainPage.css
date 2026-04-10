@@ -248,6 +248,34 @@
   color: #dc2626;
 }
 
+/* ── Example loader ──────────────────────────────────────────────────────────── */
+
+.main-page__example-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.main-page__example-select {
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 13px;
+  color: #374151;
+  outline: none;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.main-page__example-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  background: #fff;
+}
+
 /* ── Custom SMILES panel ──────────────────────────────────────────────────────── */
 
 .main-page__custom-panel {
