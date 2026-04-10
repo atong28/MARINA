@@ -1,0 +1,64 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # To build with GPU support:
+      #   TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+    image: marina-backend:latest
+    container_name: marina-backend
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    environment:
+      # ── Inference device ────────────────────────────────────────────────────
+      # Set to "cuda" (or "cuda:0") to enable GPU inference.
+      DEVICE: ${DEVICE:-cpu}
+
+      # ── Server ──────────────────────────────────────────────────────────────
+      BACKEND_PORT: "5000"
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+
+      # ── Model paths ─────────────────────────────────────────────────────────
+      MARINA_ROOT: /marina
+      DATA_DIR: /data
+      MODEL_ROOT: /data/marina_best
+      DEFAULT_MODEL_ID: marina_best
+      MODELS_JSON_PATH: /data/models.json
+
+      # ── Compute pool ─────────────────────────────────────────────────────────
+      MAX_COMPUTE_WORKERS: ${MAX_COMPUTE_WORKERS:-2}
+      MAX_COMPUTE_QUEUE: ${MAX_COMPUTE_QUEUE:-8}
+
+      # ── Misc ─────────────────────────────────────────────────────────────────
+      PRELOAD_MODELS: default
+      # Required by src/modules/core/const.py when running outside known paths.
+      # For the backend this just needs to be set; the actual data is in MODEL_ROOT.
+      DATASET_ROOT: /data
+      KMP_DUPLICATE_LIB_OK: "TRUE"
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      # Mount the MARINA project root so the backend can import src.modules.*
+      - ${MARINA_PROJECT_ROOT:-./../}:/marina:ro
+      # Mount your model data directory
+      - ${MODEL_DATA_DIR:-./data}:/data:ro
+
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health/live')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Uncomment to enable GPU access (requires NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

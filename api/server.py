@@ -10,7 +10,6 @@ from src.modules.core.const import DATASET_ROOT, BENCHMARK_ROOT
 from src.modules.marina import MARINAArgs
 from src.modules.marina import MARINA
 from src.modules.data.fp_loader import EntropyFPLoader
-from src.modules.data.fp_utils import canonicalize_smiles
 from src.modules.marina.dataset import format_inference_data
 from src.modules.benchmark import filter_data
 

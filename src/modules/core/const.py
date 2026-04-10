@@ -1,6 +1,6 @@
 from typing import Literal, Dict, List, Set
 from pathlib import Path
-from rdkit.Chem import BondType as BT
+import os
 
 from ..log import get_logger
 
@@ -21,6 +21,8 @@ DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
 
 NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw'}
 SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw'}
+
+
 if 'src/marina/src/modules' in __file__:
     logger.info('Detected website setup')
     CODE_ROOT = None
@@ -42,8 +44,15 @@ elif '/code' in __file__:
     WANDB_API_KEY_FILE = '/root/gurusmart/Moonshot/wandb_api_key.json'
     PVC_ROOT = '/root/gurusmart/Moonshot'
     BENCHMARK_ROOT = '/root/gurusmart/Benchmark'
+elif os.environ.get('DATASET_ROOT'):
+    logger.info('Detected env-var setup (DATASET_ROOT=%s)', os.environ['DATASET_ROOT'])
+    CODE_ROOT = os.environ.get('CODE_ROOT')
+    DATASET_ROOT = os.environ['DATASET_ROOT']
+    WANDB_API_KEY_FILE = None
+    PVC_ROOT = None
+    BENCHMARK_ROOT = os.environ.get('BENCHMARK_ROOT')
 else:
-    raise ValueError('Unknown setup')
+    raise ValueError('Unknown setup – set the DATASET_ROOT environment variable')
 
 DO_NOT_OVERRIDE = [
     'train', 'test', 'visualize', 'load_from_checkpoint', 'input_types', 'requires',

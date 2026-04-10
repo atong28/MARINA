@@ -1,0 +1,20 @@
+# Web framework
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
+# ML / scientific (torch is installed separately via --index-url for CPU/GPU selection)
+lightning>=2.3.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Chemistry
+rdkit>=2024.3.0
+
+# Data
+pyarrow>=16.0.0
+
+# Utilities
+tqdm>=4.66.0
+requests>=2.32.0
+pillow>=10.0.0
