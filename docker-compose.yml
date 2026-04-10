@@ -1,0 +1,97 @@
+services:
+
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      # Default index builds with CUDA 12.8 (matches the pixi.toml dev environment).
+      # CPU-only:  TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+      # CUDA 12.4: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}
+    image: marina-backend:latest
+    container_name: marina-backend
+    ports:
+      # Expose the backend directly so the API docs and raw endpoints are reachable.
+      # Set BACKEND_PORT in .env to change the host port.
+      - "${BACKEND_PORT:-5000}:5000"
+    environment:
+      # ── Inference device ────────────────────────────────────────────────────
+      # "cpu" | "cuda" | "cuda:0"
+      DEVICE: ${DEVICE:-cpu}
+
+      # ── Server ──────────────────────────────────────────────────────────────
+      BACKEND_PORT: "5000"
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+
+      # ── Model paths ─────────────────────────────────────────────────────────
+      # The MARINA project root is mounted at /marina (see volumes below).
+      MARINA_ROOT: /marina
+      # The model data directory is mounted at /data.
+      DATA_DIR: /data
+      MODEL_ROOT: /data/marina_best
+      DEFAULT_MODEL_ID: marina_best
+      MODELS_JSON_PATH: /data/models.json
+
+      # ── Compute pool ─────────────────────────────────────────────────────────
+      MAX_COMPUTE_WORKERS: ${MAX_COMPUTE_WORKERS:-2}
+      MAX_COMPUTE_QUEUE: ${MAX_COMPUTE_QUEUE:-8}
+
+      # ── Misc ─────────────────────────────────────────────────────────────────
+      PRELOAD_MODELS: ${PRELOAD_MODELS:-default}
+      DATASET_ROOT: /data
+      KMP_DUPLICATE_LIB_OK: "TRUE"
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      # MARINA project root (read-only) – needed so the backend can import src.*
+      - ${MARINA_PROJECT_ROOT:-.}:/marina:ro
+      # Model data directory (read-only) – contains models.json + per-model dirs
+      - ${MODEL_DATA_DIR:?Set MODEL_DATA_DIR in .env (path to your model data directory)}:/data:ro
+
+    networks:
+      - marina-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health/live')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+    # Uncomment to enable GPU access (requires NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time.
+        # /api is the default – nginx proxies it to the backend service.
+        VITE_API_BASE: ${VITE_API_BASE:-/api}
+    image: marina-frontend:latest
+    container_name: marina-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - marina-net
+    restart: unless-stopped
+
+
+networks:
+  marina-net:
+    driver: bridge
