@@ -1,0 +1,30 @@
+.results-grid {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.results-grid__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.results-grid__heading {
+  font-size: 17px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 16px;
+}
+
+.results-grid__count {
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.results-grid__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}

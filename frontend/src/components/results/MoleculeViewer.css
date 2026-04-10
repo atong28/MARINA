@@ -1,0 +1,41 @@
+.molecule-viewer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 160px;
+  background: #fafafa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.molecule-viewer__svg {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.molecule-viewer__svg svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.molecule-viewer__img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.molecule-viewer__placeholder {
+  padding: 16px;
+  text-align: center;
+}
+
+.molecule-viewer__smiles {
+  font-size: 11px;
+  color: #888;
+  word-break: break-all;
+  font-family: monospace;
+}

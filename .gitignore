@@ -209,7 +209,6 @@ __marimo__/
 # user added
 wandb/
 inference_data/
-results/
 lightning_logs/
 playground.ipynb
 wandb_api_key.json
