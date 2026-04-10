@@ -106,3 +106,15 @@ class SmilesSearchResponse(BaseModel):
     limit:        int = Field(ge=0)
     query_smiles: str
     query_fp:     Optional[List[float]] = None
+
+
+# ── Custom SMILES card ────────────────────────────────────────────────────────
+
+class CustomSmilesCardRequest(BaseModel):
+    smiles:       str              = Field(..., min_length=1, description="Target SMILES")
+    reference_fp: List[float]      = Field(..., min_length=1, description="Reference fingerprint (predicted or query FP)")
+    model_id:     Optional[str]    = Field(None)
+
+
+class CustomSmilesCardResponse(BaseModel):
+    result: ResultCard

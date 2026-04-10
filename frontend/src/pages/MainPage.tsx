@@ -1,0 +1,412 @@
+import { useState, useRef, useCallback } from 'react'
+import {
+  usePredict, useSmilesSearch, useHealth, useCustomSmilesCard, cancelInFlight,
+  type SpectralInput, type PredictRequest, type SmilesSearchRequest,
+} from '../services/api'
+import { useAppStore } from '../store/store'
+import ModelSelector from '../components/common/ModelSelector'
+import StatusIndicator from '../components/common/StatusIndicator'
+import SpreadsheetTable from '../components/spreadsheet/SpreadsheetTable'
+import ResultsGrid from '../components/results/ResultsGrid'
+import './MainPage.css'
+
+type Tab = 'spectral' | 'smiles'
+
+function isFiniteNum(v: number | null | undefined): v is number {
+  return v !== null && v !== undefined && Number.isFinite(v)
+}
+
+function filterValid(arr: number[]): number[] {
+  return arr.filter((v) => Number.isFinite(v))
+}
+
+function MainPage() {
+  const [tab, setTab] = useState<Tab>('spectral')
+  const [k, setK] = useState(10)
+  const [hasInvalidSpreadsheet, setHasInvalidSpreadsheet] = useState(false)
+  const [customSmilesInput, setCustomSmilesInput] = useState('')
+  const [customError, setCustomError] = useState<string | null>(null)
+
+  const {
+    selectedModelId,
+    hsqc, h_nmr, c_nmr, mass_spec, mw,
+    smilesInput,
+    retrievalMwMin, retrievalMwMax,
+    results, predictedFp, queryFp, resultSource,
+    customResults,
+    setPredictResults, setSmilesResults,
+    setHSQC, setHNMR, setCNMR, setMassSpec, setMW,
+    setSmilesInput,
+    setRetrievalMwRange,
+    addCustomResult, removeCustomResult,
+  } = useAppStore()
+
+  const { data: health } = useHealth()
+
+  // Sequence refs ensure only the latest in-flight request writes to results.
+  const seqRef    = useRef(0)
+  const predSeq   = useRef<number | null>(null)
+  const smilesSeq = useRef<number | null>(null)
+
+  const predictMutation = usePredict({
+    onSuccess: (data) => {
+      if (predSeq.current !== seqRef.current) return
+      setPredictResults(data.results, data.pred_fp ?? null)
+      setCustomError(null)
+    },
+  })
+
+  const smilesSearchMutation = useSmilesSearch({
+    onSuccess: (data) => {
+      if (smilesSeq.current !== seqRef.current) return
+      setSmilesResults(data.results, data.query_fp ?? null)
+      setCustomError(null)
+    },
+  })
+
+  const customCardMutation = useCustomSmilesCard({
+    onSuccess: (data) => {
+      if (data.result) addCustomResult(data.result)
+      setCustomSmilesInput('')
+      setCustomError(null)
+    },
+    onError: (err) => setCustomError(err.message),
+  })
+
+  const mwRangeInvalid =
+    (isFiniteNum(retrievalMwMin) && retrievalMwMin < 0) ||
+    (isFiniteNum(retrievalMwMax) && retrievalMwMax < 0) ||
+    (isFiniteNum(retrievalMwMin) && isFiniteNum(retrievalMwMax) && retrievalMwMin > retrievalMwMax)
+
+  const handlePredict = useCallback(() => {
+    cancelInFlight('smilesSearch')
+    cancelInFlight('predict')
+    seqRef.current += 1
+    predSeq.current = seqRef.current
+
+    const raw: SpectralInput = {}
+    const validHSQC = filterValid(hsqc)
+    const validHNMR = filterValid(h_nmr)
+    const validCNMR = filterValid(c_nmr)
+    const validMS   = filterValid(mass_spec)
+    if (validHSQC.length) raw.hsqc      = validHSQC
+    if (validHNMR.length) raw.h_nmr     = validHNMR
+    if (validCNMR.length) raw.c_nmr     = validCNMR
+    if (validMS.length)   raw.mass_spec = validMS
+    if (isFiniteNum(mw))  raw.mw        = mw
+
+    const payload: PredictRequest = { raw, k }
+    if (selectedModelId) payload.model_id = selectedModelId
+    if (isFiniteNum(retrievalMwMin)) payload.mw_min = retrievalMwMin
+    if (isFiniteNum(retrievalMwMax)) payload.mw_max = retrievalMwMax
+
+    predictMutation.mutate(payload)
+  }, [hsqc, h_nmr, c_nmr, mass_spec, mw, k, selectedModelId, retrievalMwMin, retrievalMwMax, predictMutation])
+
+  const handleSmilesSearch = useCallback(() => {
+    const trimmed = smilesInput.trim()
+    if (!trimmed) return
+    cancelInFlight('predict')
+    cancelInFlight('smilesSearch')
+    seqRef.current += 1
+    smilesSeq.current = seqRef.current
+
+    const payload: SmilesSearchRequest = { smiles: trimmed, k }
+    if (selectedModelId) payload.model_id = selectedModelId
+    if (isFiniteNum(retrievalMwMin)) payload.mw_min = retrievalMwMin
+    if (isFiniteNum(retrievalMwMax)) payload.mw_max = retrievalMwMax
+
+    smilesSearchMutation.mutate(payload)
+  }, [smilesInput, k, selectedModelId, retrievalMwMin, retrievalMwMax, smilesSearchMutation])
+
+  const handleAddCustom = useCallback(() => {
+    const trimmed = customSmilesInput.trim()
+    if (!trimmed) return
+
+    const refFp = resultSource === 'prediction' ? predictedFp : queryFp
+    if (!refFp || refFp.length === 0) {
+      setCustomError('No reference fingerprint available for the current session.')
+      return
+    }
+
+    setCustomError(null)
+    cancelInFlight('customSmilesCard')
+    customCardMutation.mutate({
+      smiles: trimmed,
+      reference_fp: refFp,
+      model_id: selectedModelId ?? undefined,
+    })
+  }, [customSmilesInput, resultSource, predictedFp, queryFp, selectedModelId, customCardMutation])
+
+  const isPending = predictMutation.isPending || smilesSearchMutation.isPending
+  const searchError = predictMutation.error ?? smilesSearchMutation.error
+  const hasResults = results.length > 0
+
+  return (
+    <div className="main-page">
+      {/* ── Header ── */}
+      <header className="main-page__header">
+        <div className="main-page__header-row">
+          <div className="main-page__header-controls">
+            <ModelSelector />
+            <StatusIndicator health={health} />
+          </div>
+          <a className="main-page__api-link" href="/docs" target="_blank" rel="noopener noreferrer">
+            API Docs
+          </a>
+        </div>
+        <h1 className="main-page__title">MARINA</h1>
+        <p className="main-page__subtitle">
+          Molecular structure retrieval from NMR and mass spectral data
+        </p>
+      </header>
+
+      {/* ── Tabs ── */}
+      <div className="main-page__tabs">
+        <button
+          className={`main-page__tab${tab === 'spectral' ? ' active' : ''}`}
+          onClick={() => setTab('spectral')}
+        >
+          Spectral Data
+        </button>
+        <button
+          className={`main-page__tab${tab === 'smiles' ? ' active' : ''}`}
+          onClick={() => setTab('smiles')}
+        >
+          SMILES Search
+        </button>
+      </div>
+
+      {/* ── Spectral panel ── */}
+      {tab === 'spectral' && (
+        <section className="main-page__panel">
+          <div className="main-page__panel-description">
+            <p>
+              Enter spectral data in the spreadsheet. HSQC requires all three columns per row
+              (H shift, C shift, intensity). Mass Spec requires both m/z and intensity per row.
+            </p>
+          </div>
+
+          <SpreadsheetTable
+            hsqc={hsqc}
+            h_nmr={h_nmr}
+            c_nmr={c_nmr}
+            mass_spec={mass_spec}
+            onHSQCChange={setHSQC}
+            onHNMRChange={setHNMR}
+            onCNMRChange={setCNMR}
+            onMassSpecChange={setMassSpec}
+            onValidationChange={(s) => setHasInvalidSpreadsheet(s.anyInvalid)}
+          />
+
+          <div className="main-page__mw-row">
+            <label className="main-page__label">
+              Molecular weight (Da)
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Optional"
+                value={mw ?? ''}
+                onChange={(e) => setMW(e.target.value ? parseFloat(e.target.value) : null)}
+              />
+            </label>
+          </div>
+
+          <MWRangeFilter
+            min={retrievalMwMin}
+            max={retrievalMwMax}
+            onChange={setRetrievalMwRange}
+            invalid={mwRangeInvalid}
+          />
+
+          <div className="main-page__action-row">
+            <label className="main-page__label main-page__label--inline">
+              Results
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={k}
+                onChange={(e) => setK(Math.max(1, Math.min(50, parseInt(e.target.value) || 10)))}
+              />
+            </label>
+            <button
+              className="main-page__btn main-page__btn--primary"
+              onClick={handlePredict}
+              disabled={
+                predictMutation.isPending ||
+                !health?.model_loaded ||
+                hasInvalidSpreadsheet ||
+                mwRangeInvalid
+              }
+              title={
+                hasInvalidSpreadsheet
+                  ? 'Fix incomplete rows in the spreadsheet first.'
+                  : mwRangeInvalid
+                  ? 'MW filter range is invalid.'
+                  : undefined
+              }
+            >
+              {predictMutation.isPending ? 'Predicting…' : 'Predict Structure'}
+            </button>
+            {hasInvalidSpreadsheet && (
+              <span className="main-page__warning">
+                Incomplete rows — fix or use Condense rows.
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── SMILES panel ── */}
+      {tab === 'smiles' && (
+        <section className="main-page__panel">
+          <label className="main-page__label main-page__label--block">
+            SMILES string
+            <input
+              className="main-page__smiles-input"
+              type="text"
+              placeholder="e.g. CC(C)CCO"
+              value={smilesInput}
+              onChange={(e) => setSmilesInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSmilesSearch()}
+            />
+          </label>
+
+          <MWRangeFilter
+            min={retrievalMwMin}
+            max={retrievalMwMax}
+            onChange={setRetrievalMwRange}
+            invalid={mwRangeInvalid}
+          />
+
+          <div className="main-page__action-row">
+            <label className="main-page__label main-page__label--inline">
+              Results
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={k}
+                onChange={(e) => setK(Math.max(1, Math.min(50, parseInt(e.target.value) || 10)))}
+              />
+            </label>
+            <button
+              className="main-page__btn main-page__btn--primary"
+              onClick={handleSmilesSearch}
+              disabled={
+                smilesSearchMutation.isPending ||
+                !health?.model_loaded ||
+                !smilesInput.trim() ||
+                mwRangeInvalid
+              }
+            >
+              {smilesSearchMutation.isPending ? 'Searching…' : 'Search by SMILES'}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ── Search error ── */}
+      {searchError && (
+        <div className="main-page__error">
+          <strong>Error:</strong> {searchError.message}
+        </div>
+      )}
+
+      {/* ── Loading state ── */}
+      {isPending && (
+        <div className="main-page__loading">
+          <span className="main-page__spinner" />
+          {predictMutation.isPending ? 'Running prediction…' : 'Searching…'}
+        </div>
+      )}
+
+      {/* ── Custom SMILES (shown once results exist) ── */}
+      {hasResults && (
+        <section className="main-page__panel main-page__custom-panel">
+          <h3 className="main-page__custom-title">Score a custom SMILES</h3>
+          <p className="main-page__custom-description">
+            Enter any SMILES to score it against the current{' '}
+            {resultSource === 'prediction' ? 'predicted' : 'query'} fingerprint and add a
+            comparison card.
+          </p>
+          <div className="main-page__action-row">
+            <input
+              className="main-page__smiles-input main-page__custom-input"
+              type="text"
+              placeholder="e.g. C1=CC=CC=C1"
+              value={customSmilesInput}
+              onChange={(e) => setCustomSmilesInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
+            />
+            <button
+              className="main-page__btn main-page__btn--secondary"
+              onClick={handleAddCustom}
+              disabled={customCardMutation.isPending || !customSmilesInput.trim()}
+            >
+              {customCardMutation.isPending ? 'Scoring…' : 'Add card'}
+            </button>
+          </div>
+          {customError && (
+            <div className="main-page__error main-page__error--inline">{customError}</div>
+          )}
+        </section>
+      )}
+
+      {/* ── Results ── */}
+      <ResultsGrid
+        results={results}
+        customResults={customResults}
+        onRemoveCustom={removeCustomResult}
+      />
+    </div>
+  )
+}
+
+// ── MW range filter sub-component ─────────────────────────────────────────────
+
+interface MWRangeFilterProps {
+  min: number | null
+  max: number | null
+  onChange: (min: number | null, max: number | null) => void
+  invalid: boolean
+}
+
+function parseMW(val: string): number | null {
+  if (!val.trim()) return null
+  const n = parseFloat(val)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function MWRangeFilter({ min, max, onChange, invalid }: MWRangeFilterProps) {
+  return (
+    <div className="mw-filter">
+      <span className="mw-filter__label">Retrieval MW filter (Da)</span>
+      <div className="mw-filter__inputs">
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Min"
+          value={min ?? ''}
+          onChange={(e) => onChange(parseMW(e.target.value), max)}
+        />
+        <span className="mw-filter__dash">–</span>
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Max"
+          value={max ?? ''}
+          onChange={(e) => onChange(min, parseMW(e.target.value))}
+        />
+      </div>
+      {invalid ? (
+        <span className="mw-filter__error">Must satisfy 0 ≤ min ≤ max.</span>
+      ) : (
+        <span className="mw-filter__hint">Leave blank for no bound.</span>
+      )}
+    </div>
+  )
+}
+
+export default MainPage

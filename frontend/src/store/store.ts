@@ -1,0 +1,126 @@
+import { create } from 'zustand'
+import { ModelInfo, ResultCard } from '../services/api'
+
+type ResultSource = 'prediction' | 'smiles-search' | null
+
+interface AppState {
+  // Model selection
+  availableModels: ModelInfo[] | null
+  defaultModelId: string | null
+  selectedModelId: string | null
+
+  // Spectral input data
+  hsqc: number[]
+  h_nmr: number[]
+  c_nmr: number[]
+  mass_spec: number[]
+  mw: number | null
+
+  // SMILES search
+  smilesInput: string
+
+  // Retrieval MW filter
+  retrievalMwMin: number | null
+  retrievalMwMax: number | null
+
+  // Results and fingerprints from the last search
+  results: ResultCard[]
+  predictedFp: number[] | null
+  queryFp: number[] | null
+  resultSource: ResultSource
+
+  // Custom SMILES result cards (scored against the current session FP)
+  customResults: ResultCard[]
+
+  // Actions
+  setAvailableModels: (models: ModelInfo[], defaultId: string) => void
+  initializeModelSelection: (models: ModelInfo[], defaultId: string) => void
+  setSelectedModelId: (id: string) => void
+
+  setHSQC: (data: number[]) => void
+  setHNMR: (data: number[]) => void
+  setCNMR: (data: number[]) => void
+  setMassSpec: (data: number[]) => void
+  setMW: (mw: number | null) => void
+  setSmilesInput: (smiles: string) => void
+  setRetrievalMwRange: (min: number | null, max: number | null) => void
+
+  setPredictResults: (results: ResultCard[], predictedFp: number[] | null) => void
+  setSmilesResults: (results: ResultCard[], queryFp: number[] | null) => void
+
+  addCustomResult: (result: ResultCard) => void
+  removeCustomResult: (index: number) => void
+  clearCustomResults: () => void
+}
+
+const MODEL_STORAGE_KEY = 'marina.selectedModelId'
+
+function readStoredModelId(): string | null {
+  try { return localStorage.getItem(MODEL_STORAGE_KEY) } catch { return null }
+}
+
+function writeStoredModelId(id: string) {
+  try { localStorage.setItem(MODEL_STORAGE_KEY, id) } catch { /* ignore */ }
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  availableModels: null,
+  defaultModelId: null,
+  selectedModelId: null,
+
+  hsqc: [],
+  h_nmr: [],
+  c_nmr: [],
+  mass_spec: [],
+  mw: null,
+
+  smilesInput: '',
+
+  retrievalMwMin: null,
+  retrievalMwMax: null,
+
+  results: [],
+  predictedFp: null,
+  queryFp: null,
+  resultSource: null,
+
+  customResults: [],
+
+  setAvailableModels: (models, defaultId) =>
+    set({ availableModels: models, defaultModelId: defaultId }),
+
+  initializeModelSelection: (models, defaultId) => {
+    const stored = readStoredModelId()
+    const knownIds = new Set(models.map((m) => m.id))
+    const selected = stored && knownIds.has(stored) ? stored : defaultId
+    writeStoredModelId(selected)
+    set({ availableModels: models, defaultModelId: defaultId, selectedModelId: selected })
+  },
+
+  setSelectedModelId: (id) => {
+    writeStoredModelId(id)
+    set({ selectedModelId: id })
+  },
+
+  setHSQC: (data) => set({ hsqc: data }),
+  setHNMR: (data) => set({ h_nmr: data }),
+  setCNMR: (data) => set({ c_nmr: data }),
+  setMassSpec: (data) => set({ mass_spec: data }),
+  setMW: (mw) => set({ mw }),
+  setSmilesInput: (smiles) => set({ smilesInput: smiles }),
+  setRetrievalMwRange: (min, max) => set({ retrievalMwMin: min, retrievalMwMax: max }),
+
+  setPredictResults: (results, predictedFp) =>
+    set({ results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [] }),
+
+  setSmilesResults: (results, queryFp) =>
+    set({ results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [] }),
+
+  addCustomResult: (result) =>
+    set((state) => ({ customResults: [...state.customResults, result] })),
+
+  removeCustomResult: (index) =>
+    set((state) => ({ customResults: state.customResults.filter((_, i) => i !== index) })),
+
+  clearCustomResults: () => set({ customResults: [] }),
+}))

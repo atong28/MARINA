@@ -1,0 +1,200 @@
+import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query'
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface SpectralInput {
+  hsqc?: number[]
+  h_nmr?: number[]
+  c_nmr?: number[]
+  mass_spec?: number[]
+  mw?: number
+}
+
+export interface PredictRequest {
+  raw: SpectralInput
+  k?: number
+  mw_min?: number
+  mw_max?: number
+  model_id?: string
+}
+
+export interface DatabaseLinks {
+  coconut?: string
+  lotus?: string
+  npmrd?: string
+}
+
+export interface ResultCard {
+  index: number
+  smiles: string
+  similarity: number
+  cosine_similarity?: number
+  tanimoto_similarity?: number
+  svg?: string
+  plain_svg?: string
+  name?: string
+  primary_link?: string
+  database_links: DatabaseLinks
+  retrieved_molecule_fp_indices: number[]
+  exact_mass?: number
+}
+
+export interface PredictResponse {
+  results: ResultCard[]
+  total_count: number
+  offset: number
+  limit: number
+  pred_fp?: number[]
+}
+
+export interface SmilesSearchRequest {
+  smiles: string
+  k?: number
+  mw_min?: number
+  mw_max?: number
+  model_id?: string
+}
+
+export interface SmilesSearchResponse {
+  results: ResultCard[]
+  total_count: number
+  offset: number
+  limit: number
+  query_smiles: string
+  query_fp?: number[]
+}
+
+export interface HealthResponse {
+  status: string
+  model_loaded: boolean
+  uptime_seconds: number
+}
+
+export interface ModelInfo {
+  id: string
+  root: string
+  type: string
+  default: boolean
+  loaded: boolean
+  display_name?: string
+}
+
+export interface ModelsResponse {
+  models: ModelInfo[]
+  default_model_id: string
+}
+
+export interface CustomSmilesCardRequest {
+  smiles: string
+  reference_fp: number[]
+  model_id?: string
+}
+
+export interface CustomSmilesCardResponse {
+  result: ResultCard
+}
+
+// ── HTTP client ───────────────────────────────────────────────────────────────
+
+async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+  })
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`
+    try {
+      const body = await response.json()
+      message = body.detail || body.error || message
+    } catch { /* non-JSON error body */ }
+    throw new Error(message)
+  }
+
+  return response.json()
+}
+
+// ── Abort controller per logical operation ────────────────────────────────────
+
+type AbortKey = 'predict' | 'smilesSearch' | 'customSmilesCard'
+
+const controllers = new Map<AbortKey, AbortController>()
+
+function makeController(key: AbortKey): AbortController {
+  controllers.get(key)?.abort()
+  const ctrl = new AbortController()
+  controllers.set(key, ctrl)
+  return ctrl
+}
+
+export function cancelInFlight(key: AbortKey) {
+  controllers.get(key)?.abort()
+}
+
+// ── API object ────────────────────────────────────────────────────────────────
+
+export const api = {
+  health: () => fetchJson<HealthResponse>('/health'),
+
+  models: () => fetchJson<ModelsResponse>('/models'),
+
+  predict: (data: PredictRequest): Promise<PredictResponse> => {
+    const { signal } = makeController('predict')
+    return fetchJson('/predict', { method: 'POST', body: JSON.stringify(data), signal })
+  },
+
+  smilesSearch: (data: SmilesSearchRequest): Promise<SmilesSearchResponse> => {
+    const { signal } = makeController('smilesSearch')
+    return fetchJson('/smiles-search', { method: 'POST', body: JSON.stringify(data), signal })
+  },
+
+  customSmilesCard: (data: CustomSmilesCardRequest): Promise<CustomSmilesCardResponse> => {
+    const { signal } = makeController('customSmilesCard')
+    return fetchJson('/custom-smiles-card', { method: 'POST', body: JSON.stringify(data), signal })
+  },
+}
+
+// ── React Query hooks ─────────────────────────────────────────────────────────
+
+export function useHealth(options?: Partial<UseQueryOptions<HealthResponse>>) {
+  return useQuery<HealthResponse>({
+    queryKey: ['health'],
+    queryFn: api.health,
+    refetchInterval: 5000,
+    retry: 1,
+    retryDelay: 1000,
+    ...options,
+  })
+}
+
+export function useModels(options?: Partial<UseQueryOptions<ModelsResponse>>) {
+  return useQuery<ModelsResponse>({
+    queryKey: ['models'],
+    queryFn: api.models,
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  })
+}
+
+export function usePredict(options?: UseMutationOptions<PredictResponse, Error, PredictRequest>) {
+  return useMutation<PredictResponse, Error, PredictRequest>({
+    mutationFn: api.predict,
+    ...options,
+  })
+}
+
+export function useSmilesSearch(options?: UseMutationOptions<SmilesSearchResponse, Error, SmilesSearchRequest>) {
+  return useMutation<SmilesSearchResponse, Error, SmilesSearchRequest>({
+    mutationFn: api.smilesSearch,
+    ...options,
+  })
+}
+
+export function useCustomSmilesCard(options?: UseMutationOptions<CustomSmilesCardResponse, Error, CustomSmilesCardRequest>) {
+  return useMutation<CustomSmilesCardResponse, Error, CustomSmilesCardRequest>({
+    mutationFn: api.customSmilesCard,
+    ...options,
+  })
+}

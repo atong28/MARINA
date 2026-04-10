@@ -1,0 +1,329 @@
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+
+.main-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+
+.main-page__header {
+  margin-bottom: 28px;
+}
+
+.main-page__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.main-page__header-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.main-page__api-link {
+  font-size: 12px;
+  color: #6b7280;
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+
+.main-page__api-link:hover {
+  background: #f9fafb;
+  color: #111;
+}
+
+.main-page__title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #111;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.main-page__subtitle {
+  font-size: 15px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────────── */
+
+.main-page__tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.main-page__tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.main-page__tab:hover {
+  color: #111;
+}
+
+.main-page__tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────────────── */
+
+.main-page__panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.main-page__panel-description p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* ── Form elements ────────────────────────────────────────────────────────────── */
+
+.main-page__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.main-page__label--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.main-page__label--block {
+  width: 100%;
+}
+
+.main-page__label input[type='number'],
+.main-page__label input[type='text'] {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 80px;
+}
+
+.main-page__label input[type='number']:focus,
+.main-page__label input[type='text']:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.main-page__smiles-input {
+  width: 100% !important;
+  font-family: monospace;
+  font-size: 13px !important;
+}
+
+.main-page__mw-row {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Action row ────────────────────────────────────────────────────────────────── */
+
+.main-page__action-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.main-page__btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.main-page__btn--primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.main-page__btn--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.main-page__btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main-page__warning {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+/* ── MW filter ────────────────────────────────────────────────────────────────── */
+
+.mw-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mw-filter__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.mw-filter__inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mw-filter__inputs input {
+  width: 90px;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fafafa;
+}
+
+.mw-filter__inputs input:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.mw-filter__dash {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.mw-filter__hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.mw-filter__error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+/* ── Custom SMILES panel ──────────────────────────────────────────────────────── */
+
+.main-page__custom-panel {
+  margin-top: 28px;
+}
+
+.main-page__custom-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 6px;
+}
+
+.main-page__custom-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.main-page__custom-input {
+  flex: 1;
+  min-width: 0;
+  width: auto !important;
+}
+
+.main-page__btn--secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.main-page__btn--secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.main-page__btn--secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main-page__error--inline {
+  margin-top: 0;
+}
+
+/* ── Error / loading ──────────────────────────────────────────────────────────── */
+
+.main-page__error {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #991b1b;
+}
+
+.main-page__loading {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.main-page__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

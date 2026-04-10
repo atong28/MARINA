@@ -146,13 +146,14 @@ async def general_error_handler(request: Request, exc: Exception):
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-from app.routes import health, models, predict, smiles_search, fingerprints
+from app.routes import health, models, predict, smiles_search, fingerprints, custom_smiles
 
-app.include_router(health.router,       prefix="/api", tags=["health"])
-app.include_router(models.router,       prefix="/api", tags=["models"])
-app.include_router(predict.router,      prefix="/api", tags=["prediction"])
+app.include_router(health.router,        prefix="/api", tags=["health"])
+app.include_router(models.router,        prefix="/api", tags=["models"])
+app.include_router(predict.router,       prefix="/api", tags=["prediction"])
 app.include_router(smiles_search.router, prefix="/api", tags=["search"])
-app.include_router(fingerprints.router, prefix="/api", tags=["fingerprints"])
+app.include_router(fingerprints.router,  prefix="/api", tags=["fingerprints"])
+app.include_router(custom_smiles.router, prefix="/api", tags=["custom"])
 
 
 # ── Dev entry point ───────────────────────────────────────────────────────────
