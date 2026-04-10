@@ -31,6 +31,9 @@ help:
 	@echo "    TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 make build"
 	@echo "    DEVICE=cuda make up"
 	@echo ""
+	@echo "  Older CPU (NumPy x86-64-v2 error): set in .env then build"
+	@echo "    LEGACY_NUMPY=true"
+	@echo ""
 
 # ── Local dev (no Docker) ─────────────────────────────────────────────────────
 

@@ -1,22 +1,7 @@
-# Web framework
-# Versions aligned with pixi.toml
-fastapi>=0.135.3,<0.136
-uvicorn[standard]>=0.44.0,<0.45
-python-multipart>=0.0.24,<0.0.25
+# Local development / pip install (matches modern Docker path).
+# Docker: numpy + pandas are installed before this file; see requirements-base.txt + Dockerfile.
 
-# ML (torch is installed separately via --index-url for CPU/GPU wheel selection)
-lightning==2.6.1
-torch-geometric==2.7.0
+-r requirements-base.txt
 
-# Scientific / data
-numpy>=2.4.2
-pandas>=3.0.1
-pyarrow>=16.0.0
-
-# Chemistry
-rdkit>=2024.3.0
-
-# Utilities
-tqdm>=4.67.0
-requests>=2.33.0
-pillow>=12.0.0
+numpy>=2.4.2,<3
+pandas>=3.0.1,<4

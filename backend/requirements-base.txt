@@ -1,0 +1,24 @@
+# Shared dependencies (numpy + pandas are installed in the Dockerfile with
+# versions chosen from the LEGACY_NUMPY build arg; see Dockerfile).
+#
+# Local / Makefile install: use requirements.txt (includes -r this file + numpy + pandas).
+
+# Web framework
+fastapi>=0.135.3,<0.136
+uvicorn[standard]>=0.44.0,<0.45
+python-multipart>=0.0.24,<0.0.25
+
+# ML (torch is installed separately in Docker via --index-url)
+lightning==2.6.1
+torch-geometric==2.7.0
+
+# Data
+pyarrow>=16.0.0
+
+# Chemistry
+rdkit>=2024.3.0
+
+# Utilities
+tqdm>=4.67.0
+requests>=2.33.0
+pillow>=12.0.0

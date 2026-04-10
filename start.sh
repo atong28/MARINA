@@ -18,6 +18,9 @@
 #   --gpu     Build with CUDA support (uses TORCH_INDEX_URL for cu128 by default)
 #   --cpu     Build with CPU-only PyTorch (overrides --gpu and any .env value)
 #
+# Build-time (.env at repo root, before build):
+#   LEGACY_NUMPY=true   Older NumPy/pandas wheels for CPUs without x86-64-v2 (see .env.example)
+#
 # Examples:
 #   ./start.sh                     # rebuild + restart (CPU)
 #   ./start.sh restart --gpu       # rebuild + restart with CUDA 12.8
@@ -102,6 +105,7 @@ case "$CMD" in
         info "Building images and restarting containers…"
         info "  DEVICE            = ${DEVICE}"
         info "  TORCH_INDEX_URL   = ${TORCH_INDEX_URL}"
+        info "  LEGACY_NUMPY      = ${LEGACY_NUMPY:-false}"
         info "  MODEL_DATA_DIR    = ${MODEL_DATA_DIR}"
         docker compose build
         docker compose up -d --force-recreate
@@ -112,6 +116,7 @@ case "$CMD" in
     build)
         info "Building images…"
         info "  TORCH_INDEX_URL = ${TORCH_INDEX_URL}"
+        info "  LEGACY_NUMPY    = ${LEGACY_NUMPY:-false}"
         docker compose build
         info "Build complete."
         ;;

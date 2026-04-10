@@ -10,6 +10,9 @@ services:
       # CUDA 12.4: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
       args:
         TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}
+        # true / 1 / yes → NumPy 1.26 + pandas 2.x wheels (older CPU baseline, no x86-64-v2).
+        # Set LEGACY_NUMPY=true in root .env for hosts that error on NumPy CPU baseline.
+        LEGACY_NUMPY: ${LEGACY_NUMPY:-false}
     image: marina-backend:latest
     container_name: marina-backend
     ports:

@@ -1,6 +1,6 @@
 # ── Stage 1: dependency installation ─────────────────────────────────────────
-# Python 3.13 matches the pixi.toml dev environment.
-FROM python:3.13-slim AS deps
+# Python 3.12: stable wheels across hosts; pixi.toml may use 3.13 for local dev only.
+FROM python:3.12-slim AS deps
 
 # System libraries required by RDKit and PyTorch
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,20 +12,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements-base.txt .
 
 # Install PyTorch.
 # Default index is cu128 to match the pixi.toml dev environment.
 # Override at build time for CPU-only or a different CUDA version:
 #   docker build --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu ...
-#   docker build --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 ...
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
-RUN pip install --no-cache-dir torch==2.8.0 --index-url "$TORCH_INDEX_URL" \
- && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch==2.8.0 --index-url "$TORCH_INDEX_URL"
+
+# NumPy / pandas: modern stack vs legacy CPU-safe wheels (no x86-64-v2 baseline).
+# Set LEGACY_NUMPY=true in the root .env when building for older CPUs / VMs without v2 features.
+ARG LEGACY_NUMPY=false
+RUN set -eux; \
+    LEGACY="$(echo "${LEGACY_NUMPY}" | tr '[:upper:]' '[:lower:]')"; \
+    if [ "$LEGACY" = "true" ] || [ "$LEGACY" = "1" ] || [ "$LEGACY" = "yes" ]; then \
+      pip install --no-cache-dir \
+        "numpy==1.26.4" \
+        "pandas>=2.2.3,<3"; \
+    else \
+      pip install --no-cache-dir \
+        "numpy>=2.4.2,<3" \
+        "pandas>=3.0.1,<4"; \
+    fi
+
+RUN pip install --no-cache-dir -r requirements-base.txt
 
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
-FROM python:3.13-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
@@ -36,7 +51,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy installed packages from the build stage
-COPY --from=deps /usr/local/lib/python3.13 /usr/local/lib/python3.13
+COPY --from=deps /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=deps /usr/local/bin            /usr/local/bin
 
 # Copy application source
