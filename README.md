@@ -1,6 +1,20 @@
-# SMART-Moonshot Project
+# MARINA Repository
 
-## Installation
+## Website Setup
+
+Ensure `docker` and `docker-compose` are installed, and copy `.env.example` to `.env`, and configure the variables as you see fit. You must absolutely set `MODEL_DATA_DIR`, and by default the website will run on cpu inference. Note that some legacy machines may be buggy with numpy, so if there is a repeated import error then set `LEGACY_NUMPY=true`.
+
+Download the model (run it in a environment with `gdown` installed, it is installed if you download `pixi` and install the environment below)
+```bash
+bash download_model.sh
+```
+
+Start the docker containers:
+```bash
+bash start.sh
+```
+
+## Code Installation
 
 Install pixi according to the following instructions:
 ```
@@ -12,11 +26,8 @@ pixi shell
 ```
 To just install the environment, use
 ```
-pixi install
+pixi i
 ```
 
-## Dataset setup
 
-```
-PYTHONPATH=src python -m spectre.data.fp_loader fragments --index ~/MoonshotDatasetv3/index.pkl --out-dir ~/MoonshotDatasetv3
-```
+
