@@ -7,8 +7,10 @@ import { useAppStore } from '../store/store'
 import { getAvailableExamples, loadExample, type ExampleMeta } from '../services/exampleLoader'
 import ModelSelector from '../components/common/ModelSelector'
 import StatusIndicator from '../components/common/StatusIndicator'
+import HelpButton from '../components/common/HelpButton'
 import SpreadsheetTable from '../components/spreadsheet/SpreadsheetTable'
 import ResultsGrid from '../components/results/ResultsGrid'
+import { HELP } from '../helpContent'
 import './MainPage.css'
 
 type Tab = 'spectral' | 'smiles'
@@ -177,7 +179,9 @@ function MainPage() {
         <div className="main-page__header-row">
           <div className="main-page__header-controls">
             <ModelSelector />
+            <HelpButton content={HELP.controls.model} placement="bottom" />
             <StatusIndicator health={health} />
+            <HelpButton content={HELP.controls.status} placement="bottom" />
           </div>
           <a className="main-page__api-link" href="/docs" target="_blank" rel="noopener noreferrer">
             API Docs
@@ -196,12 +200,14 @@ function MainPage() {
           onClick={() => setTab('spectral')}
         >
           Spectral Data
+          <HelpButton content={HELP.tabs.spectral} placement="bottom" />
         </button>
         <button
           className={`main-page__tab${tab === 'smiles' ? ' active' : ''}`}
           onClick={() => setTab('smiles')}
         >
           SMILES Search
+          <HelpButton content={HELP.tabs.smiles} placement="bottom" />
         </button>
       </div>
 
@@ -212,6 +218,7 @@ function MainPage() {
             <p>
               Enter spectral data in the spreadsheet. HSQC requires all three columns per row
               (H shift, C shift, intensity). Mass Spec requires both m/z and intensity per row.
+              <HelpButton content={HELP.spectral.spreadsheet} placement="right" />
             </p>
           </div>
 
@@ -229,7 +236,10 @@ function MainPage() {
 
           <div className="main-page__mw-row">
             <label className="main-page__label">
-              Molecular weight (Da)
+              <span className="main-page__label-text">
+                Molecular weight (Da)
+                <HelpButton content={HELP.spectral.mw} placement="right" />
+              </span>
               <input
                 type="number"
                 step="0.01"
@@ -250,6 +260,7 @@ function MainPage() {
           <div className="main-page__action-row">
             <label className="main-page__label main-page__label--inline">
               Results
+              <HelpButton content={HELP.spectral.resultsCount} placement="top" />
               <input
                 type="number"
                 min="1"
@@ -277,6 +288,7 @@ function MainPage() {
             >
               {predictMutation.isPending ? 'Predicting…' : 'Predict Structure'}
             </button>
+            <HelpButton content={HELP.spectral.predict} placement="top" />
             {hasInvalidSpreadsheet && (
               <span className="main-page__warning">
                 Incomplete rows — fix or use Condense rows.
@@ -307,6 +319,7 @@ function MainPage() {
               >
                 {isLoadingExample ? 'Loading…' : 'Load'}
               </button>
+              <HelpButton content={HELP.spectral.examples} placement="top" />
             </div>
           )}
         </section>
@@ -316,7 +329,10 @@ function MainPage() {
       {tab === 'smiles' && (
         <section className="main-page__panel">
           <label className="main-page__label main-page__label--block">
-            SMILES string
+            <span className="main-page__label-text">
+              SMILES string
+              <HelpButton content={HELP.smiles.input} placement="right" />
+            </span>
             <input
               className="main-page__smiles-input"
               type="text"
@@ -337,6 +353,7 @@ function MainPage() {
           <div className="main-page__action-row">
             <label className="main-page__label main-page__label--inline">
               Results
+              <HelpButton content={HELP.spectral.resultsCount} placement="top" />
               <input
                 type="number"
                 min="1"
@@ -357,6 +374,7 @@ function MainPage() {
             >
               {smilesSearchMutation.isPending ? 'Searching…' : 'Search by SMILES'}
             </button>
+            <HelpButton content={HELP.smiles.search} placement="top" />
           </div>
         </section>
       )}
@@ -379,7 +397,10 @@ function MainPage() {
       {/* ── Custom SMILES (shown once results exist) ── */}
       {hasResults && (
         <section className="main-page__panel main-page__custom-panel">
-          <h3 className="main-page__custom-title">Score a custom SMILES</h3>
+          <h3 className="main-page__custom-title">
+            Score a custom SMILES
+            <HelpButton content={HELP.custom.panel} placement="right" />
+          </h3>
           <p className="main-page__custom-description">
             Enter any SMILES to score it against the current{' '}
             {resultSource === 'prediction' ? 'predicted' : 'query'} fingerprint and add a
@@ -436,7 +457,10 @@ function parseMW(val: string): number | null {
 function MWRangeFilter({ min, max, onChange, invalid }: MWRangeFilterProps) {
   return (
     <div className="mw-filter">
-      <span className="mw-filter__label">Retrieval MW filter (Da)</span>
+      <span className="mw-filter__label">
+        Retrieval MW filter (Da)
+        <HelpButton content={HELP.spectral.mwFilter} placement="right" />
+      </span>
       <div className="mw-filter__inputs">
         <input
           type="number"

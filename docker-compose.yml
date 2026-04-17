@@ -1,24 +1,64 @@
 services:
 
-  # ── Backend ─────────────────────────────────────────────────────────────────
+  # ── Nginx reverse proxy ───────────────────────────────────────────────────────
+  # The ONLY container with a host-exposed port.
+  # All browser traffic enters here and is forwarded to the frontend.
+  # The backend is not reachable from this container (different network).
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: marina-nginx:latest
+    container_name: marina-nginx
+    ports:
+      # Set NGINX_PORT in .env to change the host port.
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      - frontend
+    networks:
+      - proxy-net
+    restart: unless-stopped
+
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  # No host port – only reachable through the nginx proxy.
+  # Its own nginx proxies /api/* to the backend on the isolated backend-net.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time.
+        # /api is the default – the frontend's nginx proxies it to the backend service.
+        VITE_API_BASE: ${VITE_API_BASE:-/api}
+    image: marina-frontend:latest
+    container_name: marina-frontend
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - proxy-net    # reachable by the nginx proxy
+      - backend-net  # can reach the backend
+    restart: unless-stopped
+
+
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  # No host port – only reachable from the frontend container via backend-net.
+  # The nginx proxy has no route to this container.
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      # Default index builds with CUDA 12.8 (matches the pixi.toml dev environment).
-      # CPU-only:  TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+      # Default index builds CPU-only wheels.
       # CUDA 12.4: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+      # CUDA 12.8: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
       args:
-        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
         # true / 1 / yes → NumPy 1.26 + pandas 2.x wheels (older CPU baseline, no x86-64-v2).
         # Set LEGACY_NUMPY=true in root .env for hosts that error on NumPy CPU baseline.
         LEGACY_NUMPY: ${LEGACY_NUMPY:-false}
     image: marina-backend:latest
     container_name: marina-backend
-    ports:
-      # Expose the backend directly so the API docs and raw endpoints are reachable.
-      # Set BACKEND_PORT in .env to change the host port.
-      - "${BACKEND_PORT:-5000}:5000"
     environment:
       # ── Inference device ────────────────────────────────────────────────────
       # "cpu" | "cuda" | "cuda:0"
@@ -51,10 +91,10 @@ services:
       # MARINA project root (read-only) – needed so the backend can import src.*
       - ${MARINA_PROJECT_ROOT:-.}:/marina:ro
       # Model data directory (read-only) – contains models.json + per-model dirs
-      - ${MODEL_DATA_DIR:?Set MODEL_DATA_DIR in .env (path to your model data directory)}:/data:ro
+      - ${MODEL_DATA_DIR:-./checkpoints}:/data:ro
 
     networks:
-      - marina-net
+      - backend-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -74,27 +114,10 @@ services:
     #           capabilities: [gpu]
 
 
-  # ── Frontend ─────────────────────────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        # Baked into the JS bundle at build time.
-        # /api is the default – nginx proxies it to the backend service.
-        VITE_API_BASE: ${VITE_API_BASE:-/api}
-    image: marina-frontend:latest
-    container_name: marina-frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
-    depends_on:
-      backend:
-        condition: service_started
-    networks:
-      - marina-net
-    restart: unless-stopped
-
-
 networks:
-  marina-net:
+  # nginx proxy ↔ frontend
+  proxy-net:
+    driver: bridge
+  # frontend ↔ backend (backend is invisible to the proxy)
+  backend-net:
     driver: bridge

@@ -2,7 +2,7 @@
 
 ## Website Setup
 
-Ensure `docker` and `docker-compose` are installed, and copy `.env.example` to `.env`, and configure the variables as you see fit. You must absolutely set `MODEL_DATA_DIR`, and by default the website will run on cpu inference. Note that some legacy machines may be buggy with numpy, so if there is a repeated import error then set `LEGACY_NUMPY=true`.
+Ensure `docker` and `docker-compose` are installed, and copy `.env.example` to `.env`, and configure the variables as you see fit. `MODEL_DATA_DIR` defaults to `./checkpoints` (or you can set an absolute path), and by default the website will run on cpu inference. Note that some legacy machines may be buggy with numpy, so if there is a repeated import error then set `LEGACY_NUMPY=true`.
 
 Download the model (run it in a environment with `gdown` installed, it is installed if you download `pixi` and install the environment below)
 ```bash

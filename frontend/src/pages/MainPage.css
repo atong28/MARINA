@@ -66,6 +66,9 @@
 }
 
 .main-page__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 20px;
   background: none;
   border: none;
@@ -100,6 +103,9 @@
 }
 
 .main-page__panel-description p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   font-size: 13px;
   color: #6b7280;
@@ -115,6 +121,13 @@
   font-size: 13px;
   font-weight: 500;
   color: #374151;
+}
+
+/* Inline row for a label text + HelpButton pair */
+.main-page__label-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .main-page__label--inline {
@@ -205,6 +218,9 @@
 }
 
 .mw-filter__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
   font-weight: 500;
   color: #374151;
@@ -283,6 +299,9 @@
 }
 
 .main-page__custom-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 15px;
   font-weight: 700;
   color: #111;

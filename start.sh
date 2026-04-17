@@ -72,13 +72,10 @@ info()  { printf '\033[1;34m[marina]\033[0m %s\n' "$*"; }
 error() { printf '\033[1;31m[marina]\033[0m %s\n' "$*" >&2; }
 
 require_model_data() {
-    if [[ -z "${MODEL_DATA_DIR:-}" ]]; then
-        error "MODEL_DATA_DIR is not set."
-        error "Copy .env.example to .env and set MODEL_DATA_DIR to your model data path."
-        exit 1
-    fi
+    MODEL_DATA_DIR="${MODEL_DATA_DIR:-./checkpoints}"
     if [[ ! -d "$MODEL_DATA_DIR" ]]; then
         error "MODEL_DATA_DIR='$MODEL_DATA_DIR' does not exist or is not a directory."
+        error "Set MODEL_DATA_DIR in .env or place your model data under ./checkpoints."
         exit 1
     fi
 }
@@ -90,8 +87,7 @@ case "$CMD" in
         require_model_data
         info "Starting containers (DEVICE=${DEVICE}, TORCH_INDEX_URL=${TORCH_INDEX_URL})"
         docker compose up -d
-        info "Frontend → http://localhost:${FRONTEND_PORT:-3000}"
-        info "Backend  → http://localhost:${BACKEND_PORT:-5000}"
+        info "App → http://localhost:${NGINX_PORT:-80}"
         ;;
 
     stop)
@@ -109,8 +105,7 @@ case "$CMD" in
         info "  MODEL_DATA_DIR    = ${MODEL_DATA_DIR}"
         docker compose build
         docker compose up -d --force-recreate
-        info "Frontend → http://localhost:${FRONTEND_PORT:-3000}"
-        info "Backend  → http://localhost:${BACKEND_PORT:-5000}"
+        info "App → http://localhost:${NGINX_PORT:-80}"
         ;;
 
     build)

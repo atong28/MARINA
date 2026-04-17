@@ -15,10 +15,10 @@ WORKDIR /app
 COPY requirements-base.txt .
 
 # Install PyTorch.
-# Default index is cu128 to match the pixi.toml dev environment.
-# Override at build time for CPU-only or a different CUDA version:
-#   docker build --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu ...
-ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
+# Default index is CPU-only for widest compatibility.
+# Override at build time for CUDA wheels:
+#   docker build --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128 ...
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir torch==2.8.0 --index-url "$TORCH_INDEX_URL"
 
 # NumPy / pandas: modern stack vs legacy CPU-safe wheels (no x86-64-v2 baseline).
