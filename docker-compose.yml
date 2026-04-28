@@ -3,7 +3,7 @@ services:
   # ── Nginx reverse proxy ───────────────────────────────────────────────────────
   # The ONLY container with a host-exposed port.
   # All browser traffic enters here and is forwarded to the frontend.
-  # The backend is not reachable from this container (different network).
+  # API exposure can be toggled at this layer via EXPOSE_API_VIA_NGINX.
   nginx:
     build:
       context: ./nginx
@@ -15,14 +15,18 @@ services:
       - "${NGINX_PORT:-80}:80"
     depends_on:
       - frontend
+      - backend
+    environment:
+      EXPOSE_API_VIA_NGINX: ${EXPOSE_API_VIA_NGINX:-false}
     networks:
       - proxy-net
+      - backend-net
     restart: unless-stopped
 
 
   # ── Frontend ──────────────────────────────────────────────────────────────────
   # No host port – only reachable through the nginx proxy.
-  # Its own nginx proxies /api/* to the backend on the isolated backend-net.
+  # Its own nginx can proxy /api/* to backend for internal requests.
   frontend:
     build:
       context: ./frontend
