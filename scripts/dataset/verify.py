@@ -13,7 +13,7 @@ def raise_error(message: str):
     else:
         print(message)
 
-DATASET_ROOT = "/data/nas-gpu/wang/atong/Datasets/MARINAFullDataset_jsonl"
+DATASET_ROOT = "data/cleaned"
 
 index = pickle.load(open(os.path.join(DATASET_ROOT, "index.pkl"), "rb"))
 train = {json.loads(line)['idx']: json.loads(line) for line in tqdm(open(os.path.join(DATASET_ROOT, "train.jsonl")).readlines(), desc="Loading train")}

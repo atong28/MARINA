@@ -4,7 +4,7 @@ import pickle
 import os
 from collections import defaultdict
 
-DATASET_ROOT = "/data/nas-gpu/wang/atong/Datasets/MARINAFullDataset_jsonl"
+DATASET_ROOT = "data/dataset"
 
 index = pickle.load(open(os.path.join(DATASET_ROOT, "index.pkl"), "rb"))
 

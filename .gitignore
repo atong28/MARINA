@@ -221,5 +221,6 @@ old_ckpt/# pixi environments
 .pixi/*
 !.pixi/config.toml
 ckpt/
+data/
 
 node_modules/

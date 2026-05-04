@@ -3,7 +3,7 @@
 # MARINA – full-stack start / stop / restart script
 #
 # Usage:
-#   ./start.sh [command] [options]
+#   ./scripts/website/start.sh [command] [options]
 #
 # Commands:
 #   start     Start containers (no rebuild)
@@ -22,11 +22,11 @@
 #   LEGACY_NUMPY=true   Older NumPy/pandas wheels for CPUs without x86-64-v2 (see .env.example)
 #
 # Examples:
-#   ./start.sh                     # rebuild + restart (CPU)
-#   ./start.sh restart --gpu       # rebuild + restart with CUDA 12.8
-#   ./start.sh restart --gpu TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
-#   ./start.sh logs
-#   ./start.sh stop
+#   ./scripts/website/start.sh                     # rebuild + restart (CPU)
+#   ./scripts/website/start.sh restart --gpu       # rebuild + restart with CUDA 12.8
+#   ./scripts/website/start.sh restart --gpu TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+#   ./scripts/website/start.sh logs
+#   ./scripts/website/start.sh stop
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -130,7 +130,7 @@ case "$CMD" in
 
     *)
         error "Unknown command: '$CMD'"
-        error "Run './start.sh help' for usage."
+        error "Run './scripts/website/start.sh help' for usage."
         exit 1
         ;;
 

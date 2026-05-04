@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# downloads the best model and sets up usage for website.
+# usage: bash scripts/website/download_model.sh
+
 MODEL=marina_best
 
 mkdir -p checkpoints

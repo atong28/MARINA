@@ -6,12 +6,12 @@ Ensure `docker` and `docker-compose` are installed, and copy `.env.example` to `
 
 Download the model (run it in a environment with `gdown` installed, it is installed if you download `pixi` and install the environment below)
 ```bash
-bash download_model.sh
+bash scripts/website/download_model.sh
 ```
 
 Start the docker containers:
 ```bash
-bash start.sh
+bash scripts/website/start.sh
 ```
 
 ## Code Installation
@@ -28,6 +28,4 @@ To just install the environment, use
 ```
 pixi i
 ```
-
-
 

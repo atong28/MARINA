@@ -1,7 +1,7 @@
 [workspace]
 authors = ["Anthony Tong <atong28.usa@gmail.com>"]
 channels = ["https://prefix.dev/conda-forge"]
-name = "SMART-Moonshot"
+name = "MARINA"
 platforms = ["linux-64"]
 version = "0.1.0"
 

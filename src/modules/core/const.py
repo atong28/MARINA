@@ -12,9 +12,9 @@ INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spe
 DEBUG_LEN: int = 3000
 
 DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
-    'hsqc': 0.20990,
-    'h_nmr': 0.1604,
-    'c_nmr': 0.1604,
+    'hsqc': 0.5,
+    'h_nmr': 0.5,
+    'c_nmr': 0.5,
     'mass_spec': 0.5,
     'mw': 0.5
 }
@@ -32,11 +32,11 @@ if 'src/marina/src/modules' in __file__:
     BENCHMARK_ROOT = None
 elif 'nas-gpu' in __file__:
     logger.info('Detected yuzu setup')
-    CODE_ROOT = '/data/nas-gpu/wang/atong/SMART-Moonshot'
-    DATASET_ROOT = '/data/nas-gpu/wang/atong/Datasets/MARINABase1'
-    WANDB_API_KEY_FILE = '/data/nas-gpu/wang/atong/SMART-Moonshot/wandb_api_key.json'
+    CODE_ROOT = '/data/nas-gpu/wang/atong/MARINA'
+    DATASET_ROOT = '/data/nas-gpu/wang/atong/MARINA/data/dataset'
+    WANDB_API_KEY_FILE = '/data/nas-gpu/wang/atong/MARINA/wandb_api_key.json'
     PVC_ROOT = CODE_ROOT
-    BENCHMARK_ROOT = '/data/nas-gpu/wang/atong/Datasets/Benchmark'
+    BENCHMARK_ROOT = DATASET_ROOT
 elif '/code' in __file__:
     logger.info('Detected nautilus setup')
     CODE_ROOT = '/code'

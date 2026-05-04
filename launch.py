@@ -1,5 +1,5 @@
 """
-Python launcher for SMART-Moonshot training/eval.
+Python launcher for MARINA training/eval.
 
 Runs torchrun directly via the current Python interpreter (no bash, no pixi run):
 
@@ -117,8 +117,8 @@ def compute_paths(experiment_name: str) -> tuple[str, str, str]:
         pvc_root = "/root/gurusmart/Moonshot"
         ld_prefix = "/code/.pixi/envs/default/lib"
     else:
-        pvc_root = "/data/nas-gpu/wang/atong/SMART-Moonshot"
-        ld_prefix = "/data/nas-gpu/wang/atong/SMART-Moonshot/.pixi/envs/default/lib"
+        pvc_root = "/data/nas-gpu/wang/atong/MARINA"
+        ld_prefix = "/data/nas-gpu/wang/atong/MARINA/.pixi/envs/default/lib"
 
     run_id = os.environ.get("SMART_RUN_ID") or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     os.environ["SMART_RUN_ID"] = run_id
