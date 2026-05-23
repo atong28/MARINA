@@ -27,6 +27,10 @@ spec:
                     operator: NotIn
                     values:
                     - gpu-13.nrp.mghpcc.org
+                    - hcc-chase-shor-c4705.unl.edu
+                    - hcc-chase-shor-c4709.unl.edu
+                    - hcc-chase-shor-c4715.unl.edu
+                    - ry-gpu-08.sdsc.optiputer.net
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
@@ -35,7 +39,7 @@ spec:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINABase1.zip &&
+              bash /root/gurusmart/startup.sh MARINA1.zip &&
               cd /code &&
               CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-run
           volumeMounts:
@@ -51,13 +55,13 @@ spec:
               name: code-workdir
           resources:
             limits:
-              memory: 100Gi
-              cpu: "18"
+              memory: 180Gi
+              cpu: "12"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
             requests:
-              memory: 100Gi
-              cpu: "18"
+              memory: 180Gi
+              cpu: "12"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
 

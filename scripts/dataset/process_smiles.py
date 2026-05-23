@@ -18,29 +18,34 @@ def canonicalize_smiles(smiles: str) -> str:
     mol = Chem.MolFromSmiles(smiles)
     return Chem.MolToSmiles(mol, isomericSmiles=False, canonical=True)
 
+def canonical_3d_smiles(smiles: str) -> str:
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    return Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
 def process_npmrd(input_dir: str, smiles_dict: Dict[str, Dict]) -> Dict[str, Dict]:
     count = 0
     with open(os.path.join(input_dir, "npmrd.csv"), "r") as f:
         reader = csv.DictReader(f)
         for row in tqdm(reader):
             smiles = canonicalize_smiles(row["SMILES"])
+            smiles_3d = canonical_3d_smiles(row["SMILES"])
             if smiles is not None:
+                db_entry = {"npid": row["NP_MRD_ID"], "name": row["Natural_Products_Name"], "original_smiles": smiles_3d}
                 if smiles not in smiles_dict:
                     smiles_dict[smiles] = {
                         "smiles": smiles,
-                        "npmrd": {
-                            "npid": row["NP_MRD_ID"],
-                            "name": row["Natural_Products_Name"],
-                        },
+                        "canonical_3d_smiles": smiles_3d,
+                        "npmrd": db_entry,
                         "coconut": None,
                         "lotus": None,
                     }
                     count += 1
                 else:
-                    smiles_dict[smiles]["npmrd"] = {
-                        "npid": row["NP_MRD_ID"],
-                        "name": row["Natural_Products_Name"],
-                    }
+                    smiles_dict[smiles]["npmrd"] = db_entry
+                    if smiles_dict[smiles].get("canonical_3d_smiles") is None:
+                        smiles_dict[smiles]["canonical_3d_smiles"] = smiles_3d
     print('---------------------------------------------------------------')
     print(f'Added {count} new smiles to the dictionary from NP-MRD')
     print('---------------------------------------------------------------')
@@ -52,23 +57,22 @@ def process_coconut(input_dir: str, smiles_dict: Dict[str, Dict]) -> Dict[str, D
         reader = csv.DictReader(f)
         for row in tqdm(reader):
             smiles = canonicalize_smiles(row["canonical_smiles"])
+            smiles_3d = canonical_3d_smiles(row["canonical_smiles"])
             if smiles is not None:
+                db_entry = {"coconut_id": row["identifier"], "name": row["name"], "original_smiles": smiles_3d}
                 if smiles not in smiles_dict:
                     smiles_dict[smiles] = {
                         "smiles": smiles,
-                        "coconut": {
-                            "coconut_id": row["identifier"],
-                            "name": row["name"],
-                        },
+                        "canonical_3d_smiles": smiles_3d,
+                        "coconut": db_entry,
                         "npmrd": None,
                         "lotus": None,
                     }
                     count += 1
                 else:
-                    smiles_dict[smiles]["coconut"] = {
-                        "coconut_id": row["identifier"],
-                        "name": row["name"],
-                    }
+                    smiles_dict[smiles]["coconut"] = db_entry
+                    if smiles_dict[smiles].get("canonical_3d_smiles") is None:
+                        smiles_dict[smiles]["canonical_3d_smiles"] = smiles_3d
     print('---------------------------------------------------------------')
     print(f'Added {count} new smiles to the dictionary from COCONUT')
     print('---------------------------------------------------------------')
@@ -78,23 +82,24 @@ def process_lotus(input_dir: str, smiles_dict: Dict[str, Dict]) -> Dict[str, Dic
     count = 0
     with open(os.path.join(input_dir, "lotus.txt"), "r") as f:
         for line in tqdm(f):
-            smiles, lotusid = line.split()
-            smiles = canonicalize_smiles(smiles)
+            raw_smiles, lotusid = line.split()
+            smiles = canonicalize_smiles(raw_smiles)
+            smiles_3d = canonical_3d_smiles(raw_smiles)
             if smiles is not None:
+                db_entry = {"lotus_id": lotusid, "original_smiles": smiles_3d}
                 if smiles not in smiles_dict:
                     smiles_dict[smiles] = {
                         "smiles": smiles,
-                        "lotus": {
-                            "lotus_id": lotusid
-                        },
+                        "canonical_3d_smiles": smiles_3d,
+                        "lotus": db_entry,
                         "npmrd": None,
                         "coconut": None,
                     }
                     count += 1
                 else:
-                    smiles_dict[smiles]["lotus"] = {
-                        "lotus_id": lotusid
-                    }
+                    smiles_dict[smiles]["lotus"] = db_entry
+                    if smiles_dict[smiles].get("canonical_3d_smiles") is None:
+                        smiles_dict[smiles]["canonical_3d_smiles"] = smiles_3d
     print('---------------------------------------------------------------')
     print(f'Added {count} new smiles to the dictionary from LOTUS')
     print('---------------------------------------------------------------')

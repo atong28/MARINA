@@ -122,7 +122,7 @@ def process_ms_predictions():
             ms_data[canonicalize_smiles(data['SMILES'])] = data['peaks']
     return ms_data
 
-def build_spectral_data(retrieval: Dict[str, Dict]) -> Dict[str, Dict]:
+def build_spectral_data() -> Dict[str, Dict]:
     print('Building spectral data...')
     os.makedirs('data/cleaned', exist_ok=True)
     # load old moonshotdatasetv3, map to key spectre
@@ -139,27 +139,23 @@ def build_spectral_data(retrieval: Dict[str, Dict]) -> Dict[str, Dict]:
             for line in tqdm(f, desc=f'Loading {split} data'):
                 data = json.loads(line)
                 spectral_data[split][data['idx']] = data
-    for data in tqdm(retrieval.values(), desc='Processing old dataset'):
-        smiles = data['smiles']
-        if smiles in mapping:
-            initialize_mapping(mapping, smiles)
-            idx = mapping[smiles]['idx']
-            index_data = index[idx]
-            hsqc = spectral_data[index_data['split']][idx].get('hsqc', None)
-            if hsqc is not None and len(hsqc) > 0:
-                mapping[smiles]['hsqc']['spectre'] = hsqc
-            c_nmr = spectral_data[index_data['split']][idx].get('c_nmr', None)
-            if c_nmr is not None and len(c_nmr) > 0:
-                mapping[smiles]['c_nmr']['spectre'] = c_nmr
-            h_nmr = spectral_data[index_data['split']][idx].get('h_nmr', None)
-            if h_nmr is not None and len(h_nmr) > 0:                
-                mapping[smiles]['h_nmr']['spectre'] = h_nmr
-            mass_spec = spectral_data[index_data['split']][idx].get('mass_spec', None)
-            if mass_spec is not None and len(mass_spec) > 0:
-                mapping[smiles]['mass_spec']['spectre'] = mass_spec
-        else:
-            initialize_mapping(mapping, smiles)
-    
+    # transfer experimental spectral data for every legacy molecule unconditionally
+    for idx, data in tqdm(index.items(), desc='Transferring SPECTRE spectral data'):
+        smiles = canonicalize_smiles(data['smiles'])
+        split_data = spectral_data[index[idx]['split']][idx]
+        hsqc = split_data.get('hsqc', None)
+        if hsqc is not None and len(hsqc) > 0:
+            mapping[smiles]['hsqc']['spectre'] = hsqc
+        c_nmr = split_data.get('c_nmr', None)
+        if c_nmr is not None and len(c_nmr) > 0:
+            mapping[smiles]['c_nmr']['spectre'] = c_nmr
+        h_nmr = split_data.get('h_nmr', None)
+        if h_nmr is not None and len(h_nmr) > 0:
+            mapping[smiles]['h_nmr']['spectre'] = h_nmr
+        mass_spec = split_data.get('mass_spec', None)
+        if mass_spec is not None and len(mass_spec) > 0:
+            mapping[smiles]['mass_spec']['spectre'] = mass_spec
+
     # load mnova simulation data
     nmr_data = process_mnova_predictions()
     for smiles, nmr in tqdm(nmr_data.items(), desc='Loading Mnova predictions'):
@@ -168,7 +164,7 @@ def build_spectral_data(retrieval: Dict[str, Dict]) -> Dict[str, Dict]:
         mapping[smiles]['h_nmr']['mnova'] = nmr['h_nmr']
         mapping[smiles]['c_nmr']['mnova'] = nmr['c_nmr']
         mapping[smiles]['hsqc']['mnova'] = nmr['hsqc']
-            
+
     # load ms simulation data
     ms_data = process_ms_predictions()
     for smiles, ms in tqdm(ms_data.items(), desc='Loading MS predictions'):
@@ -177,18 +173,14 @@ def build_spectral_data(retrieval: Dict[str, Dict]) -> Dict[str, Dict]:
         mapping[smiles]['mass_spec']['ms'] = ms
     return mapping
 
-def build_retrieval_set() -> Dict[str, Dict]:
+def build_retrieval_set(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
     print('Building retrieval set...')
     os.makedirs('data/cleaned', exist_ok=True)
     with open('data/cleaned/smiles_dict.json', 'r') as f:
         smiles_dict = json.load(f)
-    print(f'Loaded {len(smiles_dict)} smiles')
-    retrieval = {}
-    for idx, smiles in tqdm(enumerate(smiles_dict.keys()), desc='Building retrieval set'):
-        canon_smiles = canonicalize_smiles(smiles)
-        if canon_smiles != smiles:
-            raise ValueError(f'Canonicalized smiles {canon_smiles} != {smiles}')
-        retrieval[idx] = {'smiles': canon_smiles}
+    all_smiles = sorted(set(smiles_dict.keys()) | set(mapping.keys()))
+    print(f'smiles_dict: {len(smiles_dict)}, mapping: {len(mapping)}, union: {len(all_smiles)}')
+    retrieval = {idx: {'smiles': smiles} for idx, smiles in enumerate(all_smiles)}
     print(f'Built {len(retrieval)} retrieval set')
     with open('data/cleaned/retrieval.pkl', 'wb') as f:
         pickle.dump(retrieval, f)
@@ -245,14 +237,12 @@ def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
     print('Done!')
 
 if __name__ == "__main__":
-    if os.path.exists('data/cleaned/retrieval.pkl'):
-        retrieval = pickle.load(open('data/cleaned/retrieval.pkl', 'rb'))
-    else:
-        retrieval = build_retrieval_set()
     if os.path.exists('data/cleaned/mapping.json'):
         mapping = json.load(open('data/cleaned/mapping.json', 'r'))
     else:
-        mapping = build_spectral_data(retrieval)
+        mapping = build_spectral_data()
         with open('data/cleaned/mapping.json', 'w') as f:
             json.dump(mapping, f)
+    if not os.path.exists('data/cleaned/retrieval.pkl'):
+        build_retrieval_set(mapping)
     build_json(mapping)

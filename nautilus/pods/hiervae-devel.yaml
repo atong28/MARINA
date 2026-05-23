@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hiervae-devel-atong
+  namespace: guru-research
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-A40
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-RTX-A6000
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-RTX-A4000
+                  - NVIDIA-A10
+                  - NVIDIA-GeForce-RTX-4090
+
+  containers:
+    - name: pod-container
+      image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+      command: ["sleep", "infinity"]
+      volumeMounts:
+        - mountPath: "/root/gurusmart"
+          name: atong-spectre
+        - mountPath: "/root/datasets"
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+
+      resources:
+        limits:
+          memory: 16Gi
+          cpu: "8"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 200Gi
+        requests:
+          memory: 16Gi
+          cpu: "8"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 200Gi
+
+  volumes:
+    - name: atong-spectre
+      persistentVolumeClaim:
+        claimName: atong-spectre
+    - name: smart-datasets
+      persistentVolumeClaim:
+        claimName: smart-datasets
+    - name: dshm
+      emptyDir:
+        medium: Memory
