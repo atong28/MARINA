@@ -48,6 +48,12 @@ class SMARTArgs:
     # jittering default value to wobble the spectra
     jittering: float = 0.5
 
+    # peak augmentation (injection + dropout); applies to hsqc/c_nmr/h_nmr during training only
+    aug_add_prob: float = 0.0
+    aug_remove_prob: float = 0.0
+    aug_alpha_add: float = 0.1
+    aug_alpha_remove: float = 0.1
+
     # BCE and cosine similarity loss lambda. 0 for full cosine similarity loss, 1 for full BCE loss.
     lambda_hybrid: float = 0.0
     

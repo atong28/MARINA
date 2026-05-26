@@ -16,6 +16,7 @@ from ..core.const import DEBUG_LEN, INPUTS_CANONICAL_ORDER, DATASET_ROOT, NON_SP
 
 from ..data.fp_loader import FPLoader
 from ..data.inputs import MARINAInputLoader, MFInputLoader
+from ..data.augment import PeakAugmenter
 from ..log import get_logger
 
 logger = get_logger(__file__)
@@ -106,6 +107,18 @@ class MARINADataset(Dataset):
             self.spectral_loader = MARINAInputLoader(
                 DATASET_ROOT, data, split=split)
             self.mfp_loader = MFInputLoader(fp_loader)
+
+            if split == 'train' and (args.aug_add_prob > 0 or args.aug_remove_prob > 0):
+                dist_path = os.path.join(DATASET_ROOT, 'peak_distributions.npz')
+                self.augmenter = PeakAugmenter(
+                    dist_path,
+                    p_add=args.aug_add_prob,
+                    alpha_add=args.aug_alpha_add,
+                    p_remove=args.aug_remove_prob,
+                    alpha_remove=args.aug_alpha_remove,
+                )
+            else:
+                self.augmenter = None
             
             self.drop_percentage = self.compute_drop_percentage(data)
 
@@ -158,7 +171,7 @@ class MARINADataset(Dataset):
                   input_type not in self.requires and
                   torch.rand(1).item() < self.drop_percentage[input_type]):
                 input_types.remove(input_type)
-        return self.spectral_loader.load(data_idx, input_types, jittering=self.jittering), self.mfp_loader.load(data_idx)
+        return self.spectral_loader.load(data_idx, input_types, jittering=self.jittering, augmenter=self.augmenter), self.mfp_loader.load(data_idx)
 
 
 class MARINADataModule(pl.LightningDataModule):

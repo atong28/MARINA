@@ -181,6 +181,8 @@ def benchmark_marina(
     journal_path = os.path.join(BENCHMARK_ROOT, "benchmark-journal.pkl")
     if os.path.exists(journal_path):
         journal_data: dict[str, Any] = pickle.load(open(journal_path, 'rb'))
+        if args.benchmark_split != 'all':
+            journal_data = {k: v for k, v in journal_data.items() if v['split'] == args.benchmark_split}
         journal_data = _run_benchmark_loop(
             journal_data, data_module, model, fp_loader, restrictions,
             metadata, meta_smi_to_idx, desc='Benchmark (journal)')

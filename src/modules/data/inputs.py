@@ -45,7 +45,7 @@ class SpectralInputLoader:
                 self._arrow[mod] = ArrowTensorStore(path)
 
     # ---- public API ----
-    def load(self, idx, input_types: Iterable[INPUT_TYPES], jittering: float = 0.0) -> Dict[str, torch.Tensor]:
+    def load(self, idx, input_types: Iterable[INPUT_TYPES], jittering: float = 0.0, augmenter=None) -> Dict[str, torch.Tensor]:
         '''
         Load spectral inputs from Arrow shards.
         Returns dict of requested input types and their data.
@@ -53,6 +53,10 @@ class SpectralInputLoader:
         data_inputs = {}
         for input_type in input_types:
             data_inputs.update(getattr(self, f'_load_{input_type}')(idx, jittering))
+        if augmenter is not None:
+            for mod in ('hsqc', 'c_nmr', 'h_nmr'):
+                if mod in data_inputs:
+                    data_inputs[mod] = augmenter.augment(data_inputs[mod], mod)
         return data_inputs
 
     # ---- helpers ----
