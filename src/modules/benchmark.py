@@ -173,8 +173,10 @@ def benchmark_marina(
     benchmark_data = _run_benchmark_loop(
         benchmark_data, data_module, model, fp_loader, restrictions,
         metadata, meta_smi_to_idx, desc='Benchmark (NP-MRD)')
-    pickle.dump(benchmark_data, open(
-        os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_results.pkl"), 'wb'))
+    nm_out = os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_results.pkl")
+    with open(nm_out, 'wb') as f:
+        pickle.dump(benchmark_data, f)
+    logger.info(f'[Benchmark] Saved NP-MRD results to {nm_out} ({os.path.getsize(nm_out)} bytes)')
     _log_benchmark_results(benchmark_data, prefix='benchmark', wandb_run=wandb_run)
 
     # --- benchmark-journal.pkl (paper-reported shifts) ---
@@ -186,8 +188,10 @@ def benchmark_marina(
         journal_data = _run_benchmark_loop(
             journal_data, data_module, model, fp_loader, restrictions,
             metadata, meta_smi_to_idx, desc='Benchmark (journal)')
-        pickle.dump(journal_data, open(
-            os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_journal_results.pkl"), 'wb'))
+        jn_out = os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_journal_results.pkl")
+        with open(jn_out, 'wb') as f:
+            pickle.dump(journal_data, f)
+        logger.info(f'[Benchmark] Saved journal results to {jn_out} ({os.path.getsize(jn_out)} bytes)')
         _log_benchmark_results(journal_data, prefix='benchmark_journal', wandb_run=wandb_run)
     else:
         logger.warning(f'[Benchmark] benchmark-journal.pkl not found at {journal_path}, skipping journal benchmark')
