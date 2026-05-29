@@ -27,7 +27,7 @@ spec:
       args: 
       - "-c"
       - >- 
-        bash /root/gurusmart/startup.sh MoonshotDatasetv3.zip &&
+        bash /root/gurusmart/startup.sh MARINA1.zip &&
         sleep infinity 
       volumeMounts:
         - mountPath: "/root/gurusmart"

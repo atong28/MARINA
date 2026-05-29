@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cpu-atong
+spec:
+  containers:
+    - name: pod-container
+      image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+      command: ["sh"]
+      args:
+      - "-c"
+      - >-
+        mkdir -p ~/.ssh &&
+        cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa &&
+        chmod 600 ~/.ssh/id_rsa &&
+        GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no' git clone git@github.com:atong28/MARINA.git /code &&
+        pixi install --manifest-path /code/pixi.toml &&
+        sleep infinity
+      volumeMounts:
+        - mountPath: "/root/gurusmart"
+          name: atong-spectre
+        - mountPath: /code
+          name: code-workdir
+
+      resources:
+        limits:
+          memory: 16Gi
+          cpu: 4
+          ephemeral-storage: 50Gi
+        requests:
+          memory: 16Gi
+          cpu: 4
+          ephemeral-storage: 50Gi
+
+  volumes:
+    - name: atong-spectre
+      persistentVolumeClaim:
+        claimName: atong-spectre
+    - name: code-workdir
+      emptyDir: {}
