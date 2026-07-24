@@ -34,6 +34,8 @@ class SMARTArgs:
     num_workers: int = 4
     epochs: int = 750
     patience: int = 30
+    # metric monitored for early stopping and checkpointing (maximized)
+    early_stopping_metric: str = 'val/mean_cos'
     persistent_workers: bool = True
     lr: float = 2e-4
     eta_min: float = 1e-5

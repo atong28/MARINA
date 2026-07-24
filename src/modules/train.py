@@ -8,6 +8,7 @@ from .marina import MARINA, MARINAArgs, MARINADataModule
 from .spectre import SPECTRE, SPECTREArgs
 from .log import get_logger, ErrorLoggingCallback
 from .test import test_marina
+from .benchmark_callback import BenchmarkCosineCallback
 from .data.fp_loader import EntropyFPLoader
 
 logger = get_logger(__file__)
@@ -27,7 +28,7 @@ def train_marina(
     except:
         logger.info(f'[Main] Using GPU: unknown type')
     wandb_logger = WandbLogger(experiment=wandb_run)
-    metric = 'val/mean_cos'
+    metric = args.early_stopping_metric
     ckpt_callback = cb.ModelCheckpoint(
         monitor=metric,
         mode='max',
@@ -43,11 +44,13 @@ def train_marina(
     )
     lr_monitor = cb.LearningRateMonitor(logging_interval="step")
     error_callback = ErrorLoggingCallback()
+    benchmark_cos = BenchmarkCosineCallback(args, fp_loader)
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         accelerator="auto",
+        precision="bf16-mixed",
         logger=wandb_logger,
-        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback],
+        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos],
         accumulate_grad_batches=args.accumulate_grad_batches_num,
         strategy='auto',
         gradient_clip_val=1.0

@@ -53,9 +53,10 @@ spec:
           set -euxo pipefail &&
           bash /root/gurusmart/startup.sh MARINA1.zip &&
           cd /code &&
-          CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main spectre
+          pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
           --seed 0
+          --lr 5e-5
           --experiment_name spectre-marina1-s0
         resources:
           limits:
@@ -149,9 +150,10 @@ spec:
           set -euxo pipefail &&
           bash /root/gurusmart/startup.sh MARINA1.zip &&
           cd /code &&
-          CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main spectre
+          pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
           --seed 1
+          --lr 5e-5
           --experiment_name spectre-marina1-s1
         resources:
           limits:
@@ -245,9 +247,10 @@ spec:
           set -euxo pipefail &&
           bash /root/gurusmart/startup.sh MARINA1.zip &&
           cd /code &&
-          CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main spectre
+          pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
           --seed 2
+          --lr 5e-5
           --experiment_name spectre-marina1-s2
         resources:
           limits:

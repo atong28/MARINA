@@ -33,18 +33,22 @@ class ArrowTensorStore:
         data_values = table["data"].to_pylist()
         shape_values = table["shape"].to_pylist()
 
-        self._by_idx = {
-            int(idx): (data, shape)
-            for idx, data, shape in zip(idx_values, data_values, shape_values)
-        }
+        # Pre-convert each row to a contiguous float32 ndarray once, so the hot
+        # path (get_tensor) is a cheap copy instead of a per-item Python-list ->
+        # numpy conversion. This also lowers memory vs. keeping Python lists.
+        by_idx = {}
+        for idx, data, shape in zip(idx_values, data_values, shape_values):
+            arr = np.asarray(data, dtype=np.float32)
+            if shape:
+                arr = arr.reshape(tuple(int(v) for v in shape))
+            by_idx[int(idx)] = arr
+        self._by_idx = by_idx
         self._pid = pid
 
     def get_tensor(self, idx: int, dtype: torch.dtype | None = None) -> torch.Tensor:
         self._ensure_loaded()
-        data, shape = self._by_idx[int(idx)]
-        arr = np.asarray(data, dtype=np.float32)
-        if shape:
-            arr = arr.reshape(tuple(int(v) for v in shape))
+        arr = self._by_idx[int(idx)]
+        # Copy: callers mutate the returned tensor in place (jittering/augment).
         tensor = torch.from_numpy(arr.copy())
         if dtype is not None:
             tensor = tensor.to(dtype=dtype)
@@ -75,7 +79,11 @@ class ArrowFragIdxStore:
         table = pq.read_table(self.path, columns=["idx", "cols"])
         idx_values = table["idx"].to_pylist()
         cols_values = table["cols"].to_pylist()
-        self._by_idx = {int(idx): cols for idx, cols in zip(idx_values, cols_values)}
+        # Pre-convert to int32 ndarrays once (get_indices is called per sample).
+        self._by_idx = {
+            int(idx): np.asarray(cols, dtype=np.int32)
+            for idx, cols in zip(idx_values, cols_values)
+        }
         self._pid = pid
 
     def get_indices(self, idx: int) -> np.ndarray:
@@ -83,4 +91,4 @@ class ArrowFragIdxStore:
         cols = self._by_idx.get(int(idx))
         if cols is None:
             raise KeyError(f"Key {idx} not found in {self.path}")
-        return np.asarray(cols, dtype=np.int32)
+        return cols

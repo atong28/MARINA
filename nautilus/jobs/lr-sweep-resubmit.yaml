@@ -49,7 +49,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 1e-3 --experiment_name marina-lr1e3-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 1e-3 --experiment_name marina-lr1e3-s0
         resources:
           limits:
             cpu: "12"
@@ -138,7 +138,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 1e-3 --experiment_name marina-lr1e3-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 1e-3 --experiment_name marina-lr1e3-s2
         resources:
           limits:
             cpu: "12"
@@ -227,7 +227,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 2e-4 --experiment_name marina-lr2e4-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 2e-4 --experiment_name marina-lr2e4-s2
         resources:
           limits:
             cpu: "12"
@@ -316,7 +316,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 4e-4 --experiment_name marina-lr4e4-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 4e-4 --experiment_name marina-lr4e4-s0
         resources:
           limits:
             cpu: "12"
@@ -405,7 +405,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 4e-4 --experiment_name marina-lr4e4-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 4e-4 --experiment_name marina-lr4e4-s1
         resources:
           limits:
             cpu: "12"
@@ -494,7 +494,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 4e-4 --experiment_name marina-lr4e4-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --lr 4e-4 --experiment_name marina-lr4e4-s2
         resources:
           limits:
             cpu: "12"
@@ -583,7 +583,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 6e-4 --experiment_name marina-lr6e4-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 6e-4 --experiment_name marina-lr6e4-s0
         resources:
           limits:
             cpu: "12"
@@ -672,7 +672,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 8e-4 --experiment_name marina-lr8e4-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --lr 8e-4 --experiment_name marina-lr8e4-s0
         resources:
           limits:
             cpu: "12"
@@ -761,7 +761,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 8e-4 --experiment_name marina-lr8e4-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 8e-4 --experiment_name marina-lr8e4-s1
         resources:
           limits:
             cpu: "12"
@@ -850,7 +850,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 1e-3 --experiment_name marina-lr1e3-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 1e-3 --experiment_name marina-lr1e3-s1
         resources:
           limits:
             cpu: "12"
@@ -939,7 +939,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 2e-4 --experiment_name marina-lr2e4-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 2e-4 --experiment_name marina-lr2e4-s1
         resources:
           limits:
             cpu: "12"
@@ -1028,7 +1028,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 6e-4 --experiment_name marina-lr6e4-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --lr 6e-4 --experiment_name marina-lr6e4-s1
         resources:
           limits:
             cpu: "12"

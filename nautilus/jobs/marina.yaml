@@ -41,7 +41,7 @@ spec:
               set -euxo pipefail &&
               bash /root/gurusmart/startup.sh MARINA1.zip &&
               cd /code &&
-              CUDA_LAUNCH_BLOCKING=1 pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-run
+              pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-run
           volumeMounts:
             - mountPath: "/root/gurusmart"
               name: atong-spectre
@@ -56,12 +56,12 @@ spec:
           resources:
             limits:
               memory: 180Gi
-              cpu: "12"
+              cpu: "24"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
             requests:
               memory: 180Gi
-              cpu: "12"
+              cpu: "24"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
 
