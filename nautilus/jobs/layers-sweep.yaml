@@ -1,0 +1,845 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers8-s0
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 8 --seed 0 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers8-s0
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers8-s1
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 8 --seed 1 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers8-s1
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers8-s2
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 8 --seed 2 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers8-s2
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers12-s0
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 12 --seed 0 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers12-s0
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers12-s1
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 12 --seed 1 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers12-s1
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers12-s2
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 12 --seed 2 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers12-s2
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers16-s0
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 16 --seed 0 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers16-s0
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers16-s1
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 16 --seed 1 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers16-s1
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    experiment: marina-layers-sweep
+    owner: atong
+  name: atong-marina-layers16-s2
+  namespace: guru-research
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-TITAN-RTX
+                - NVIDIA-A40
+                - NVIDIA-GeForce-RTX-3090
+                - NVIDIA-RTX-A6000
+                - NVIDIA-RTX-A5000
+                - NVIDIA-A10
+                - NVIDIA-GeForce-RTX-4090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gpu-13.nrp.mghpcc.org
+                - gpu-02.nrp.mghpcc.org
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu
+                - hcc-chase-shor-c4715.unl.edu
+                - ry-gpu-08.sdsc.optiputer.net
+      containers:
+      - args:
+        - -c
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && git fetch origin
+          && git checkout modality-attribution && pixi run torchrun --nproc_per_node 4 --module src.main
+          marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --layers 16 --seed 2 --early_stopping_metric
+          val/mean_cos --experiment_name marina-layers16-s2
+        command:
+        - /bin/bash
+        image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        imagePullPolicy: IfNotPresent
+        name: demo
+        resources:
+          limits:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+          requests:
+            cpu: '12'
+            ephemeral-storage: 600Gi
+            memory: 180Gi
+            nvidia.com/gpu: '4'
+        volumeMounts:
+        - mountPath: /root/gurusmart
+          name: atong-spectre
+        - mountPath: /root/datasets
+          name: smart-datasets
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /workspace
+          name: data-unzip
+        - mountPath: /code
+          name: code-workdir
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: atong-spectre
+        persistentVolumeClaim:
+          claimName: atong-spectre
+      - name: smart-datasets
+        persistentVolumeClaim:
+          claimName: smart-datasets
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: data-unzip
+      - emptyDir: {}
+        name: code-workdir
+  ttlSecondsAfterFinished: 86400

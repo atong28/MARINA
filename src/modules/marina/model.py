@@ -2,6 +2,7 @@ import math
 import torch
 import pytorch_lightning as pl
 import torch.nn as nn
+import torch.nn.functional as F
 from torchmetrics import MeanMetric
 
 from .args import MARINAArgs
@@ -18,6 +19,22 @@ from ..log import get_logger
 
 logger = get_logger(__file__)
 logger_should_sync_dist = torch.cuda.device_count() > 1
+
+
+def _ln_component(ln: nn.LayerNorm, c: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
+    """
+    Apply the linear part of `ln` to one additive component of its input.
+
+    LayerNorm(z) = w * (z - mean(z)) / sigma(z) + b. Centering and the division
+    by sigma both distribute over a sum z = sum_k c_k, so mapping every component
+    through this and adding `b` once reproduces LayerNorm(z) exactly. `sigma`
+    must be computed from the full z, not from `c`.
+    """
+    return ln.weight * (c - c.mean(-1, keepdim=True)) / sigma
+
+
+def _ln_sigma(z: torch.Tensor, eps: float) -> torch.Tensor:
+    return torch.sqrt(z.var(-1, keepdim=True, unbiased=False) + eps)
 
 
 class CrossAttentionBlock(nn.Module):
@@ -49,11 +66,48 @@ class CrossAttentionBlock(nn.Module):
             key,
             value,
             key_padding_mask=key_padding_mask,
+            need_weights=False,
         )
         q1 = self.norm1(query + attn_out)
         ff_out = self.ff(q1)
         out = self.norm2(q1 + ff_out)
         return out
+
+    def attn_contributions(self, query, kv, key_padding_mask, spans):
+        """
+        Split this block's attention output into one additive term per span.
+
+        Attention output is a sum over source positions, so partitioning that sum
+        by modality is exact rather than approximate:
+
+            attn_out = sum_j sum_h a[h,j] * W_O^h v[h,j] + b_O
+
+        `spans` maps a bucket name to a boolean mask over the source positions.
+        Returns (parts, attn_out), where sum(parts.values()) + out_proj.bias
+        reproduces attn_out.
+        """
+        B, L, E = kv.shape
+        H = self.attn.num_heads
+        hd = E // H
+
+        attn_out, alpha = self.attn(
+            query,
+            kv,
+            kv,
+            key_padding_mask=key_padding_mask,
+            need_weights=True,
+            average_attn_weights=False,
+        )
+        alpha = alpha[:, :, 0, :]                                # (B, H, L)
+
+        v = F.linear(kv, self.attn.in_proj_weight[2 * E:], self.attn.in_proj_bias[2 * E:])
+        v = v.view(B, L, H, hd).permute(0, 2, 1, 3)              # (B, H, L, hd)
+
+        parts = {}
+        for name, sel in spans.items():
+            o = torch.einsum('bhl,bhld->bhd', alpha[:, :, sel], v[:, :, sel])
+            parts[name] = F.linear(o.reshape(B, E), self.attn.out_proj.weight)
+        return parts, attn_out
 
 class MARINA(pl.LightningModule):
     def __init__(self, args: MARINAArgs, fp_loader: FPLoader):
@@ -161,10 +215,18 @@ class MARINA(pl.LightningModule):
                 sync_on_compute=sync_on_compute).to(self.device)
         return store[key]
 
-    def forward(self, batch, batch_idx=None, return_representations=False):
-        B = next(iter(batch.values())).size(0)
+    def _encode(self, batch):
+        """
+        Run the per-modality encoders and self-attention stacks, then concatenate
+        them into the joint memory the global CLS token reads from.
+
+        Returns (joint_seq, joint_mask, segments), where `segments` lists
+        (modality, length) in concatenation order. The first position of each
+        segment is that modality's learned mod_token.
+        """
         all_points = []
         all_masks = []
+        segments = []
         for m, x in batch.items():
             if m not in SELF_ATTN_INPUTS:
                 continue
@@ -177,8 +239,12 @@ class MARINA(pl.LightningModule):
             attended = self.self_attn[m](enc_seq, src_key_padding_mask=mask)
             all_points.append(attended)
             all_masks.append(mask)
-        joint_seq = torch.cat(all_points, dim=1)
-        joint_mask = torch.cat(all_masks, dim=1)
+            segments.append((m, L + 1))
+        return torch.cat(all_points, dim=1), torch.cat(all_masks, dim=1), segments
+
+    def forward(self, batch, batch_idx=None, return_representations=False):
+        B = next(iter(batch.values())).size(0)
+        joint_seq, joint_mask, _ = self._encode(batch)
         global_token = self.global_cls.expand(B, 1, -1)
         for block in self.cross_blocks:
             global_token = block(
@@ -191,6 +257,111 @@ class MARINA(pl.LightningModule):
         if return_representations:
             return global_token.squeeze(1).detach().cpu().numpy()
         return out
+
+    @torch.no_grad()
+    def forward_contributions(self, batch, per_layer=False):
+        """
+        Decompose the final CLS token into additive per-modality contributions.
+
+        The cross-attention stack reads from a memory that never updates across
+        blocks, so each block's attention output splits exactly by source position
+        and the surrounding residuals and LayerNorms carry those parts through
+        linearly. The decomposition is exact, to float precision:
+
+            sum(contributions.values()) == cls_final
+
+        Buckets are one per modality, '<modality>:token' for that modality's
+        learned mod_token, plus 'ffn' (the non-linear feedforward output, which
+        cannot be attributed to a source), 'cls_init' (the learned query) and
+        'bias'. A modality absent from the batch has all of its real positions
+        masked, so its modality bucket goes to zero and only ':token' survives --
+        that split separates reliance on actual peaks from a learned prior.
+
+        Contributions are tracked per (bucket, block) internally and summed over
+        blocks for the return value. With `per_layer=True` the breakdown is also
+        returned, as (injection, survival) dicts keyed by (bucket, block):
+
+            injection  ||c|| when the block wrote it into the residual stream
+            survival   <c, cls_hat> / ||cls|| after every later LayerNorm
+
+        Summing `survival` over blocks reproduces the aggregate share exactly, so
+        the split is a refinement of the same quantity rather than a new measure.
+        Their ratio is the attenuation an early write suffers before reaching the
+        output -- note it folds in alignment with the final direction, not just
+        loss of magnitude.
+
+        Returns (cls_final, contributions[, injection, survival]).
+        """
+        B = next(iter(batch.values())).size(0)
+        joint_seq, joint_mask, segments = self._encode(batch)
+        L = joint_seq.size(1)
+
+        spans = {}
+        offset = 0
+        for m, length in segments:
+            token_sel = torch.zeros(L, dtype=torch.bool, device=joint_seq.device)
+            token_sel[offset] = True
+            spans[f'{m}:token'] = token_sel
+            peak_sel = torch.zeros(L, dtype=torch.bool, device=joint_seq.device)
+            peak_sel[offset + 1:offset + length] = True
+            spans[m] = peak_sel
+            offset += length
+
+        global_token = self.global_cls.expand(B, 1, -1)
+
+        # One slot per (bucket, block), preallocated so the whole set can be
+        # pushed through each LayerNorm as a single broadcast op. Slots for
+        # blocks not yet reached hold zeros, which _ln_component maps to zeros.
+        keys = [('cls_init', -1), ('bias', -1)]
+        for li in range(len(self.cross_blocks)):
+            keys.extend((name, li) for name in spans)
+            keys.append(('ffn', li))
+        index = {k: i for i, k in enumerate(keys)}
+        stack = torch.zeros(len(keys), B, 1, self.dim_model,
+                            device=joint_seq.device, dtype=joint_seq.dtype)
+        stack[index[('cls_init', -1)]] = global_token
+        bias_i = index[('bias', -1)]
+        injection = {}
+
+        for li, block in enumerate(self.cross_blocks):
+            parts, attn_out = block.attn_contributions(
+                global_token, joint_seq, joint_mask, spans)
+            for name, c in parts.items():
+                stack[index[(name, li)]] = c.unsqueeze(1)
+                injection[(name, li)] = c.norm(dim=-1)
+            stack[bias_i] += block.attn.out_proj.bias
+
+            z1 = global_token + attn_out
+            sigma1 = _ln_sigma(z1, block.norm1.eps)
+            stack = _ln_component(block.norm1, stack, sigma1)
+            stack[bias_i] += block.norm1.bias
+            q1 = block.norm1(z1)
+
+            ff_out = block.ff(q1)
+            stack[index[('ffn', li)]] = ff_out
+            injection[('ffn', li)] = ff_out.squeeze(1).norm(dim=-1)
+
+            z2 = q1 + ff_out
+            sigma2 = _ln_sigma(z2, block.norm2.eps)
+            stack = _ln_component(block.norm2, stack, sigma2)
+            stack[bias_i] += block.norm2.bias
+            global_token = block.norm2(z2)
+
+        cls_final = global_token.squeeze(1)
+        contribs = {}
+        for (name, _), i in index.items():
+            c = stack[i].squeeze(1)
+            contribs[name] = contribs[name] + c if name in contribs else c
+        if not per_layer:
+            return cls_final, contribs
+
+        norm = cls_final.norm(dim=-1)
+        u = cls_final / norm.unsqueeze(-1)
+        survival = {
+            k: (stack[index[k]].squeeze(1) * u).sum(-1) / norm
+            for k in injection
+        }
+        return cls_final, contribs, injection, survival
 
     def training_step(self, batch, batch_idx):
         batch_inputs, fps = batch
