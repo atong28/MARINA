@@ -56,12 +56,12 @@ spec:
           resources:
             limits:
               memory: 180Gi
-              cpu: "24"
+              cpu: "8"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
             requests:
               memory: 180Gi
-              cpu: "24"
+              cpu: "8"
               ephemeral-storage: 600Gi
               nvidia.com/gpu: "4"
 
