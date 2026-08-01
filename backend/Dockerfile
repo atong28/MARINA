@@ -65,7 +65,10 @@ ENV MARINA_ROOT=/marina \
 
 EXPOSE 5000
 
-ENV UVICORN_WORKERS=2
+# One uvicorn worker by default. Each worker runs the lifespan hook, so it
+# preloads the model AND spawns MAX_COMPUTE_WORKERS processes that load it
+# again: raising this multiplies resident model copies by that factor.
+ENV UVICORN_WORKERS=1
 
 CMD uvicorn app.main:app \
     --host 0.0.0.0 \

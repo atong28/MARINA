@@ -52,13 +52,37 @@ MAX_LOADED_MODELS: int = int(os.getenv("MAX_LOADED_MODELS", "0"))
 MAX_COMPUTE_WORKERS: int = int(os.getenv("MAX_COMPUTE_WORKERS", "2"))
 # Maximum number of jobs allowed to queue before returning 503.
 MAX_COMPUTE_QUEUE: int = int(os.getenv("MAX_COMPUTE_QUEUE", "8"))
-# Optional cap on simultaneous heavy requests (0 = no cap).
-MAX_CONCURRENT_HEAVY_OPS: int = int(os.getenv("MAX_CONCURRENT_HEAVY_OPS", "0"))
 
 # ── Rendering ─────────────────────────────────────────────────────────────────
 MOLECULE_IMG_SIZE: int = int(os.getenv("MOLECULE_IMG_SIZE", "400"))
 RDKIT_ENABLED: bool = os.getenv("RDKIT_ENABLED", "true").lower() == "true"
 
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# Comma-separated list of allowed origins. The app is normally served from the
+# same origin as the API (via the nginx proxy), so nothing is needed by default.
+# Use "*" only for a deliberately public, credential-free API.
+CORS_ALLOW_ORIGINS: list = [
+    o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()
+]
+
 # ── Rate limiting ─────────────────────────────────────────────────────────────
+# Format: "<count> per <second|minute|hour>". Set to "" to disable a limit.
+# Enforced per client IP, per process — with UVICORN_WORKERS > 1 the effective
+# limit is multiplied by the worker count.
 RATE_LIMIT_PREDICT: str = os.getenv("RATE_LIMIT_PREDICT", "30 per minute")
 RATE_LIMIT_SMILES: str = os.getenv("RATE_LIMIT_SMILES", "20 per minute")
+
+# ── Usage stats ───────────────────────────────────────────────────────────────
+# Where the query/visitor counters are persisted. Must be writable — DATA_DIR is
+# mounted read-only in docker-compose, so this defaults elsewhere. Set to "" to
+# keep counters in memory only (reset on every restart).
+STATS_PATH: str = os.getenv("STATS_PATH", "/var/lib/marina/stats.json")
+
+# ── Request size caps ─────────────────────────────────────────────────────────
+# Upper bounds on spectral peak counts, mirrored in app.schemas. The frontend
+# spreadsheet tops out at 400 rows; these guard the API against direct callers.
+MAX_HSQC_PEAKS: int = int(os.getenv("MAX_HSQC_PEAKS", "2000"))
+MAX_NMR_PEAKS: int = int(os.getenv("MAX_NMR_PEAKS", "2000"))
+MAX_MS_PEAKS: int = int(os.getenv("MAX_MS_PEAKS", "5000"))
+MAX_SMILES_LENGTH: int = int(os.getenv("MAX_SMILES_LENGTH", "1000"))
+MAX_FP_LENGTH: int = int(os.getenv("MAX_FP_LENGTH", "65536"))

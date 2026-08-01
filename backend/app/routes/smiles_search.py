@@ -7,6 +7,7 @@ import torch
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.schemas import SmilesSearchRequest, SmilesSearchResponse, ResultCard
+from app.stats import record_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -38,7 +39,7 @@ async def smiles_search(request: Request, body: SmilesSearchRequest):
 
     try:
         import asyncio
-        session = ensure_loaded(mid)
+        session = await asyncio.to_thread(ensure_loaded, mid)
 
         fp = await asyncio.to_thread(session.fp_loader.build_mfp_for_smiles, smiles)
         if fp is None:
@@ -53,15 +54,19 @@ async def smiles_search(request: Request, body: SmilesSearchRequest):
             if n == 0:
                 return [], []
             sims, local_idxs = rs.retrieve_with_scores(query_tensor.unsqueeze(0), n=n)
-            sim_list = sims.tolist()   if isinstance(sims.tolist(), list)        else [sims.tolist()]
-            idx_list = local_idxs.tolist() if isinstance(local_idxs.tolist(), list) else [local_idxs.tolist()]
+            sim_list = sims.reshape(-1).tolist()
+            idx_list = local_idxs.reshape(-1).tolist()
             global_idxs = [int(kept[li]) for li in idx_list]
             return [float(s) for s in sim_list], global_idxs
 
         scores, global_idxs = await asyncio.to_thread(_retrieve)
         pairs  = list(zip(global_idxs, scores))
-        cards  = build_result_cards(session, pairs, query_tensor,
-                                    img_size=MOLECULE_IMG_SIZE, max_cards=k)
+        cards  = await asyncio.to_thread(
+            build_result_cards, session, pairs, query_tensor,
+            img_size=MOLECULE_IMG_SIZE, max_cards=k,
+        )
+
+        record_query("smiles_search", request)
 
         result_cards = [ResultCard(**c) for c in cards]
         return SmilesSearchResponse(
@@ -76,4 +81,4 @@ async def smiles_search(request: Request, body: SmilesSearchRequest):
         raise
     except Exception as exc:
         logger.error("smiles_search error: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="SMILES search failed.")

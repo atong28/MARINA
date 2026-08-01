@@ -9,45 +9,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import math
 
 import torch
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.schemas import CustomSmilesCardRequest, CustomSmilesCardResponse, ResultCard
+from app.similarity import cosine as _cosine, tanimoto as _tanimoto
+from app.stats import record_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _cosine(a: torch.Tensor, b: torch.Tensor) -> float:
-    a = a.detach().float().view(-1)
-    b = b.detach().float().view(-1)
-    n = min(a.numel(), b.numel())
-    if n == 0:
-        return 0.0
-    a, b = a[:n], b[:n]
-    dot = float(torch.dot(a, b))
-    denom = float(torch.linalg.norm(a)) * float(torch.linalg.norm(b))
-    if denom < 1e-9:
-        return 0.0
-    val = dot / denom
-    return max(0.0, min(1.0, val)) if math.isfinite(val) else 0.0
-
-
-def _tanimoto(a: torch.Tensor, b: torch.Tensor) -> float:
-    a = a.detach().float().view(-1)
-    b = b.detach().float().view(-1)
-    n = min(a.numel(), b.numel())
-    if n == 0:
-        return 0.0
-    a, b = a[:n], b[:n]
-    dot = torch.dot(a, b)
-    denom = a.pow(2).sum() + b.pow(2).sum() - dot
-    if denom <= 0:
-        return 0.0
-    val = (dot / denom).item()
-    return max(0.0, min(1.0, val)) if math.isfinite(val) else 0.0
 
 
 @router.post(
@@ -55,7 +26,7 @@ def _tanimoto(a: torch.Tensor, b: torch.Tensor) -> float:
     response_model=CustomSmilesCardResponse,
     status_code=status.HTTP_200_OK,
 )
-async def custom_smiles_card(body: CustomSmilesCardRequest):
+async def custom_smiles_card(request: Request, body: CustomSmilesCardRequest):
     """
     Score an arbitrary SMILES against a reference fingerprint and return a ResultCard.
 
@@ -73,8 +44,20 @@ async def custom_smiles_card(body: CustomSmilesCardRequest):
 
     smiles = body.smiles.strip()
 
-    session = ensure_loaded(mid)
+    session = await asyncio.to_thread(ensure_loaded, mid)
     ref_tensor = torch.tensor(body.reference_fp, dtype=torch.float32)
+
+    # reference_fp comes from the client. A wrong length means it was produced
+    # by a different model, so reject it rather than scoring a truncated prefix.
+    expected_dim = getattr(session.fp_loader, "out_dim", None)
+    if expected_dim is not None and ref_tensor.numel() != expected_dim:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"reference_fp has {ref_tensor.numel()} values but model {mid!r} "
+                f"expects {expected_dim}. Re-run the search with this model selected."
+            ),
+        )
 
     # Build the MARINA fingerprint for the custom SMILES.
     try:
@@ -139,4 +122,5 @@ async def custom_smiles_card(body: CustomSmilesCardRequest):
         exact_mass=exact_mass,
     )
 
+    record_query("custom_card", request)
     return CustomSmilesCardResponse(result=card)

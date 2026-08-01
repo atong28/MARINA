@@ -30,13 +30,13 @@ async def fingerprint_indices(body: FingerprintIndicesRequest) -> FingerprintInd
         raise HTTPException(status_code=err[0], detail=err[1])
 
     try:
-        session = ensure_loaded(mid)
+        session = await asyncio.to_thread(ensure_loaded, mid)
         indices = await asyncio.to_thread(session.fp_indices_for_smiles, body.smiles)
     except HTTPException:
         raise
     except Exception as exc:
         logger.error("fingerprint_indices error: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Fingerprint computation failed.")
 
     if indices is None:
         raise HTTPException(

@@ -40,25 +40,25 @@ def preprocess_inputs(raw: Dict[str, Any]) -> Dict[str, torch.Tensor]:
         if not isinstance(v, (list, tuple)):
             continue
         t = torch.tensor(v, dtype=torch.float32)
+        # Malformed modalities are rejected rather than dropped: silently
+        # skipping one returns a confident prediction computed from less data
+        # than the caller supplied, with nothing in the response to say so.
         if mod == "hsqc":
             if t.numel() % 3 != 0:
-                logger.warning("HSQC length %d not divisible by 3 – skipping", t.numel())
-                continue
+                raise ValueError(f"hsqc length {t.numel()} is not divisible by 3")
             t = t.view(-1, 3)[:, [1, 0, 2]]   # reorder H,C,I → C,H,I
         elif mod in ("h_nmr", "c_nmr"):
             t = t.view(-1, 1)
         elif mod == "mass_spec":
             if t.numel() % 2 != 0:
-                logger.warning("mass_spec length %d not divisible by 2 – skipping", t.numel())
-                continue
+                raise ValueError(f"mass_spec length {t.numel()} is not divisible by 2")
             t = t.view(-1, 2)
         out[mod] = t
     return out
 
 
-def _collate_marina(processed: Dict[str, torch.Tensor], out_dim: int):
+def _collate_marina(processed: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
     """Collate a single sample into the padded batch format MARINA expects."""
-    dummy_fp = torch.zeros(out_dim, dtype=torch.float32)
     batch_inputs: Dict[str, torch.Tensor] = {}
     for mod in _INPUTS_ORDER:
         seq = processed.get(mod)
@@ -67,7 +67,7 @@ def _collate_marina(processed: Dict[str, torch.Tensor], out_dim: int):
         if seq.ndim == 1:
             seq = seq.unsqueeze(0)
         batch_inputs[mod] = seq.unsqueeze(0)   # (1, N, D)
-    return batch_inputs, dummy_fp.unsqueeze(0)
+    return batch_inputs
 
 
 def _collate_spectre(processed: Dict[str, torch.Tensor]):
@@ -127,12 +127,14 @@ def run_model(session: Any, processed: Dict[str, torch.Tensor]) -> torch.Tensor:
     device = session.device
     processed = {k: v.to(device) for k, v in processed.items()}
 
+    # no_grad rather than inference_mode: the returned tensor is passed on to
+    # retrieval and rendering, and inference tensors carry restrictions there.
     with _forward_lock, torch.no_grad():
         if session.model_type == "spectre":
             inputs, type_indicator = _collate_spectre(processed)
             out = session.model(inputs.to(device), type_indicator.to(device))
         else:
-            batch_inputs, _ = _collate_marina(processed, session.fp_loader.out_dim)
+            batch_inputs = _collate_marina(processed)
             batch_inputs = {k: v.to(device) for k, v in batch_inputs.items()}
             out = session.model(batch_inputs)
 
@@ -165,8 +167,9 @@ def retrieve_top_k(
         return [], [], pred_prob
 
     sims, local_idxs = rs.retrieve_with_scores(pred.unsqueeze(0), n=n)
-    sims_list  = sims.tolist()        if isinstance(sims.tolist(), list)  else [sims.tolist()]
-    local_list = local_idxs.tolist()  if isinstance(local_idxs.tolist(), list) else [local_idxs.tolist()]
+    # reshape(-1) normalises the 0-dim case that arises when n == 1.
+    sims_list  = sims.reshape(-1).tolist()
+    local_list = local_idxs.reshape(-1).tolist()
 
     global_idxs = [int(kept[li]) for li in local_list]
     return [float(s) for s in sims_list], global_idxs, pred_prob

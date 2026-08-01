@@ -19,12 +19,21 @@ import json
 import logging
 import os
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 
 logger = logging.getLogger(__name__)
+
+# Distinct MW-filter ranges to keep materialised at once. Each entry is a full
+# copy of the rankingset, and the key is user-supplied, so this must stay small.
+MAX_FILTERED_CACHE = 4
+
+# Morgan radius the entropy fingerprints are built at. Matches the project-wide
+# default in src/modules/data/fp_loader.make_fp_loader.
+MAX_RADIUS = 6
 
 
 # ── Lazy imports from MARINA src ─────────────────────────────────────────────
@@ -60,6 +69,24 @@ def _import_fp_loader():
 def _load_json(path: str) -> Any:
     with open(path, "r") as fh:
         return json.load(fh)
+
+
+def _load_checkpoint(path: str) -> Dict[str, Any]:
+    """
+    Load a checkpoint, preferring the sandboxed unpickler.
+
+    weights_only=True blocks arbitrary code execution during unpickling, but
+    rejects Lightning checkpoints that embed non-tensor objects, so fall back
+    with a warning rather than refusing to start.
+    """
+    try:
+        return torch.load(path, map_location="cpu", weights_only=True)
+    except Exception as exc:
+        logger.warning(
+            "Loading %s with weights_only=True failed (%s); falling back to a full "
+            "unpickle. Only load checkpoints you trust.", path, exc,
+        )
+        return torch.load(path, map_location="cpu", weights_only=False)
 
 
 def _mw_from_entry(entry: Optional[Dict[str, Any]]) -> Optional[float]:
@@ -117,29 +144,75 @@ def _filter_csr_rows(store: torch.Tensor, kept: List[int]) -> torch.Tensor:
     crow = store.crow_indices()
     col  = store.col_indices()
     val  = store.values()
-    new_crow, new_cols, new_vals = [0], [], []
-    nnz = 0
-    for idx in kept:
-        s, e = int(crow[idx]), int(crow[idx + 1])
-        if e > s:
-            new_cols.append(col[s:e])
-            new_vals.append(val[s:e])
-            nnz += e - s
-        new_crow.append(nnz)
+
+    # Vectorised gather: the equivalent Python loop reads two tensor scalars per
+    # kept row, which costs seconds on a database-sized rankingset.
+    rows     = torch.as_tensor(kept, dtype=torch.int64)
+    starts   = crow[rows].to(torch.int64)
+    ends     = crow[rows + 1].to(torch.int64)
+    lengths  = ends - starts
+    new_crow = torch.cat([torch.zeros(1, dtype=torch.int64), torch.cumsum(lengths, 0)])
+    nnz      = int(new_crow[-1])
 
     if nnz == 0:
         return torch.sparse_csr_tensor(
-            torch.tensor(new_crow, dtype=torch.int64),
+            new_crow,
             torch.tensor([], dtype=torch.int64),
             torch.tensor([], dtype=torch.float32),
             size=(len(kept), store.shape[1]),
         )
+
+    # Expand each kept row's [start, end) span into a flat gather index.
+    offsets = torch.repeat_interleave(starts, lengths)
+    within  = torch.arange(nnz, dtype=torch.int64) - torch.repeat_interleave(new_crow[:-1], lengths)
+    gather  = offsets + within
+
     return torch.sparse_csr_tensor(
-        torch.tensor(new_crow, dtype=torch.int64),
-        torch.cat(new_cols).to(torch.int64),
-        torch.cat(new_vals).to(torch.float32),
+        new_crow,
+        col[gather].to(torch.int64),
+        val[gather].to(torch.float32),
         size=(len(kept), store.shape[1]),
     )
+
+
+def _warn_if_not_normalized(store: torch.Tensor, fp_type: str, model_root: str) -> None:
+    """
+    Check that rankingset rows are unit length.
+
+    RankingSet's "cosine" metric normalises only the query, so the stored rows
+    must already be L2-normalised for the dot product to be a cosine (see
+    build_rankingset_csr, which does this at build time). A rankingset carried
+    over from another codebase may hold raw 0/1 rows instead — the scores then
+    exceed 1, get clamped, and every result card reads 1.000.
+    """
+    try:
+        n_rows = store.shape[0]
+        if n_rows == 0:
+            return
+        sample = sorted({0, n_rows // 2, n_rows - 1})
+
+        if store.layout == torch.sparse_csr:
+            # CSR has no strides, so rows cannot be gathered by fancy indexing;
+            # read each row's values straight out of the value array instead.
+            crow, vals = store.crow_indices(), store.values()
+            norms = torch.stack([
+                vals[int(crow[r]):int(crow[r + 1])].float().pow(2).sum().sqrt()
+                for r in sample
+            ])
+        else:
+            norms = store[sample].float().pow(2).sum(dim=1).sqrt()
+
+        norms = norms[norms > 0]
+        if norms.numel() and not torch.allclose(norms, torch.ones_like(norms), atol=1e-3):
+            logger.warning(
+                "Rankingset %s/%s in %s does not have unit-norm rows (sampled norms: %s). "
+                "Cosine scores will be inflated and clamped to 1.0. Rebuild it with "
+                "build_rankingset_csr, or L2-normalise the rows before serving.",
+                fp_type, "rankingset.pt", model_root,
+                [round(float(v), 3) for v in norms[:3]],
+            )
+    except Exception as exc:
+        logger.debug("Rankingset normalisation check skipped: %s", exc)
 
 
 # ── ModelSession ──────────────────────────────────────────────────────────────
@@ -159,9 +232,13 @@ class ModelSession:
     # Lazily built retrieval index
     _rankingset_store:   Optional[torch.Tensor]          = field(default=None, repr=False)
     _rankingset_wrapper: Optional[RankingSet]            = field(default=None, repr=False)
-    _filtered_cache:     Dict[Tuple, RankingSet]         = field(default_factory=dict, repr=False)
+    _filtered_cache:     "OrderedDict[Tuple, Tuple[RankingSet, List[int]]]" = field(
+        default_factory=OrderedDict, repr=False)
     _mw_sorted:          Optional[List[Tuple[float,int]]] = field(default=None, repr=False)
     _mw_by_idx:          Optional[Dict[int, float]]      = field(default=None, repr=False)
+    _mw_values:          Optional[List[float]]           = field(default=None, repr=False)
+    _no_mw:              Optional[List[int]]             = field(default=None, repr=False)
+    _all_indices:        Optional[List[int]]             = field(default=None, repr=False)
     _num_rows:           Optional[int]                   = field(default=None, repr=False)
     _lock:               threading.RLock                 = field(default_factory=threading.RLock, repr=False)
 
@@ -197,21 +274,74 @@ class ModelSession:
             Args  = _import_marina_args()
             Model = _import_marina()
 
-        args = Args(**params)
+        # params.json written against a different implementation (notably the
+        # published SPECTRE code, whose architecture args differ from this one)
+        # must not load silently: pydantic dataclasses DISCARD unknown keys, so
+        # the model would be built from this codebase's defaults instead of the
+        # settings the checkpoint was trained with.
+        known = set(getattr(Args, "__dataclass_fields__", {}))
+        unknown = sorted(set(params) - known) if known else []
+        if unknown:
+            raise RuntimeError(
+                f"params.json at {params_path!r} contains {len(unknown)} key(s) the "
+                f"{model_type} implementation in this codebase does not define: {unknown}. "
+                "These would be ignored, silently building the model with default "
+                "settings instead of the ones it was trained with. Translate the file "
+                "to this implementation's arguments before serving it."
+            )
+
+        try:
+            args = Args(**params)
+        except Exception as exc:
+            raise RuntimeError(
+                f"params.json at {params_path!r} is not valid for the {model_type} "
+                f"model: {exc}"
+            ) from exc
+
+        fp_type = getattr(args, "fp_type", "RankingEntropy")
 
         EntropyFPLoader = _import_fp_loader()
         fp_loader = EntropyFPLoader(dataset_root=model_root, retrieval_path=retrieval_path)
-        fp_loader.setup(args.out_dim, 6, retrieval_path=retrieval_path)
+        fp_loader.setup(args.out_dim, MAX_RADIUS, fp_type=fp_type,
+                        retrieval_path=retrieval_path)
+
+        # The model's output layer is sized from args.out_dim while retrieval
+        # matmuls against the feature map's width. If they disagree the scores
+        # are computed against the wrong columns, or the matmul fails outright.
+        if fp_loader.out_dim != args.out_dim:
+            raise RuntimeError(
+                f"Fingerprint size mismatch for model at {model_root!r}: params.json declares "
+                f"out_dim={args.out_dim} but the feature map in {fp_type}/bitinfo_to_idx.pkl "
+                f"has {fp_loader.out_dim} entries. Rebuild the feature map or correct params.json."
+            )
 
         model = Model(args, fp_loader)
 
         logger.debug("Loading checkpoint from %s → %s", ckpt_path, device)
-        ckpt = torch.load(ckpt_path, map_location="cpu")
+        ckpt = _load_checkpoint(ckpt_path)
         state_dict = ckpt.get("state_dict", ckpt)
-        model.load_state_dict(state_dict, strict=False)
+
+        # strict=False is kept because Lightning checkpoints carry buffers the
+        # inference model does not declare, but the result must be inspected:
+        # silently loading a mismatched checkpoint leaves the weights randomly
+        # initialised and the model serves plausible-looking garbage.
+        incompatible = model.load_state_dict(state_dict, strict=False)
+        missing    = list(getattr(incompatible, "missing_keys", []))
+        unexpected = list(getattr(incompatible, "unexpected_keys", []))
+        if missing:
+            raise RuntimeError(
+                f"Checkpoint {ckpt_path!r} is missing {len(missing)} parameter(s) required by "
+                f"the {model_type} model — the weights would be randomly initialised. "
+                f"First few: {missing[:5]}"
+            )
+        if unexpected:
+            logger.warning(
+                "Checkpoint %s has %d unexpected key(s), ignored. First few: %s",
+                ckpt_path, len(unexpected), unexpected[:5],
+            )
+
         model.to(device)
         model.eval()
-        torch.set_grad_enabled(False)
 
         metadata = _load_json(metadata_path)
 
@@ -249,6 +379,7 @@ class ModelSession:
             if self._mw_sorted is not None:
                 return
             store = self.fp_loader.load_rankingset(self.fp_type)
+            _warn_if_not_normalized(store, self.fp_type, self.model_root)
             self._rankingset_store = store
             n = store.shape[0]
             self._num_rows = n
@@ -259,6 +390,10 @@ class ModelSession:
                     mw_by_idx[i] = mw
             self._mw_by_idx = mw_by_idx
             self._mw_sorted = sorted((mw, idx) for idx, mw in mw_by_idx.items())
+            # Precomputed once: indices_in_mw_range runs per request and would
+            # otherwise rebuild both of these over the whole database each time.
+            self._mw_values = [t[0] for t in self._mw_sorted]
+            self._no_mw = sorted(i for i in range(n) if i not in mw_by_idx)
 
     def indices_in_mw_range(
         self,
@@ -270,18 +405,21 @@ class ModelSession:
         assert self._num_rows is not None
 
         if mw_min is None and mw_max is None:
-            return list(range(self._num_rows))
+            if self._all_indices is None:
+                self._all_indices = list(range(self._num_rows))
+            return self._all_indices
 
-        assert self._mw_sorted is not None and self._mw_by_idx is not None
+        assert self._mw_sorted is not None and self._mw_values is not None
+        assert self._no_mw is not None
         if not self._mw_sorted:
             return list(range(self._num_rows))
 
-        mw_vals = [t[0] for t in self._mw_sorted]
-        lo = bisect.bisect_left(mw_vals, mw_min)  if mw_min is not None else 0
-        hi = bisect.bisect_right(mw_vals, mw_max) if mw_max is not None else len(mw_vals)
-        in_range = {self._mw_sorted[i][1] for i in range(lo, hi)}
-        no_mw    = {i for i in range(self._num_rows) if i not in self._mw_by_idx}
-        return sorted(in_range | no_mw)
+        lo = bisect.bisect_left(self._mw_values, mw_min)  if mw_min is not None else 0
+        hi = bisect.bisect_right(self._mw_values, mw_max) if mw_max is not None else len(self._mw_values)
+        in_range = [self._mw_sorted[i][1] for i in range(lo, hi)]
+        # Entries with no recorded MW are kept rather than filtered out, so a
+        # sparse metadata field cannot silently hide candidates.
+        return sorted(in_range + self._no_mw)
 
     # ── RankingSet access ────────────────────────────────────────────────────
 
@@ -302,19 +440,30 @@ class ModelSession:
         """
         Return a (RankingSet, kept_indices) pair filtered by MW range.
         The kept_indices list maps local row positions back to global indices.
-        Results are cached per (mw_min, mw_max) key.
+
+        Cached per (mw_min, mw_max), bounded by MAX_FILTERED_CACHE. The bound
+        matters: the key comes straight from user input and each entry holds a
+        full copy of the rankingset, so an unbounded cache lets anyone exhaust
+        memory just by varying the MW filter.
         """
+        if mw_min is None and mw_max is None:
+            return self.get_rankingset(), self.indices_in_mw_range(None, None)
+
         key = (mw_min, mw_max)
         with self._lock:
-            if key in self._filtered_cache:
-                kept = self.indices_in_mw_range(mw_min, mw_max)
-                return self._filtered_cache[key], kept
+            cached = self._filtered_cache.get(key)
+            if cached is not None:
+                self._filtered_cache.move_to_end(key)
+                return cached
 
             kept  = self.indices_in_mw_range(mw_min, mw_max)
             base  = self.get_rankingset().data
             store = _filter_csr_rows(base, kept)
             rs    = RankingSet(store=store, metric="cosine")
-            self._filtered_cache[key] = rs
+            self._filtered_cache[key] = (rs, kept)
+            while len(self._filtered_cache) > MAX_FILTERED_CACHE:
+                evicted, _ = self._filtered_cache.popitem(last=False)
+                logger.debug("Evicted MW-filter cache entry %s", (evicted,))
             return rs, kept
 
     # ── Fingerprint helpers ──────────────────────────────────────────────────

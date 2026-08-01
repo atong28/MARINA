@@ -11,9 +11,11 @@ Supported operations (op names):
 from __future__ import annotations
 
 import asyncio
+import itertools
 import logging
 import multiprocessing as mp
 import os
+import queue
 import signal
 import threading
 import time
@@ -40,6 +42,15 @@ class _Result:
     trace: Optional[str] = None
 
 
+@dataclass
+class _QueueEntry:
+    """Bookkeeping for one in-flight job, used to answer "where am I in line?"."""
+    job_id:       str
+    seq:          int
+    request_id:   Optional[str]
+    submitted_at: float
+
+
 # ── Worker entry point ────────────────────────────────────────────────────────
 
 def _worker_loop(req_q: mp.Queue, res_q: mp.Queue, marina_root: str) -> None:
@@ -51,6 +62,13 @@ def _worker_loop(req_q: mp.Queue, res_q: mp.Queue, marina_root: str) -> None:
     import sys
     if marina_root not in sys.path:
         sys.path.insert(0, marina_root)
+
+    # Spawned workers do not inherit the parent's logging config (app.main is
+    # never imported here), so without this their logs are silently dropped.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s [worker] %(message)s",
+    )
 
     # Bootstrap MARINA imports before anything else
     from app.marina_import import ensure_marina_importable
@@ -118,9 +136,11 @@ class ComputePool:
         self._res_q:  mp.Queue = ctx.Queue()
         self._workers: list[mp.Process] = []
         self._jobs:    dict[str, asyncio.Future] = {}
+        self._entries: dict[str, _QueueEntry]    = {}
         self._jobs_lock = asyncio.Lock()
         self._response_task: Optional[asyncio.Task] = None
         self._restart_lock = asyncio.Lock()
+        self._job_counter = itertools.count()
 
         self._spawn(ctx, max_workers)
 
@@ -136,14 +156,25 @@ class ComputePool:
 
     async def _ensure_response_task(self) -> None:
         if self._response_task is None or self._response_task.done():
-            self._response_task = asyncio.create_task(self._response_loop())
+            self._response_task = asyncio.create_task(self._response_loop(self._res_q))
 
-    async def _response_loop(self) -> None:
-        while True:
+    async def _response_loop(self, res_q: "mp.Queue") -> None:
+        """
+        Drain results for one generation of the pool.
+
+        The queue is bound at task creation: after a restart swaps in a fresh
+        queue this loop exits instead of blocking forever on the dead one. The
+        1 s poll is what lets it notice — a bare get() would park a thread that
+        never returns.
+        """
+        while res_q is self._res_q:
             try:
-                job_id, result = await asyncio.to_thread(self._res_q.get)
-            except Exception:
+                job_id, result = await asyncio.to_thread(res_q.get, True, 1.0)
+            except queue.Empty:
                 continue
+            except (OSError, ValueError, EOFError) as exc:
+                logger.warning("Response queue closed: %s", exc)
+                return
             async with self._jobs_lock:
                 future = self._jobs.pop(job_id, None)
             if future is None or future.done():
@@ -168,34 +199,73 @@ class ComputePool:
             self._pending = max(0, self._pending - 1)
 
     async def _restart_all(self) -> None:
+        """
+        Replace every worker after a timeout.
+
+        The queues are rebuilt rather than reused. Terminating a process that is
+        blocked in Queue.get() can leave the queue's internal lock held, and the
+        queue then blocks every later reader forever — the replacement workers
+        would come up dead. Any sentinel left over from the old generation would
+        likewise be consumed by a fresh worker and shut it down immediately.
+        """
         async with self._restart_lock:
-            import signal as _sig
-            for _ in self._workers:
-                self._req_q.put(None)
-            for p in self._workers:
+            old_workers, self._workers = self._workers, []
+            for p in old_workers:
                 if p.is_alive():
                     p.terminate()
                     p.join(timeout=1.0)
                 if p.is_alive() and p.pid:
-                    os.kill(p.pid, _sig.SIGKILL)
-            ctx = mp.get_context("spawn")
-            count = len(self._workers)
-            self._workers = []
-            self._spawn(ctx, count)
+                    os.kill(p.pid, signal.SIGKILL)
 
-    async def run(self, op: str, payload: dict, timeout: Optional[float] = None) -> Any:
-        """Submit a job to the pool and await its result."""
+            # The jobs those workers were running died with them.
+            async with self._jobs_lock:
+                orphaned, self._jobs = self._jobs, {}
+                self._entries = {}
+            for fut in orphaned.values():
+                if not fut.done():
+                    fut.set_exception(RuntimeError("Compute worker pool was restarted"))
+
+            ctx = mp.get_context("spawn")
+            self._req_q = ctx.Queue()
+            self._res_q = ctx.Queue()
+            self._spawn(ctx, len(old_workers))
+
+        # The old reader is bound to the old queue; it will exit on its own.
+        self._response_task = None
+        await self._ensure_response_task()
+
+    async def run(
+        self,
+        op: str,
+        payload: dict,
+        timeout: Optional[float] = None,
+        request_id: Optional[str] = None,
+    ) -> Any:
+        """
+        Submit a job to the pool and await its result.
+
+        request_id is a caller-supplied handle used only for queue reporting —
+        pass the one the client generated so it can poll its own position while
+        this request is still open.
+        """
         await self._ensure_response_task()
         await self._acquire_slot()
 
-        job_id = f"{time.monotonic_ns()}-{os.getpid()}-{id(payload)}"
+        seq    = next(self._job_counter)
+        job_id = f"{time.monotonic_ns()}-{os.getpid()}-{seq}"
         loop   = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
 
         async with self._jobs_lock:
             self._jobs[job_id] = future
+            self._entries[job_id] = _QueueEntry(
+                job_id=job_id, seq=seq, request_id=request_id,
+                submitted_at=time.monotonic(),
+            )
 
-        self._req_q.put({"job_id": job_id, "op": op, "payload": payload})
+        # Held so a concurrent _restart_all cannot swap the queue mid-submit.
+        async with self._restart_lock:
+            self._req_q.put({"job_id": job_id, "op": op, "payload": payload})
 
         try:
             return await asyncio.wait_for(future, timeout=timeout)
@@ -205,17 +275,71 @@ class ComputePool:
             await self._restart_all()
             raise ComputeTimeoutError("Compute job timed out") from exc
         finally:
+            async with self._jobs_lock:
+                self._entries.pop(job_id, None)
             await self._release_slot()
 
+    # ── Queue introspection ───────────────────────────────────────────────────
+
+    def _ordered_entries(self) -> list:
+        return sorted(self._entries.values(), key=lambda e: e.seq)
+
+    async def snapshot(self) -> dict:
+        """Pool-wide queue state, safe to poll frequently."""
+        async with self._jobs_lock:
+            entries = self._ordered_entries()
+        workers = len(self._workers)
+        in_flight = len(entries)
+        running = min(in_flight, workers)
+        return {
+            "workers":  workers,
+            "capacity": self._max_queue if self._max_queue > 0 else workers,
+            "running":  running,
+            "queued":   max(0, in_flight - running),
+            "in_flight": in_flight,
+        }
+
+    async def position_of(self, request_id: str) -> Optional[dict]:
+        """
+        Where a caller's job sits, or None once it is no longer in flight.
+
+        Workers pull from a FIFO queue, so job k is only picked up after every
+        earlier job has been. The oldest `workers` in-flight jobs are therefore
+        exactly the ones executing, and anything behind them is still waiting.
+        """
+        async with self._jobs_lock:
+            entries = self._ordered_entries()
+        workers = len(self._workers)
+        for idx, entry in enumerate(entries):
+            if entry.request_id == request_id:
+                waiting = idx >= workers
+                return {
+                    "state":     "queued" if waiting else "running",
+                    "position":  idx - workers + 1 if waiting else 0,
+                    "ahead":     idx,
+                    "queued":    max(0, len(entries) - workers),
+                    "workers":   workers,
+                    "waited_seconds": round(time.monotonic() - entry.submitted_at, 1),
+                }
+        return None
+
     async def shutdown(self) -> None:
+        # Sentinels first so workers idle in get() can exit cleanly; only
+        # terminate the ones that do not take the hint.
         for _ in self._workers:
             self._req_q.put(None)
         for p in self._workers:
+            p.join(timeout=2.0)
             if p.is_alive():
                 p.terminate()
                 p.join(timeout=1.0)
+        self._workers = []
         if self._response_task and not self._response_task.done():
             self._response_task.cancel()
+            try:
+                await self._response_task
+            except asyncio.CancelledError:
+                pass
 
 
 # ── Singleton helpers ─────────────────────────────────────────────────────────

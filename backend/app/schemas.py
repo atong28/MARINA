@@ -3,18 +3,31 @@ Pydantic request and response models for all API endpoints.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
+
+from app.config import (
+    MAX_FP_LENGTH, MAX_HSQC_PEAKS, MAX_MS_PEAKS, MAX_NMR_PEAKS, MAX_SMILES_LENGTH,
+    MAX_TOP_K, DEFAULT_TOP_K,
+)
+
+# Peak counts are converted to flat-array lengths: HSQC is triplets, MS is pairs.
+_MAX_HSQC_LEN = MAX_HSQC_PEAKS * 3
+_MAX_MS_LEN   = MAX_MS_PEAKS * 2
 
 
 # ── Spectral data input ───────────────────────────────────────────────────────
 
 class SpectralInput(BaseModel):
     """Combined spectral data payload for /predict."""
-    hsqc:      Optional[List[float]] = Field(None, description="HSQC triplets [H1,C1,I1, ...]")
-    h_nmr:     Optional[List[float]] = Field(None, description="¹H NMR shifts (ppm)")
-    c_nmr:     Optional[List[float]] = Field(None, description="¹³C NMR shifts (ppm)")
-    mass_spec: Optional[List[float]] = Field(None, description="Mass spec pairs [m/z,I, ...]")
+    hsqc:      Optional[List[float]] = Field(None, max_length=_MAX_HSQC_LEN,
+                                             description="HSQC triplets [H1,C1,I1, ...]")
+    h_nmr:     Optional[List[float]] = Field(None, max_length=MAX_NMR_PEAKS,
+                                             description="¹H NMR shifts (ppm)")
+    c_nmr:     Optional[List[float]] = Field(None, max_length=MAX_NMR_PEAKS,
+                                             description="¹³C NMR shifts (ppm)")
+    mass_spec: Optional[List[float]] = Field(None, max_length=_MAX_MS_LEN,
+                                             description="Mass spec pairs [m/z,I, ...]")
     mw:        Optional[float]       = Field(None, gt=0, description="Molecular weight (Da)")
 
     @field_validator("hsqc")
@@ -36,7 +49,11 @@ class SpectralInput(BaseModel):
 
 class PredictRequest(BaseModel):
     raw:       SpectralInput       = Field(..., description="Spectral inputs")
-    k:         int                 = Field(10, ge=1, le=50)
+    # Client-generated handle so the browser can poll GET /api/queue/{request_id}
+    # for its place in line while this request is still open.
+    request_id: Optional[str]      = Field(None, max_length=64,
+                                           description="Opaque id for queue tracking")
+    k:         int                 = Field(DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
     model_id:  Optional[str]       = Field(None)
     mw_min:    Optional[float]     = Field(None, gt=0, description="Min MW filter (Da)")
     mw_max:    Optional[float]     = Field(None, gt=0, description="Max MW filter (Da)")
@@ -45,8 +62,9 @@ class PredictRequest(BaseModel):
 # ── SMILES search ─────────────────────────────────────────────────────────────
 
 class SmilesSearchRequest(BaseModel):
-    smiles:   str              = Field(..., min_length=1, description="Query SMILES")
-    k:        int              = Field(10, ge=1, le=50)
+    smiles:   str              = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
+                                        description="Query SMILES")
+    k:        int              = Field(DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
     model_id: Optional[str]   = Field(None)
     mw_min:   Optional[float] = Field(None, gt=0)
     mw_max:   Optional[float] = Field(None, gt=0)
@@ -55,7 +73,7 @@ class SmilesSearchRequest(BaseModel):
 # ── Fingerprints ──────────────────────────────────────────────────────────────
 
 class FingerprintIndicesRequest(BaseModel):
-    smiles:   str            = Field(..., min_length=1)
+    smiles:   str            = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH)
     model_id: Optional[str] = Field(None)
 
 
@@ -111,8 +129,10 @@ class SmilesSearchResponse(BaseModel):
 # ── Custom SMILES card ────────────────────────────────────────────────────────
 
 class CustomSmilesCardRequest(BaseModel):
-    smiles:       str              = Field(..., min_length=1, description="Target SMILES")
-    reference_fp: List[float]      = Field(..., min_length=1, description="Reference fingerprint (predicted or query FP)")
+    smiles:       str              = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
+                                            description="Target SMILES")
+    reference_fp: List[float]      = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
+                                            description="Reference fingerprint (predicted or query FP)")
     model_id:     Optional[str]    = Field(None)
 
 

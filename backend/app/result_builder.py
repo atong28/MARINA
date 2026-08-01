@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 
+from app.similarity import tanimoto as _tanimoto
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,37 +22,22 @@ def _clamp(v: Any) -> float:
         return 0.0
 
 
-def _tanimoto(a: torch.Tensor, b: torch.Tensor) -> float:
-    """Generalised Tanimoto similarity for real-valued vectors."""
-    a = a.detach().float().view(-1)
-    b = b.detach().float().view(-1)
-    n = min(a.numel(), b.numel())
-    if n == 0:
-        return 0.0
-    a, b = a[:n], b[:n]
-    dot   = torch.dot(a, b)
-    denom = a.pow(2).sum() + b.pow(2).sum() - dot
-    if denom <= 0:
-        return 0.0
-    val = (dot / denom).item()
-    return max(0.0, min(1.0, val)) if math.isfinite(val) else 0.0
-
-
 def _dense_from_indices(length: int, indices: List[int]) -> torch.Tensor:
     vec = torch.zeros(length, dtype=torch.float32)
-    for j in indices:
-        if 0 <= j < length:
-            vec[j] = 1.0
+    if indices:
+        idx = torch.as_tensor(indices, dtype=torch.int64)
+        vec[idx[(idx >= 0) & (idx < length)]] = 1.0
     return vec
 
 
 def _exact_mass(smiles: str, entry: Dict[str, Any]) -> Optional[float]:
-    mw = entry.get("mw")
-    if isinstance(mw, (int, float)):
-        try:
-            return float(mw)
-        except Exception:
-            pass
+    """
+    Monoisotopic mass, computed from the structure.
+
+    The metadata `mw` field is only a fallback: it is often a nominal or average
+    mass, and the UI renders this value to four decimal places, so reporting it
+    as an exact mass overstates its precision.
+    """
     try:
         from rdkit import Chem
         from rdkit.Chem import Descriptors
@@ -59,6 +46,12 @@ def _exact_mass(smiles: str, entry: Dict[str, Any]) -> Optional[float]:
             return Descriptors.ExactMolWt(mol)
     except Exception:
         pass
+    mw = entry.get("mw")
+    if isinstance(mw, (int, float)):
+        try:
+            return float(mw)
+        except Exception:
+            pass
     return None
 
 

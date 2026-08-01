@@ -18,6 +18,18 @@ _registry_lock: threading.Lock           = threading.Lock()
 _lru:           List[str]                = []   # oldest → newest
 _pinned:        Set[str]                 = set()
 
+# One lock per model id, so two callers racing for the same cold model do not
+# each build a full copy. Guarded by _registry_lock.
+_load_locks:    Dict[str, threading.Lock] = {}
+
+
+def _load_lock_for(model_id: str) -> threading.Lock:
+    with _registry_lock:
+        lock = _load_locks.get(model_id)
+        if lock is None:
+            lock = _load_locks[model_id] = threading.Lock()
+        return lock
+
 
 def _touch(model_id: str) -> None:
     """Move model_id to the end of the LRU list (most recently used)."""
@@ -55,39 +67,47 @@ def is_loaded(model_id: str) -> bool:
 def load(model_id: str, model_root: Optional[str] = None) -> "ModelSession":
     """
     Load a model by id. Uses model_root if given; otherwise resolves via manifest.
-    Thread-safe: only one load per model_id at a time.
+
+    Thread-safe: at most one load per model_id runs at a time. The per-id lock is
+    held across the load itself — the registry lock is not, so other model ids
+    stay servable while a slow load is in flight.
     """
     with _registry_lock:
         if model_id in _registry:
             _touch(model_id)
             return _registry[model_id]
-        _evict_if_needed()
 
-    # Resolve root outside the lock (may be slow)
-    root = model_root
-    model_type: Optional[str] = None
-    if root is None:
-        from app.manifest import get_model_info, get_default_model_id
-        from app.config import MODEL_ROOT, DEFAULT_MODEL_ID
-        info = get_model_info(model_id)
-        if info is not None:
-            root = info.root
-            model_type = info.type
-        elif model_id == DEFAULT_MODEL_ID:
-            root = MODEL_ROOT
-        else:
-            raise RuntimeError(f"Unknown model_id {model_id!r} – not in models.json")
+    with _load_lock_for(model_id):
+        # Another caller may have finished the load while we waited.
+        with _registry_lock:
+            if model_id in _registry:
+                _touch(model_id)
+                return _registry[model_id]
+            _evict_if_needed()
 
-    from app.session import ModelSession
-    logger.info("Loading model %s (type=%s) from %s", model_id, model_type or "marina", root)
-    session = ModelSession.from_model_root(root, model_type=model_type)
+        root = model_root
+        model_type: Optional[str] = None
+        if root is None:
+            from app.manifest import get_model_info
+            from app.config import MODEL_ROOT, DEFAULT_MODEL_ID
+            info = get_model_info(model_id)
+            if info is not None:
+                root = info.root
+                model_type = info.type
+            elif model_id == DEFAULT_MODEL_ID:
+                root = MODEL_ROOT
+            else:
+                raise RuntimeError(f"Unknown model_id {model_id!r} – not in models.json")
 
-    with _registry_lock:
-        if model_id not in _registry:   # double-check after lock
+        from app.session import ModelSession
+        logger.info("Loading model %s (type=%s) from %s", model_id, model_type or "marina", root)
+        session = ModelSession.from_model_root(root, model_type=model_type)
+
+        with _registry_lock:
             _registry[model_id] = session
             _touch(model_id)
-    logger.info("Model %s loaded successfully", model_id)
-    return session
+        logger.info("Model %s loaded successfully", model_id)
+        return session
 
 
 def pin(model_id: str) -> None:

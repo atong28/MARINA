@@ -9,7 +9,7 @@ export
 # Dev env file for local (no-Docker) runs.
 DEV_ENV_FILE ?= .env.dev
 
-.PHONY: help dev install build up down logs restart clean
+.PHONY: help dev install test test-fast build up down logs restart clean
 
 # ── Default target ────────────────────────────────────────────────────────────
 help:
@@ -19,6 +19,8 @@ help:
 	@echo "  Local development (no Docker):"
 	@echo "    make install        Install Python dependencies into current env"
 	@echo "    make dev            Run with hot-reload (edit $(DEV_ENV_FILE) first)"
+	@echo "    make test           Run the full test suite"
+	@echo "    make test-fast      Skip tests that spawn workers or build models"
 	@echo ""
 	@echo "  Docker:"
 	@echo "    make build          Build the Docker image"
@@ -64,6 +66,15 @@ dev:
 			--reload \
 			--reload-dir "$(CURDIR)/app" \
 			--log-level debug'
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+test:
+	pytest
+
+# Everything except the process-spawning and model-building tests (~2s).
+test-fast:
+	pytest -m "not slow"
 
 # ── Docker targets ────────────────────────────────────────────────────────────
 

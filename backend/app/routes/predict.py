@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from app.schemas import PredictRequest, PredictResponse, ResultCard
 from app.compute_pool import ComputeOverloadedError, ComputeTimeoutError
+from app.stats import record_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -58,6 +59,7 @@ async def predict(request: Request, body: PredictRequest):
                     "mw_max":     body.mw_max,
                 },
                 timeout=PREDICT_TIMEOUT_S,
+                request_id=body.request_id,
             )
         else:
             # Dev / no-pool path: run inference in a thread so the event loop stays free.
@@ -81,13 +83,19 @@ async def predict(request: Request, body: PredictRequest):
         raise HTTPException(status_code=504, detail="Prediction timed out.")
     except Exception as exc:
         logger.error("predict error: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Prediction failed.")
 
-    session     = ensure_loaded(mid)
+    # Both of these are heavy and synchronous — loading a cold model, and
+    # rendering k molecules with RDKit — so they must not run on the event loop.
+    session     = await asyncio.to_thread(ensure_loaded, mid)
     pred_tensor = torch.tensor(pred_fp, dtype=torch.float32)
     pairs       = list(zip(global_idxs, scores))
-    cards       = build_result_cards(session, pairs, pred_tensor,
-                                     img_size=MOLECULE_IMG_SIZE, max_cards=k)
+    cards       = await asyncio.to_thread(
+        build_result_cards, session, pairs, pred_tensor,
+        img_size=MOLECULE_IMG_SIZE, max_cards=k,
+    )
+
+    record_query("predict", request)
 
     result_cards = [ResultCard(**c) for c in cards]
     return PredictResponse(

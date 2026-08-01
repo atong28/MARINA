@@ -13,9 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import multiprocessing as mp
-import os
-import signal
-import time
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -32,26 +29,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ── Signal handling (clean shutdown of worker processes) ──────────────────────
-
-def _kill_children(signum, frame) -> None:  # pragma: no cover
-    logger.warning("Received signal %s – killing child processes", signum)
-    for child in mp.active_children():
-        try:
-            child.terminate()
-            child.join(timeout=0.5)
-        except Exception:
-            pass
-        if child.is_alive() and child.pid:
-            os.kill(child.pid, signal.SIGKILL)
-    os._exit(0)
-
-
-signal.signal(signal.SIGINT,  _kill_children)
-signal.signal(signal.SIGTERM, _kill_children)
-
-
 # ── Application lifespan ──────────────────────────────────────────────────────
+#
+# Worker processes are cleaned up by the lifespan shutdown below. Installing
+# SIGINT/SIGTERM handlers here used to short-circuit that with os._exit(0),
+# which skipped shutdown_pool() entirely and fought uvicorn's own supervisor
+# when running with --workers.
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -94,7 +77,12 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Shutting down MARINA backend…")
+    from app.stats import get_stats
+    get_stats().flush()
     await shutdown_pool()
+    for child in mp.active_children():
+        child.terminate()
+        child.join(timeout=1.0)
 
 
 def _resolve_preload(spec: str, entries, default_id: str):
@@ -118,14 +106,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS. Credentials are off because the API uses none: pairing them with a
+# wildcard origin makes Starlette echo back whatever Origin it is given, which
+# is an open door for credentialed cross-origin requests.
+from app.config import CORS_ALLOW_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
+
+# Per-client throttling for the expensive endpoints.
+from app.rate_limit import RateLimitMiddleware
+
+app.add_middleware(RateLimitMiddleware)
 
 # Validation error handler
 @app.exception_handler(RequestValidationError)
@@ -146,9 +143,12 @@ async def general_error_handler(request: Request, exc: Exception):
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-from app.routes import health, models, predict, smiles_search, fingerprints, custom_smiles
+from app.routes import (
+    health, models, predict, smiles_search, fingerprints, custom_smiles, status as status_routes,
+)
 
 app.include_router(health.router,        prefix="/api", tags=["health"])
+app.include_router(status_routes.router, prefix="/api", tags=["status"])
 app.include_router(models.router,        prefix="/api", tags=["models"])
 app.include_router(predict.router,       prefix="/api", tags=["prediction"])
 app.include_router(smiles_search.router, prefix="/api", tags=["search"])

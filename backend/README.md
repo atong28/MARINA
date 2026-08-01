@@ -12,6 +12,10 @@ FastAPI inference backend for MARINA/SPECTRE molecular structure annotation.
 | `POST` | `/api/predict` | Run MARINA inference on spectral data → top-k molecules |
 | `POST` | `/api/smiles-search` | Nearest-neighbour retrieval from a SMILES query |
 | `POST` | `/api/fingerprints/indices` | Return active entropy-fingerprint bit indices for a SMILES |
+| `POST` | `/api/custom-smiles-card` | Score an arbitrary SMILES against a session fingerprint |
+| `GET`  | `/api/queue` | Worker-pool queue depth |
+| `GET`  | `/api/queue/{request_id}` | Queue position for one in-flight prediction |
+| `GET`  | `/api/stats` | Cumulative query and visitor counts |
 
 Interactive API docs are served at `http://localhost:5000/docs` when the server is running.
 
@@ -52,6 +56,80 @@ data/
 
 `type` must be `"marina"` or `"spectre"`.  
 `root` is resolved relative to `DATA_DIR` (or as an absolute path).
+
+### Hosting a SPECTRE model
+
+Set `"type": "spectre"` and use the same directory layout. The backend loads
+`src.modules.spectre.model.SPECTRE` with `SPECTREArgs(**params.json)` and shares
+the MARINA fingerprint loader, retrieval set and renderer — nothing else differs.
+
+Inputs are flattened into one `(1, N, 3)` peak sequence with a parallel type
+indicator, matching `SPECTREDataModule.format_inference_data`:
+
+| Modality | Row layout | Type code |
+|----------|-----------|-----------|
+| HSQC | `[¹³C shift, ¹H shift, intensity]` | 0 |
+| ¹³C NMR | `[shift, 0, 0]` | 1 |
+| ¹H NMR | `[0, shift, 0]` | 2 |
+| MW | `[mw, 0, 0]` | 3 |
+| MS/MS | `[m/z, intensity, 0]` | 4 |
+
+Column order matters: coordinate 0 is encoded with `c_wavelength_bounds`,
+coordinate 1 with `h_wavelength_bounds`, and coordinate 2 is **sign**-encoded for
+NMR (only the sign of the HSQC intensity reaches the model, not its magnitude).
+The API accepts HSQC as `[¹H, ¹³C, intensity]` and swaps the first two columns
+internally.
+
+Three things are validated at load time, because each fails silently otherwise:
+
+1. **Unknown `params.json` keys are rejected.** Pydantic dataclasses *discard*
+   keys they do not define, so a `params.json` from the published SPECTRE code
+   would build the model with this codebase's defaults instead of the settings
+   the checkpoint was trained with. Translate the file rather than reusing it.
+2. **`out_dim` must equal the feature-map size** in `RankingEntropy/bitinfo_to_idx.pkl`.
+3. **Rankingset rows must be L2-normalised** (a warning is logged otherwise).
+   `RankingSet`'s cosine metric normalises only the query, so unnormalised rows
+   inflate every score past 1.0, where they are clamped and every result card
+   reads `1.000`. `build_rankingset_csr` does this at build time; a rankingset
+   copied from elsewhere may not have it.
+
+Checkpoints are also rejected if `load_state_dict` reports missing parameters,
+so an architecture mismatch surfaces as a startup error instead of random weights.
+
+---
+
+## Tests
+
+```bash
+make test        # everything (~35 s)
+make test-fast   # skips worker-spawning and model-building tests (~9 s)
+pytest tests/test_renderer.py -q      # one module
+```
+
+172 tests under `tests/`. Nothing requires a trained checkpoint: model-dependent
+tests build a small, randomly-initialised model directory from
+`tests/conftest.py::build_model_dir`, which is enough to exercise loading,
+collation, retrieval and rendering. Tests needing the MARINA `src/` tree skip
+rather than fail when it is not reachable.
+
+| Module | Covers |
+|---|---|
+| `test_similarity.py` | cosine/Tanimoto, length-mismatch rejection |
+| `test_rate_limit.py` | spec parsing, client identification, window behaviour |
+| `test_rate_limit_integration.py` | throttling as wired into the app |
+| `test_stats.py` | counters, IP hashing, persistence, restart |
+| `test_api_validation.py` | size caps, malformed payloads, error-message leakage |
+| `test_status_routes.py` | `/api/queue`, `/api/stats` |
+| `test_session_internals.py` | CSR row filtering (property-tested), MW index, cache bound |
+| `test_model_loading.py` | the `params.json` / `out_dim` / checkpoint guards |
+| `test_predictor.py` | preprocessing and the SPECTRE collation contract |
+| `test_renderer.py` | signed weights, both highlight polarities, payload size |
+| `test_compute_pool.py` | restart survival, queue positions (marked `slow`) |
+| `test_spectre_hosting.py` | end-to-end SPECTRE inference (marked `slow`) |
+
+The collation tests assert against `src/modules/core/const.py` rather than
+hard-coded type codes, so changing them on the model side fails here instead of
+silently producing wrong predictions.
 
 ---
 
@@ -176,7 +254,7 @@ source tree are **not** watched (no spurious reloads from large checkpoints).
 | Variable | Default | Description |
 |---|---|---|
 | `BACKEND_PORT` | `5000` | Listening port |
-| `UVICORN_WORKERS` | `2` | Uvicorn worker processes (Docker only) |
+| `UVICORN_WORKERS` | `2` | Uvicorn worker processes (Docker only). This is the default for `backend/docker-compose.yml`; the full-stack `docker-compose.yml` at the repo root defaults to `1`. |
 | `PRELOAD_MODELS` | `default` | `default` / `all` / comma-separated model IDs |
 | `MAX_LOADED_MODELS` | `0` | Max models in memory (0 = unlimited, LRU eviction when > 0) |
 
