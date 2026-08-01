@@ -217,10 +217,18 @@ spectre_ckpt/
 cache.pkl
 logs/
 checkpoints/
-old_ckpt/# pixi environments
+old_ckpt/
+
+# pixi environments
 .pixi/*
 !.pixi/config.toml
 ckpt/
 data/
 
 node_modules/
+
+# Claude Code workspace state (agent memory, local settings)
+.claude/
+
+# Large regenerable analysis arrays; the .png/.csv summaries are tracked.
+scripts/analysis/*.npz
