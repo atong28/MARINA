@@ -352,8 +352,11 @@
   color: #991b1b;
 }
 
-.main-page__loading {
+.main-page__loading-block {
   margin-top: 24px;
+}
+
+.main-page__loading {
   display: flex;
   align-items: center;
   gap: 10px;

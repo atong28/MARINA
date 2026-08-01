@@ -6,22 +6,30 @@ interface MoleculeViewerProps {
   smiles: string
 }
 
+/**
+ * Depictions arrive as either a data URI (highlighted, PNG) or raw SVG markup
+ * (plain line drawing). Both are rendered through <img>: markup injected with
+ * dangerouslySetInnerHTML would execute any <script> or event handler it
+ * contained, whereas an SVG loaded as an image is inert by specification.
+ */
 function MoleculeViewer({ svg, smiles }: MoleculeViewerProps) {
-  const content = useMemo(() => {
-    if (!svg) {
-      return (
+  const src = useMemo(() => {
+    if (!svg) return null
+    if (svg.startsWith('data:image')) return svg
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`
+  }, [svg])
+
+  return (
+    <div className="molecule-viewer">
+      {src ? (
+        <img className="molecule-viewer__img" src={src} alt={smiles} />
+      ) : (
         <div className="molecule-viewer__placeholder">
           <span className="molecule-viewer__smiles">{smiles}</span>
         </div>
-      )
-    }
-    if (svg.startsWith('data:image')) {
-      return <img className="molecule-viewer__img" src={svg} alt={smiles} />
-    }
-    return <div className="molecule-viewer__svg" dangerouslySetInnerHTML={{ __html: svg }} />
-  }, [svg, smiles])
-
-  return <div className="molecule-viewer">{content}</div>
+      )}
+    </div>
+  )
 }
 
 export default memo(MoleculeViewer)

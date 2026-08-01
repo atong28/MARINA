@@ -29,8 +29,9 @@ interface AppState {
   queryFp: number[] | null
   resultSource: ResultSource
 
-  // Custom SMILES result cards (scored against the current session FP)
-  customResults: ResultCard[]
+  // Custom SMILES result cards (scored against the current session FP).
+  // Each carries a stable id so removal keys off identity, not list position.
+  customResults: CustomResult[]
 
   // Actions
   setAvailableModels: (models: ModelInfo[], defaultId: string) => void
@@ -41,6 +42,13 @@ interface AppState {
   setHNMR: (data: number[]) => void
   setCNMR: (data: number[]) => void
   setMassSpec: (data: number[]) => void
+  /** Writes all four modalities in one update, so an edit re-renders once. */
+  setSpectra: (data: {
+    hsqc: number[]
+    h_nmr: number[]
+    c_nmr: number[]
+    mass_spec: number[]
+  }) => void
   setMW: (mw: number | null) => void
   setSmilesInput: (smiles: string) => void
   setRetrievalMwRange: (min: number | null, max: number | null) => void
@@ -49,9 +57,16 @@ interface AppState {
   setSmilesResults: (results: ResultCard[], queryFp: number[] | null) => void
 
   addCustomResult: (result: ResultCard) => void
-  removeCustomResult: (index: number) => void
+  removeCustomResult: (id: string) => void
   clearCustomResults: () => void
 }
+
+export interface CustomResult {
+  id: string
+  card: ResultCard
+}
+
+let customIdSeq = 0
 
 const MODEL_STORAGE_KEY = 'marina.selectedModelId'
 
@@ -106,6 +121,7 @@ export const useAppStore = create<AppState>((set) => ({
   setHNMR: (data) => set({ h_nmr: data }),
   setCNMR: (data) => set({ c_nmr: data }),
   setMassSpec: (data) => set({ mass_spec: data }),
+  setSpectra: (data) => set(data),
   setMW: (mw) => set({ mw }),
   setSmilesInput: (smiles) => set({ smilesInput: smiles }),
   setRetrievalMwRange: (min, max) => set({ retrievalMwMin: min, retrievalMwMax: max }),
@@ -117,10 +133,12 @@ export const useAppStore = create<AppState>((set) => ({
     set({ results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [] }),
 
   addCustomResult: (result) =>
-    set((state) => ({ customResults: [...state.customResults, result] })),
+    set((state) => ({
+      customResults: [...state.customResults, { id: `custom-${++customIdSeq}`, card: result }],
+    })),
 
-  removeCustomResult: (index) =>
-    set((state) => ({ customResults: state.customResults.filter((_, i) => i !== index) })),
+  removeCustomResult: (id) =>
+    set((state) => ({ customResults: state.customResults.filter((r) => r.id !== id) })),
 
   clearCustomResults: () => set({ customResults: [] }),
 }))

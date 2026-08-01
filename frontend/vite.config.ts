@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -7,6 +8,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      // Node environment: the suite covers pure logic (scales, formatting,
+      // store reducers), not component rendering, so no DOM shim is needed.
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
+    },
     server: {
       proxy: {
         '/api': {

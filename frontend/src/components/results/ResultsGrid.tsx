@@ -1,11 +1,12 @@
 import { ResultCard as ResultCardType } from '../../services/api'
+import type { CustomResult } from '../../store/store'
 import ResultCard from './ResultCard'
 import './ResultsGrid.css'
 
 interface ResultsGridProps {
   results: ResultCardType[]
-  customResults?: ResultCardType[]
-  onRemoveCustom?: (index: number) => void
+  customResults?: CustomResult[]
+  onRemoveCustom?: (id: string) => void
 }
 
 function ResultsGrid({ results, customResults = [], onRemoveCustom }: ResultsGridProps) {
@@ -19,13 +20,13 @@ function ResultsGrid({ results, customResults = [], onRemoveCustom }: ResultsGri
             Custom cards <span className="results-grid__count">({customResults.length})</span>
           </h2>
           <div className="results-grid__list">
-            {customResults.map((result, i) => (
+            {customResults.map((entry, i) => (
               <ResultCard
-                key={`custom-${i}-${result.smiles}`}
-                result={result}
+                key={entry.id}
+                result={entry.card}
                 position={i + 1}
                 isCustom
-                onRemove={onRemoveCustom ? () => onRemoveCustom(i) : undefined}
+                onRemove={onRemoveCustom ? () => onRemoveCustom(entry.id) : undefined}
               />
             ))}
           </div>

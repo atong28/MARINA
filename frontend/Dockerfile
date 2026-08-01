@@ -14,6 +14,11 @@ COPY . .
 ARG VITE_API_BASE=/api
 ENV VITE_API_BASE=$VITE_API_BASE
 
+# Show the API Docs header link only when the edge proxy actually routes
+# /docs (EXPOSE_API_VIA_NGINX=true); otherwise the link leads nowhere.
+ARG VITE_SHOW_API_DOCS=false
+ENV VITE_SHOW_API_DOCS=$VITE_SHOW_API_DOCS
+
 RUN npm run build
 
 

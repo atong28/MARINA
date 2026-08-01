@@ -1,0 +1,21 @@
+.usage-counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-counter strong {
+  color: #374151;
+  font-weight: 600;
+}
+
+.usage-counter__sep {
+  color: #d1d5db;
+}
+
+.usage-counter__since {
+  color: #9ca3af;
+}

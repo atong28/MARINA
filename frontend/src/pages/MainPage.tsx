@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import {
-  usePredict, useSmilesSearch, useHealth, useCustomSmilesCard, cancelInFlight,
+  usePredict, useSmilesSearch, useHealth, useCustomSmilesCard, cancelInFlight, isAbortError,
   type SpectralInput, type PredictRequest, type SmilesSearchRequest,
 } from '../services/api'
 import { useAppStore } from '../store/store'
@@ -8,12 +8,25 @@ import { getAvailableExamples, loadExample, type ExampleMeta } from '../services
 import ModelSelector from '../components/common/ModelSelector'
 import StatusIndicator from '../components/common/StatusIndicator'
 import HelpButton from '../components/common/HelpButton'
-import SpreadsheetTable from '../components/spreadsheet/SpreadsheetTable'
+import QueueStatus from '../components/common/QueueStatus'
+import UsageCounter from '../components/common/UsageCounter'
+import SpreadsheetTable, { type ValidationSummary } from '../components/spreadsheet/SpreadsheetTable'
+import SpectraPreview from '../components/spectra/SpectraPreview'
 import ResultsGrid from '../components/results/ResultsGrid'
 import { HELP } from '../helpContent'
 import './MainPage.css'
 
 type Tab = 'spectral' | 'smiles'
+
+// /docs is only routed when the edge proxy runs with EXPOSE_API_VIA_NGINX=true;
+// otherwise the link falls through the SPA catch-all to a blank page.
+const SHOW_API_DOCS = import.meta.env.VITE_SHOW_API_DOCS === 'true'
+
+/** Opaque handle for queue tracking. randomUUID needs a secure context. */
+function newRequestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 function isFiniteNum(v: number | null | undefined): v is number {
   return v !== null && v !== undefined && Number.isFinite(v)
@@ -29,6 +42,7 @@ function MainPage() {
   const [hasInvalidSpreadsheet, setHasInvalidSpreadsheet] = useState(false)
   const [customSmilesInput, setCustomSmilesInput] = useState('')
   const [customError, setCustomError] = useState<string | null>(null)
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
 
   // Example loading
   const [availableExamples, setAvailableExamples] = useState<ExampleMeta[]>([])
@@ -43,7 +57,7 @@ function MainPage() {
     results, predictedFp, queryFp, resultSource,
     customResults,
     setPredictResults, setSmilesResults,
-    setHSQC, setHNMR, setCNMR, setMassSpec, setMW,
+    setHSQC, setHNMR, setCNMR, setMassSpec, setSpectra, setMW,
     setSmilesInput,
     setRetrievalMwRange,
     addCustomResult, removeCustomResult,
@@ -62,6 +76,8 @@ function MainPage() {
       setPredictResults(data.results, data.pred_fp ?? null)
       setCustomError(null)
     },
+    // Stop polling for a place in line once the request is no longer in flight.
+    onSettled: () => setActiveRequestId(null),
   })
 
   const smilesSearchMutation = useSmilesSearch({
@@ -78,7 +94,7 @@ function MainPage() {
       setCustomSmilesInput('')
       setCustomError(null)
     },
-    onError: (err) => setCustomError(err.message),
+    onError: (err) => setCustomError(isAbortError(err) ? null : err.message),
   })
 
   const mwRangeInvalid =
@@ -92,6 +108,9 @@ function MainPage() {
     seqRef.current += 1
     predSeq.current = seqRef.current
 
+    const requestId = newRequestId()
+    setActiveRequestId(requestId)
+
     const raw: SpectralInput = {}
     const validHSQC = filterValid(hsqc)
     const validHNMR = filterValid(h_nmr)
@@ -103,7 +122,7 @@ function MainPage() {
     if (validMS.length)   raw.mass_spec = validMS
     if (isFiniteNum(mw))  raw.mw        = mw
 
-    const payload: PredictRequest = { raw, k }
+    const payload: PredictRequest = { raw, k, request_id: requestId }
     if (selectedModelId) payload.model_id = selectedModelId
     if (isFiniteNum(retrievalMwMin)) payload.mw_min = retrievalMwMin
     if (isFiniteNum(retrievalMwMax)) payload.mw_max = retrievalMwMax
@@ -146,6 +165,12 @@ function MainPage() {
     })
   }, [customSmilesInput, resultSource, predictedFp, queryFp, selectedModelId, customCardMutation])
 
+  // Stable identity: SpreadsheetTable memoises its emit callback on this.
+  const handleValidationChange = useCallback(
+    (s: ValidationSummary) => setHasInvalidSpreadsheet(s.anyInvalid),
+    [],
+  )
+
   // Populate example list on mount
   useEffect(() => {
     getAvailableExamples().then(setAvailableExamples).catch(console.error)
@@ -169,7 +194,9 @@ function MainPage() {
   }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMW])
 
   const isPending = predictMutation.isPending || smilesSearchMutation.isPending
-  const searchError = predictMutation.error ?? smilesSearchMutation.error
+  // A cancelled request is not a failure worth showing — see isAbortError.
+  const rawError = predictMutation.error ?? smilesSearchMutation.error
+  const searchError = rawError && !isAbortError(rawError) ? rawError : null
   const hasResults = results.length > 0
 
   return (
@@ -182,10 +209,14 @@ function MainPage() {
             <HelpButton content={HELP.controls.model} placement="bottom" />
             <StatusIndicator health={health} />
             <HelpButton content={HELP.controls.status} placement="bottom" />
+            <UsageCounter />
+            <HelpButton content={HELP.controls.usage} placement="bottom" />
           </div>
-          <a className="main-page__api-link" href="/docs" target="_blank" rel="noopener noreferrer">
-            API Docs
-          </a>
+          {SHOW_API_DOCS && (
+            <a className="main-page__api-link" href="/docs" target="_blank" rel="noopener noreferrer">
+              API Docs
+            </a>
+          )}
         </div>
         <h1 className="main-page__title">MARINA</h1>
         <p className="main-page__subtitle">
@@ -227,12 +258,11 @@ function MainPage() {
             h_nmr={h_nmr}
             c_nmr={c_nmr}
             mass_spec={mass_spec}
-            onHSQCChange={setHSQC}
-            onHNMRChange={setHNMR}
-            onCNMRChange={setCNMR}
-            onMassSpecChange={setMassSpec}
-            onValidationChange={(s) => setHasInvalidSpreadsheet(s.anyInvalid)}
+            onSpectraChange={setSpectra}
+            onValidationChange={handleValidationChange}
           />
+
+          <SpectraPreview hsqc={hsqc} h_nmr={h_nmr} c_nmr={c_nmr} mass_spec={mass_spec} />
 
           <div className="main-page__mw-row">
             <label className="main-page__label">
@@ -388,9 +418,12 @@ function MainPage() {
 
       {/* ── Loading state ── */}
       {isPending && (
-        <div className="main-page__loading">
-          <span className="main-page__spinner" />
-          {predictMutation.isPending ? 'Running prediction…' : 'Searching…'}
+        <div className="main-page__loading-block">
+          <div className="main-page__loading">
+            <span className="main-page__spinner" />
+            {predictMutation.isPending ? 'Running prediction…' : 'Searching…'}
+          </div>
+          {predictMutation.isPending && <QueueStatus requestId={activeRequestId} />}
         </div>
       )}
 

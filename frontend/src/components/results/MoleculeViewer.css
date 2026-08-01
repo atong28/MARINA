@@ -9,19 +9,6 @@
   overflow: hidden;
 }
 
-.molecule-viewer__svg {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.molecule-viewer__svg svg {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
 .molecule-viewer__img {
   max-width: 100%;
   height: auto;

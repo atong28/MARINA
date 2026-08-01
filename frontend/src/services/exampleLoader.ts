@@ -27,22 +27,27 @@ const exampleModules = import.meta.glob<{ default: ExampleData }>(
 
 /**
  * Return a sorted list of available examples.
- * Each entry's name is loaded lazily from the JSON file.
+ *
+ * Each file is fetched to read its display name. They load in parallel rather
+ * than one after another, and a file that fails to load falls back to its stem
+ * instead of aborting the whole list.
  */
 export async function getAvailableExamples(): Promise<ExampleMeta[]> {
-  const entries: ExampleMeta[] = []
+  const stems = Object.keys(exampleModules)
+    .map((path) => ({ path, stem: path.split('/').pop()?.replace(/\.json$/, '') ?? '' }))
+    .filter(({ stem }) => stem && stem !== 'template')
 
-  for (const path in exampleModules) {
-    const stem = path.split('/').pop()?.replace(/\.json$/, '') ?? ''
-    if (!stem || stem === 'template') continue
-
-    const loadModule = exampleModules[path]
-    if (!loadModule) continue
-
-    const mod = await loadModule()
-    const data: ExampleData = (mod.default ?? mod) as ExampleData
-    entries.push({ name: data.name || stem, stem })
-  }
+  const entries = await Promise.all(
+    stems.map(async ({ path, stem }) => {
+      try {
+        const mod = await exampleModules[path]()
+        const data: ExampleData = (mod.default ?? mod) as ExampleData
+        return { name: data.name || stem, stem }
+      } catch {
+        return { name: stem, stem }
+      }
+    }),
+  )
 
   return entries.sort((a, b) => a.name.localeCompare(b.name))
 }

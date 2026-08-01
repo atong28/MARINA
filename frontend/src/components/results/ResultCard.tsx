@@ -1,7 +1,14 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { ResultCard as ResultCardType } from '../../services/api'
 import MoleculeViewer from './MoleculeViewer'
 import './ResultCard.css'
+
+const COSINE_HINT =
+  'Cosine similarity between the query fingerprint and this compound’s fingerprint.'
+const TANIMOTO_HINT =
+  'Generalised Tanimoto similarity. The query fingerprint holds predicted ' +
+  'probabilities rather than 0/1 bits, so this is not the usual binary Tanimoto ' +
+  'coefficient and is not comparable to one.'
 
 interface ResultCardProps {
   result: ResultCardType
@@ -14,10 +21,7 @@ interface ResultCardProps {
 function ResultCard({ result, position, isCustom = false, onRemove }: ResultCardProps) {
   const { database_links } = result
 
-  const cosine = useMemo(
-    () => result.cosine_similarity ?? result.similarity,
-    [result.cosine_similarity, result.similarity],
-  )
+  const cosine = result.cosine_similarity ?? result.similarity
   const tanimoto = result.tanimoto_similarity
 
   const hasLinks = !isCustom && Boolean(
@@ -29,11 +33,11 @@ function ResultCard({ result, position, isCustom = false, onRemove }: ResultCard
       <div className="result-card__header">
         <span className="result-card__rank">{isCustom ? 'Custom' : `#${position}`}</span>
         <div className="result-card__badges">
-          <span className="result-card__badge result-card__badge--cosine">
+          <span className="result-card__badge result-card__badge--cosine" title={COSINE_HINT}>
             C: {cosine.toFixed(3)}
           </span>
           {typeof tanimoto === 'number' && (
-            <span className="result-card__badge result-card__badge--tanimoto">
+            <span className="result-card__badge result-card__badge--tanimoto" title={TANIMOTO_HINT}>
               T: {tanimoto.toFixed(3)}
             </span>
           )}

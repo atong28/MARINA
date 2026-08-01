@@ -26,15 +26,20 @@ export interface ValidationSummary {
   anyInvalid: boolean
 }
 
+export interface SpectraArrays {
+  hsqc: number[]
+  h_nmr: number[]
+  c_nmr: number[]
+  mass_spec: number[]
+}
+
 interface SpreadsheetTableProps {
   hsqc: number[]
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
-  onHSQCChange: (data: number[]) => void
-  onHNMRChange: (data: number[]) => void
-  onCNMRChange: (data: number[]) => void
-  onMassSpecChange: (data: number[]) => void
+  /** Emitted as one batch so a single edit causes one store update, not four. */
+  onSpectraChange: (data: SpectraArrays) => void
   onValidationChange?: (summary: ValidationSummary) => void
 }
 
@@ -67,11 +72,27 @@ function getNum(arr: number[], idx: number): number | '' {
   return typeof v === 'number' && Number.isFinite(v) ? v : ''
 }
 
+/**
+ * Cell-wise comparison with early exit. This runs on every store update, and
+ * JSON.stringify of a 400x7 grid on each keystroke was measurably worse.
+ */
+export function gridEquals(a: Cell[][], b: Cell[][]): boolean {
+  if (a.length !== b.length) return false
+  for (let r = 0; r < a.length; r++) {
+    const rowA = a[r], rowB = b[r]
+    if (rowA.length !== rowB.length) return false
+    for (let c = 0; c < rowA.length; c++) {
+      if (rowA[c] !== rowB[c]) return false
+    }
+  }
+  return true
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function SpreadsheetTable({
   hsqc, h_nmr, c_nmr, mass_spec,
-  onHSQCChange, onHNMRChange, onCNMRChange, onMassSpecChange,
+  onSpectraChange,
   onValidationChange,
 }: SpreadsheetTableProps) {
   const hotRef = useRef<HotTableRef>(null)
@@ -159,13 +180,10 @@ function SpreadsheetTable({
     setValidation({ hsqcInvalid, hInvalid, cInvalid, msInvalid })
     onValidationChange?.(summary)
 
-    onHSQCChange(hsqcOut)
-    onHNMRChange(hOut)
-    onCNMRChange(cOut)
-    onMassSpecChange(msOut)
+    onSpectraChange({ hsqc: hsqcOut, h_nmr: hOut, c_nmr: cOut, mass_spec: msOut })
 
     setTimeout(() => { isInternalRef.current = false }, 0)
-  }, [onHSQCChange, onHNMRChange, onCNMRChange, onMassSpecChange, onValidationChange])
+  }, [onSpectraChange, onValidationChange])
 
   const handleAfterChange = useCallback((changes: unknown[] | null, source: string) => {
     if (!changes || source === 'loadData' || !hotRef.current?.hotInstance) return
@@ -177,8 +195,7 @@ function SpreadsheetTable({
   useEffect(() => {
     if (isInternalRef.current || !hotRef.current?.hotInstance) return
     const changed =
-      lastSyncRef.current === null ||
-      JSON.stringify(tableData) !== JSON.stringify(lastSyncRef.current)
+      lastSyncRef.current === null || !gridEquals(tableData, lastSyncRef.current)
     if (changed) {
       hotRef.current.hotInstance.loadData(tableData)
       lastSyncRef.current = tableData.map((r) => [...r])

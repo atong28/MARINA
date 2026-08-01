@@ -18,6 +18,36 @@ export interface PredictRequest {
   mw_min?: number
   mw_max?: number
   model_id?: string
+  /** Client-generated id used to poll this request's queue position. */
+  request_id?: string
+}
+
+export interface QueuePosition {
+  /** "queued" behind others, "running" on a worker, "unknown" once finished. */
+  state: 'queued' | 'running' | 'unknown'
+  /** 1-based place in the waiting line; 0 when already running. */
+  position: number
+  /** Total jobs ahead of this one, running ones included. */
+  ahead: number
+  queued: number
+  workers: number
+  waited_seconds?: number
+}
+
+export interface QueueSnapshot {
+  pooled: boolean
+  workers: number
+  capacity: number
+  running: number
+  queued: number
+  in_flight: number
+}
+
+export interface UsageStatsResponse {
+  queries_total: number
+  by_kind: Record<string, number>
+  unique_clients: number
+  counting_since: number
 }
 
 export interface DatabaseLinks {
@@ -98,6 +128,17 @@ export interface CustomSmilesCardResponse {
 
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
+/**
+ * True for the rejection fetch produces when a request is aborted.
+ *
+ * Starting a new search cancels the in-flight one, so without this the mutation
+ * that got cancelled leaves an error behind and the UI reports "The user aborted
+ * a request" over a perfectly good result.
+ */
+export function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError'
+}
+
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -154,6 +195,13 @@ export const api = {
     const { signal } = makeController('customSmilesCard')
     return fetchJson('/custom-smiles-card', { method: 'POST', body: JSON.stringify(data), signal })
   },
+
+  queue: () => fetchJson<QueueSnapshot>('/queue'),
+
+  queuePosition: (requestId: string) =>
+    fetchJson<QueuePosition>(`/queue/${encodeURIComponent(requestId)}`),
+
+  stats: () => fetchJson<UsageStatsResponse>('/stats'),
 }
 
 // ── React Query hooks ─────────────────────────────────────────────────────────
@@ -162,9 +210,41 @@ export function useHealth(options?: Partial<UseQueryOptions<HealthResponse>>) {
   return useQuery<HealthResponse>({
     queryKey: ['health'],
     queryFn: api.health,
-    refetchInterval: 5000,
+    // Poll fast only while the model is still loading; once it is ready there
+    // is nothing to watch, so back off instead of hammering every 5 s forever.
+    refetchInterval: (query) => (query.state.data?.model_loaded ? 60_000 : 5_000),
+    refetchIntervalInBackground: false,
     retry: 1,
     retryDelay: 1000,
+    ...options,
+  })
+}
+
+/**
+ * Polls this request's place in line while a prediction is in flight.
+ * Disabled when there is no active request, so it costs nothing when idle.
+ */
+export function useQueuePosition(requestId: string | null) {
+  return useQuery<QueuePosition>({
+    queryKey: ['queue', requestId],
+    queryFn: () => api.queuePosition(requestId as string),
+    enabled: Boolean(requestId),
+    refetchInterval: 1500,
+    // The queue moves while the tab is hidden too; keep the count honest.
+    refetchIntervalInBackground: true,
+    retry: false,
+    gcTime: 0,
+  })
+}
+
+export function useUsageStats(options?: Partial<UseQueryOptions<UsageStatsResponse>>) {
+  return useQuery<UsageStatsResponse>({
+    queryKey: ['stats'],
+    queryFn: api.stats,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
+    retry: false,
     ...options,
   })
 }

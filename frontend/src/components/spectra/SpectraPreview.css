@@ -1,0 +1,122 @@
+.spectra__heading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0 0 10px;
+}
+
+.spectra {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 16px;
+}
+
+/* HSQC (near-square) beside a stack of the wide, short 1-D plots. */
+.spectra--split {
+  grid-template-columns: minmax(280px, 400px) 1fr;
+}
+
+@media (max-width: 820px) {
+  .spectra--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spectra__stack {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.spectra__card {
+  margin: 0;
+  max-width: 100%;
+  padding: 12px 14px 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+/* Keeps the square HSQC plot from ballooning when it is the only spectrum. */
+.spectra__card--hsqc {
+  max-width: 400px;
+}
+
+.spectra__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.spectra__count {
+  font-size: 12px;
+  font-weight: 400;
+  color: #898781;
+}
+
+.spectra__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.spectra__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #52514e;
+}
+
+.spectra__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.spectra__plot {
+  position: relative;
+}
+
+.spectra__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.spectra__tick {
+  font-size: 9px;
+  fill: #898781;
+  font-variant-numeric: tabular-nums;
+}
+
+.spectra__axis-label {
+  font-size: 10px;
+  fill: #52514e;
+}
+
+.spectra__tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 5px 8px;
+  background: #0b0b0b;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
