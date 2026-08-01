@@ -45,12 +45,16 @@ def train_marina(
     lr_monitor = cb.LearningRateMonitor(logging_interval="step")
     error_callback = ErrorLoggingCallback()
     benchmark_cos = BenchmarkCosineCallback(args, fp_loader)
+    # Lightning >=2.6 defaults to RichProgressBar whenever `rich` is importable
+    # (it is, via tyro). Rich renders nothing to a non-TTY, so pod logs show no
+    # epoch output at all. Pin tqdm, which still writes progress when piped.
+    progress_bar = cb.TQDMProgressBar()
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         accelerator="auto",
         precision="bf16-mixed",
         logger=wandb_logger,
-        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos],
+        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos, progress_bar],
         accumulate_grad_batches=args.accumulate_grad_batches_num,
         strategy='auto',
         gradient_clip_val=1.0
