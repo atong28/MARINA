@@ -35,6 +35,8 @@ services:
         # Baked into the JS bundle at build time.
         # /api is the default – the frontend's nginx proxies it to the backend service.
         VITE_API_BASE: ${VITE_API_BASE:-/api}
+        # Keep in step with EXPOSE_API_VIA_NGINX on the nginx service.
+        VITE_SHOW_API_DOCS: ${EXPOSE_API_VIA_NGINX:-false}
     image: marina-frontend:latest
     container_name: marina-frontend
     depends_on:
@@ -70,7 +72,8 @@ services:
 
       # ── Server ──────────────────────────────────────────────────────────────
       BACKEND_PORT: "5000"
-      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      # Total model copies in RAM = UVICORN_WORKERS * (1 + MAX_COMPUTE_WORKERS).
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
 
       # ── Model paths ─────────────────────────────────────────────────────────
       # The MARINA project root is mounted at /marina (see volumes below).
@@ -88,6 +91,10 @@ services:
       # ── Misc ─────────────────────────────────────────────────────────────────
       PRELOAD_MODELS: ${PRELOAD_MODELS:-default}
       DATASET_ROOT: /data
+
+      # ── Usage stats ─────────────────────────────────────────────────────────
+      # Persisted on a writable named volume; /data is mounted read-only.
+      STATS_PATH: ${STATS_PATH:-/var/lib/marina/stats.json}
       KMP_DUPLICATE_LIB_OK: "TRUE"
       PYTHONUNBUFFERED: "1"
 
@@ -96,6 +103,8 @@ services:
       - ${MARINA_PROJECT_ROOT:-.}:/marina:ro
       # Model data directory (read-only) – contains models.json + per-model dirs
       - ${MODEL_DATA_DIR:-./checkpoints}:/data:ro
+      # Writable state (usage counters). Survives container replacement.
+      - marina-state:/var/lib/marina
 
     networks:
       - backend-net
@@ -116,6 +125,10 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+
+volumes:
+  marina-state:
 
 
 networks:
