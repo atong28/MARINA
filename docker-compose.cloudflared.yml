@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Cloudflare Tunnel overlay for docker-compose.yml.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
+#
+# Requires CLOUDFLARE_TUNNEL_TOKEN in .env. See docs/website/cloudflare-tunnel.md.
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  nginx:
+    # No host port. cloudflared reaches nginx over proxy-net; the only route in
+    # from outside this machine is Cloudflare's edge.
+    ports: !reset []
+    volumes:
+      # Recover the visitor's IP from CF-Connecting-IP so the backend's rate
+      # limiter and visitor counter key on the client, not on cloudflared.
+      - ./nginx/realip-cloudflare.conf:/etc/nginx/conf.d/00-realip.conf:ro
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: marina-cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - nginx
+    networks:
+      # Only proxy-net: cloudflared can reach nginx, never the backend.
+      - proxy-net
+    restart: unless-stopped

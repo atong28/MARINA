@@ -31,7 +31,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# The repo root: where docker-compose.yml, .env and the default ./checkpoints
+# live. Every path below is written relative to it.
+cd "$SCRIPT_DIR/../.."
 
 # ── Load .env if present ──────────────────────────────────────────────────────
 if [[ -f ".env" ]]; then
@@ -57,7 +59,9 @@ done
 # ── Resolve PyTorch wheel index ───────────────────────────────────────────────
 if $CPU; then
     export TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
-    export DEVICE="${DEVICE:-cpu}"
+    # Overrides .env, per --cpu's documented contract. Falling back to
+    # "${DEVICE:-cpu}" would pair CPU-only wheels with DEVICE=cuda.
+    export DEVICE="cpu"
 elif $GPU; then
     export TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
     export DEVICE="${DEVICE:-cuda}"

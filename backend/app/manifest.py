@@ -84,6 +84,16 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
             os.path.join(DATA_DIR, root_rel)
         )
 
+        # Checked here rather than at load time: preload re-raises, so a root
+        # that does not exist would otherwise crash-loop the container with a
+        # traceback pointing at the checkpoint loader instead of the manifest.
+        if not os.path.isdir(root_abs):
+            logger.warning(
+                "models.json: model %r has root %r, which does not exist (%s)",
+                mid, root_rel, root_abs,
+            )
+            continue
+
         if typ not in SUPPORTED_TYPES:
             logger.warning("models.json: model %r has unsupported type %r", mid, typ)
             continue
