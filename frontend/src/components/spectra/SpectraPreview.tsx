@@ -28,7 +28,6 @@ const SERIES_BLUE = '#2a78d6' // slot 1 — negative HSQC phase (CH₂), 1-D sti
 const SERIES_RED = '#e34948' // slot 8 — positive HSQC phase (CH / CH₃)
 const GRID = '#e1e0d9'
 const AXIS = '#c3c2b7'
-const SURFACE = '#ffffff'
 
 // ── Scales & ticks ────────────────────────────────────────────────────────────
 
@@ -474,15 +473,7 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
           />
           <g clipPath={`url(#${clipId})`}>
             {placed.map(({ px, py, p }, idx) => (
-              <circle
-                key={idx}
-                cx={px}
-                cy={py}
-                r={4}
-                fill={p.i < 0 ? SERIES_BLUE : SERIES_RED}
-                stroke={SURFACE}
-                strokeWidth={2}
-              />
+              <circle key={idx} cx={px} cy={py} r={4} fill={p.i < 0 ? SERIES_BLUE : SERIES_RED} />
             ))}
           </g>
           <rect
