@@ -47,7 +47,7 @@ export const H_SHIFT_MAX = 16
 export const KIND_LABELS: Record<NmrKind, string> = {
   h_nmr: '¹H NMR',
   c_nmr: '¹³C NMR',
-  hsqc: 'HSQC',
+  hsqc: '¹H-¹³C HSQC',
 }
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────

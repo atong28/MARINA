@@ -6,6 +6,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 8px;
   min-height: 24px;
 }
@@ -22,7 +24,15 @@
 
 .spreadsheet-table__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.spreadsheet-table__divider {
+  width: 1px;
+  align-self: stretch;
+  background: #e5e7eb;
 }
 
 .spreadsheet-table__btn {
@@ -35,8 +45,13 @@
   white-space: nowrap;
 }
 
-.spreadsheet-table__btn:hover {
+.spreadsheet-table__btn:hover:not(:disabled) {
   background: #f0f0f0;
+}
+
+.spreadsheet-table__btn:disabled {
+  color: #b0b0b0;
+  border-color: #e5e7eb;
 }
 
 /* Gutter between modality groups: a wide border in the page colour reads as a

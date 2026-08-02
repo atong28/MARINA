@@ -1,5 +1,5 @@
 /**
- * Ephemeral notice pinned to the top-left of the viewport.
+ * Ephemeral notice pinned to the top-right of the viewport.
  *
  * Dismisses itself; a new `id` on the same text restarts the timer, so
  * pasting the same table twice still reads as two separate confirmations.

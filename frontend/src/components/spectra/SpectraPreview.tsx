@@ -428,7 +428,7 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
   return (
     <figure className="spectra__card spectra__card--hsqc">
       <figcaption className="spectra__title">
-        HSQC <span className="spectra__count">{points.length} cross-peaks</span>
+        ¹H-¹³C HSQC <span className="spectra__count">{points.length} cross-peaks</span>
         {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       {showLegend && (
@@ -663,7 +663,7 @@ function MassSpecPlot({ peaks }: { peaks: MSPeak[] }) {
   return (
     <figure className="spectra__card">
       <figcaption className="spectra__title">
-        MS/MS <span className="spectra__count">{peaks.length} peaks</span>
+        MS/MS (Positive) <span className="spectra__count">{peaks.length} peaks</span>
         {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       <div className="spectra__plot">

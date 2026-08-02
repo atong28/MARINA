@@ -63,7 +63,9 @@ export const HELP = {
       '(with its header row) and works out whether it is ¹H, ¹³C or HSQC, ' +
       'including tables Mnova has continued into further columns on the right. ' +
       'It replaces the columns of that one modality and leaves the others alone. ' +
-      'MS/MS tables are not handled.',
+      'MS/MS tables are not handled.\n\n' +
+      'Undo and Redo (or Ctrl+Z / Ctrl+Y in the grid) step through every change, ' +
+      'including a whole paste or condense as a single step.',
 
     preview:
       'Renders whatever is currently in the spreadsheet, updating as you type or paste. ' +

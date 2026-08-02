@@ -247,8 +247,8 @@ function MainPage() {
         <section className="main-page__panel">
           <div className="main-page__panel-description">
             <p>
-              Enter spectral data in the spreadsheet. HSQC requires all three columns per row
-              (H shift, C shift, intensity). Mass Spec requires both m/z and intensity per row.
+              Enter spectral data in the spreadsheet. ¹H-¹³C HSQC requires all three columns per
+              row (H shift, C shift, intensity). MS/MS requires both m/z and intensity per row.
               <HelpButton content={HELP.spectral.spreadsheet} placement="right" />
             </p>
           </div>

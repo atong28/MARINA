@@ -68,10 +68,10 @@ const COL_HEADERS = [
 ]
 
 const GROUP_HEADERS = [
-  { label: 'HSQC', colspan: 3 },
+  { label: '¹H-¹³C HSQC', colspan: 3 },
   { label: '¹H NMR', colspan: 1 },
   { label: '¹³C NMR', colspan: 1 },
-  { label: 'Mass spec', colspan: 2 },
+  { label: 'MS/MS (Positive)', colspan: 2 },
 ]
 
 /** First column of each modality after the first — these carry the gutter. */
@@ -144,6 +144,7 @@ function SpreadsheetTable({
   const lastSyncRef = useRef<Cell[][] | null>(null)
   const toastSeq = useRef(0)
   const [toast, setToast] = useState<ToastMessage | null>(null)
+  const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const [validation, setValidation] = useState<Omit<ValidationSummary, 'anyInvalid'>>({
     hsqcInvalid: 0, hInvalid: 0, cInvalid: 0, msInvalid: 0,
   })
@@ -235,11 +236,19 @@ function SpreadsheetTable({
     setTimeout(() => { isInternalRef.current = false }, 0)
   }, [onSpectraChange, onValidationChange])
 
+  /** Mirrors Handsontable's undo stack into render state for the buttons. */
+  const refreshHistory = useCallback(() => {
+    const hot = hotRef.current?.hotInstance
+    if (!hot) return
+    setHistory({ canUndo: hot.isUndoAvailable(), canRedo: hot.isRedoAvailable() })
+  }, [])
+
   const handleAfterChange = useCallback((changes: unknown[] | null, source: string) => {
     if (!changes || source === 'loadData' || !hotRef.current?.hotInstance) return
     const grid = hotRef.current.hotInstance.getData() as Cell[][]
     extractAndEmit(grid)
-  }, [extractAndEmit])
+    refreshHistory()
+  }, [extractAndEmit, refreshHistory])
 
   // Sync Handsontable when store data changes externally.
   useEffect(() => {
@@ -247,21 +256,44 @@ function SpreadsheetTable({
     const changed =
       lastSyncRef.current === null || !gridEquals(tableData, lastSyncRef.current)
     if (changed) {
+      // Replacing the data source drops the undo stack, so the buttons have to
+      // be re-read rather than assumed unchanged.
       hotRef.current.hotInstance.loadData(tableData)
       lastSyncRef.current = tableData.map((r) => [...r])
+      refreshHistory()
     }
-  }, [tableData])
+  }, [tableData, refreshHistory])
 
-  /** Writes a grid back to Handsontable and the store in one internal update. */
-  const commitGrid = useCallback((data: Cell[][]) => {
+  /**
+   * Applies a rewritten grid as one batch of cell edits.
+   *
+   * setDataAtCell rather than loadData: loadData replaces the data source and
+   * is invisible to the undo stack, so a paste or condense could not be undone.
+   * One call becomes one undo step, and diffing first keeps that step to the
+   * cells that actually moved. afterChange carries the result to the store.
+   */
+  const commitGrid = useCallback((next: Cell[][]) => {
     const hot = hotRef.current?.hotInstance
     if (!hot) return
-    isInternalRef.current = true
-    extractAndEmit(data)
-    hot.loadData(data)
-    lastSyncRef.current = data.map((r) => [...r])
-    setTimeout(() => { isInternalRef.current = false }, 0)
-  }, [extractAndEmit])
+    const current = hot.getData() as Cell[][]
+    const changes: [number, number, Cell][] = []
+    for (let r = 0; r < next.length; r++) {
+      for (let c = 0; c < next[r].length; c++) {
+        if ((current[r]?.[c] ?? '') !== next[r][c]) changes.push([r, c, next[r][c]])
+      }
+    }
+    if (changes.length) hot.setDataAtCell(changes)
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    hotRef.current?.hotInstance?.undo()
+    refreshHistory()
+  }, [refreshHistory])
+
+  const handleRedo = useCallback(() => {
+    hotRef.current?.hotInstance?.redo()
+    refreshHistory()
+  }, [refreshHistory])
 
   const readGrid = useCallback((): Cell[][] | null => {
     const hot = hotRef.current?.hotInstance
@@ -363,6 +395,23 @@ function SpreadsheetTable({
           <span className="spreadsheet-table__validation-ok">No validation errors</span>
         )}
         <div className="spreadsheet-table__actions">
+          <button
+            className="spreadsheet-table__btn"
+            onClick={handleUndo}
+            disabled={!history.canUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            ↶ Undo
+          </button>
+          <button
+            className="spreadsheet-table__btn"
+            onClick={handleRedo}
+            disabled={!history.canRedo}
+            title="Redo (Ctrl+Y)"
+          >
+            ↷ Redo
+          </button>
+          <span className="spreadsheet-table__divider" />
           <button className="spreadsheet-table__btn" onClick={handleMnovaPaste}>
             Paste NMR Table from MestreNova
           </button>
