@@ -15,7 +15,6 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.schemas import CustomSmilesCardRequest, CustomSmilesCardResponse, ResultCard
 from app.similarity import cosine as _cosine, tanimoto as _tanimoto
-from app.stats import record_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -122,5 +121,4 @@ async def custom_smiles_card(body: CustomSmilesCardRequest):
         exact_mass=exact_mass,
     )
 
-    record_query("custom_card")
     return CustomSmilesCardResponse(result=card)

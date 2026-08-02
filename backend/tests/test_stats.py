@@ -9,17 +9,33 @@ def test_counts_are_split_by_kind_and_totalled():
     for _ in range(3):
         s.record("predict")
     s.record("smiles_search")
-    s.record("custom_card")
 
     snap = s.snapshot()
-    assert snap["queries_total"] == 5
-    assert snap["by_kind"] == {"predict": 3, "smiles_search": 1, "custom_card": 1}
+    assert snap["queries_total"] == 4
+    assert snap["by_kind"] == {"predict": 3, "smiles_search": 1}
 
 
 def test_unknown_kinds_are_ignored():
     s = UsageStats(None)
     s.record("not_a_real_kind")
     assert s.snapshot()["queries_total"] == 0
+
+
+def test_custom_cards_are_not_a_query():
+    """Scoring a card is a follow-up on results already returned."""
+    s = UsageStats(None)
+    s.record("custom_card")
+    assert s.snapshot()["queries_total"] == 0
+
+
+def test_a_stale_kind_in_an_existing_file_is_dropped(tmp_path):
+    """Deployments carry a stats.json that still has a custom_card count."""
+    path = tmp_path / "stats.json"
+    path.write_text('{"counts": {"predict": 7, "custom_card": 99}, "started_at": 1.0}')
+
+    s = UsageStats(str(path))
+    assert s.snapshot()["queries_total"] == 7
+    assert s.snapshot()["by_kind"] == {"predict": 7, "smiles_search": 0}
 
 
 def test_nothing_about_the_caller_is_reported():

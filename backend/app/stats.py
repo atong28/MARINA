@@ -19,7 +19,11 @@ from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-_QUERY_KINDS = ("predict", "smiles_search", "custom_card")
+# Only the two retrieval queries count. Scoring a custom SMILES card is a
+# follow-up on results already returned, not a query of its own. A "custom_card"
+# key left in an older stats.json is dropped on load, since _load keeps only
+# known kinds.
+_QUERY_KINDS = ("predict", "smiles_search")
 
 
 class UsageStats:

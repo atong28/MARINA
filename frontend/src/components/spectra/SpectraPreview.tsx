@@ -473,7 +473,7 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
           />
           <g clipPath={`url(#${clipId})`}>
             {placed.map(({ px, py, p }, idx) => (
-              <circle key={idx} cx={px} cy={py} r={4} fill={p.i < 0 ? SERIES_BLUE : SERIES_RED} />
+              <circle key={idx} cx={px} cy={py} r={3} fill={p.i < 0 ? SERIES_BLUE : SERIES_RED} />
             ))}
           </g>
           <rect

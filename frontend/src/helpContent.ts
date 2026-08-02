@@ -23,12 +23,6 @@ export const HELP = {
       '• Ready — a model is loaded and predictions can be submitted immediately.\n' +
       '• Loading — the server is reachable but still loading the model.\n' +
       '• Offline — the backend is not responding; check that the containers are running.',
-
-    usage:
-      'Total queries served since counting began — predictions, SMILES searches ' +
-      'and custom cards.\n\n' +
-      'This is the only usage figure kept. Nothing identifying the sender is ' +
-      'counted or stored: no addresses, no hashes, no visitor count.',
   },
 
   // ── Mode tabs ────────────────────────────────────────────────────────────────

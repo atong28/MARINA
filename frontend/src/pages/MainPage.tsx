@@ -210,7 +210,6 @@ function MainPage() {
             <StatusIndicator health={health} />
             <HelpButton content={HELP.controls.status} placement="bottom" />
             <UsageCounter />
-            <HelpButton content={HELP.controls.usage} placement="bottom" />
           </div>
           {SHOW_API_DOCS && (
             <a className="main-page__api-link" href="/docs" target="_blank" rel="noopener noreferrer">
