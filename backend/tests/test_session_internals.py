@@ -7,6 +7,7 @@ the shipped version is a vectorised gather — the readable loop it replaced cos
 seconds on a database-sized rankingset.
 """
 import logging
+import os
 
 import pytest
 import torch
@@ -91,6 +92,80 @@ def test_normalisation_check_tolerates_an_empty_store(caplog):
 # ── MW filtering and the bounded cache ────────────────────────────────────────
 
 pytestmark_marina = pytest.mark.usefixtures("marina_src")
+
+
+@pytest.mark.slow
+def test_masses_are_derived_when_metadata_has_no_mw_field(spectre_session):
+    """
+    The regression this suite missed: generate_metadata.py writes no "mw" key,
+    so an index built only from that field was empty and every filtered query
+    silently matched the whole database.
+    """
+    sess = spectre_session
+    sess._ensure_mw_index()
+
+    assert len(sess._mw_by_idx) == sess._num_rows
+    # Monoisotopic, matching the "Exact mass" on result cards: ethanol 46.0419,
+    # not the 46.07 average mass.
+    ethanol = next(i for i in range(sess._num_rows) if sess.get_smiles(i) == "CCO")
+    assert sess._mw_by_idx[ethanol] == pytest.approx(46.0419, abs=1e-3)
+
+
+@pytest.mark.slow
+def test_an_unfiltered_query_does_not_build_the_mass_index(spectre_session):
+    """
+    Deriving masses is minutes of RDKit on a full database. It belongs behind a
+    MW filter, not in front of every first query — loading the rankingset must
+    not drag it in.
+    """
+    sess = spectre_session
+    sess._mw_sorted = None
+    sess._mw_by_idx = None
+
+    sess.get_rankingset()
+    sess.indices_in_mw_range(None, None)
+    assert sess._mw_sorted is None, "mass index built for an unfiltered query"
+
+    sess.indices_in_mw_range(1.0, 50.0)
+    assert sess._mw_sorted is not None, "mass index not built for a filtered query"
+
+
+@pytest.mark.slow
+def test_mw_filter_actually_narrows_the_index(spectre_session):
+    """End to end over real fixture structures, not hand-set internals."""
+    sess = spectre_session
+    kept = sess.indices_in_mw_range(1.0, 50.0)
+    assert [sess.get_smiles(i) for i in kept] == ["CCO"]
+
+
+@pytest.mark.slow
+def test_a_filter_with_no_masses_is_refused_not_ignored(spectre_session):
+    from app.session import MWDataUnavailable
+
+    sess = spectre_session
+    sess._ensure_mw_index()
+    sess._mw_by_idx = {}
+    sess._mw_sorted = []
+    sess._mw_values = []
+    sess._no_mw = list(range(sess._num_rows))
+
+    with pytest.raises(MWDataUnavailable):
+        sess.indices_in_mw_range(600.0, 620.0)
+
+
+@pytest.mark.slow
+def test_mass_index_is_cached_to_disk_and_reused(spectre_session, tmp_path):
+    import json as _json
+    from app.session import MW_INDEX_FILENAME
+
+    sess = spectre_session
+    sess._ensure_mw_index()
+    cache = os.path.join(sess.model_root, MW_INDEX_FILENAME)
+    assert os.path.exists(cache), "first build should persist the index"
+
+    masses = _json.loads(open(cache).read())
+    assert len(masses) == sess._num_rows
+    assert all(isinstance(m, float) for m in masses)
 
 
 @pytest.mark.slow

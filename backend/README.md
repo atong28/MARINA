@@ -287,7 +287,7 @@ curl -s -X POST http://localhost:5000/api/predict \
 | `raw.mw` | `float` | Molecular weight (Da) |
 | `k` | `int` | Number of results (1–50, default 10) |
 | `model_id` | `string?` | Override the default model |
-| `mw_min` / `mw_max` | `float?` | Filter retrieval set by molecular weight |
+| `mw_min` / `mw_max` | `float?` | Filter retrieval set by monoisotopic mass (same value shown as "Exact mass" on a result card) |
 
 **Response:** `results[]` array of `ResultCard` objects, each containing `smiles`,
 `cosine_similarity`, `tanimoto_similarity`, `svg`, `plain_svg`, `name`,

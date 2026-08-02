@@ -81,8 +81,6 @@ def build_model_dir(root: Path, model_type: str, *, normalize: bool = True,
     rendering — only the file layout and tensor shapes have to be right.
     """
     import torch
-    from rdkit import Chem
-    from rdkit.Chem import Descriptors
 
     from src.modules.data.fp_utils import get_bitinfos
 
@@ -110,11 +108,11 @@ def build_model_dir(root: Path, model_type: str, *, normalize: bool = True,
     with open(root / "retrieval.pkl", "wb") as fh:
         pickle.dump([{"smiles": s} for s in FIXTURE_SMILES], fh)
 
+    # No "mw" key, matching what scripts/dataset/generate_metadata.py actually
+    # writes. A fixture that supplied one hid the fact that the MW filter had
+    # no masses to work with in production.
     (root / "metadata.json").write_text(json.dumps({
-        str(i): {
-            "canonical_2d_smiles": smi,
-            "mw": Descriptors.MolWt(Chem.MolFromSmiles(smi)),
-        }
+        str(i): {"canonical_2d_smiles": smi}
         for i, smi in enumerate(FIXTURE_SMILES)
     }))
 

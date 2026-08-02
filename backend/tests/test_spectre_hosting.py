@@ -80,10 +80,29 @@ def test_every_modality_subset_predicts(registered_spectre, name, subset):
 
 
 def test_mw_filter_narrows_the_result_set(registered_spectre):
+    """
+    Only ethanol (46.04 Da) of the five fixture structures is under 50 Da, so a
+    working filter returns exactly one candidate for k=5. The old assertion was
+    len(narrow) <= len(wide), which also passed while the filter was a no-op.
+    """
     wide, _, _ = predict_from_raw(RAW, k=5, model_id="spectre_synth")
     narrow, idxs, _ = predict_from_raw(
         RAW, k=5, model_id="spectre_synth", mw_min=1.0, mw_max=50.0)
-    assert len(narrow) <= len(wide)
+
+    assert len(wide) == 5
+    assert len(narrow) == 1
+    assert registered_spectre.get_smiles(idxs[0]) == "CCO"
+
+
+def test_mw_filter_matching_nothing_returns_no_results(registered_spectre):
+    """
+    Only reachable now that the filter works: an over-narrow range leaves an
+    empty candidate set, which must come back empty rather than crash.
+    """
+    scores, idxs, _ = predict_from_raw(
+        RAW, k=5, model_id="spectre_synth", mw_min=10_000.0, mw_max=10_001.0)
+    assert len(scores) == 0
+    assert len(idxs) == 0
 
 
 def test_result_cards_build_for_a_spectre_prediction(registered_spectre):

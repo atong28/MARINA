@@ -18,6 +18,7 @@ import bisect
 import json
 import logging
 import os
+import tempfile
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -31,9 +32,18 @@ logger = logging.getLogger(__name__)
 # copy of the rankingset, and the key is user-supplied, so this must stay small.
 MAX_FILTERED_CACHE = 4
 
+# Per-model cache of monoisotopic masses, one entry per rankingset row (null
+# where the structure could not be parsed). Written on first use; precomputable
+# with scripts/website/build_mw_index.py.
+MW_INDEX_FILENAME = "mw_index.json"
+
 # Morgan radius the entropy fingerprints are built at. Matches the project-wide
 # default in src/modules/data/fp_loader.make_fp_loader.
 MAX_RADIUS = 6
+
+
+class MWDataUnavailable(RuntimeError):
+    """Raised when a MW filter is requested but no masses could be derived."""
 
 
 # ── Lazy imports from MARINA src ─────────────────────────────────────────────
@@ -90,8 +100,34 @@ def _load_checkpoint(path: str) -> Dict[str, Any]:
 
 
 def _mw_from_entry(entry: Optional[Dict[str, Any]]) -> Optional[float]:
+    """
+    Monoisotopic mass for one retrieval entry.
+
+    Computed from the structure, because the metadata generator does not write
+    an `mw` field at all — reading only that field left the MW index empty and
+    the retrieval filter silently matching everything. The field is still
+    honoured as a fallback for model directories that do carry one.
+
+    Monoisotopic (not average) mass, to agree with the "Exact mass" shown on
+    result cards: a user filtering to the mass they read off a card must get
+    that card back.
+    """
     if not entry:
         return None
+
+    smiles = entry.get("canonical_3d_smiles")
+    if not smiles or smiles == "N/A":
+        smiles = entry.get("canonical_2d_smiles") or entry.get("smiles")
+    if smiles:
+        try:
+            from rdkit import Chem
+            from rdkit.Chem import Descriptors
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is not None:
+                return float(Descriptors.ExactMolWt(mol))
+        except Exception:
+            pass
+
     mw = entry.get("mw")
     if isinstance(mw, (int, float)):
         try:
@@ -374,20 +410,86 @@ class ModelSession:
 
     # ── MW index & filtering ─────────────────────────────────────────────────
 
-    def _ensure_mw_index(self) -> None:
+    def _load_mw_cache(self, n: int) -> Optional[List[Optional[float]]]:
+        """Reads the precomputed mass sidecar, or None if it is absent or stale."""
+        path = os.path.join(self.model_root, MW_INDEX_FILENAME)
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path) as fh:
+                masses = json.load(fh)
+            if not isinstance(masses, list) or len(masses) != n:
+                logger.warning(
+                    "%s holds %s entries but the rankingset has %d rows — rebuilding.",
+                    path, len(masses) if isinstance(masses, list) else "?", n,
+                )
+                return None
+            logger.info("Loaded %d masses from %s", n, path)
+            return masses
+        except Exception as exc:
+            logger.warning("Could not read %s: %s — rebuilding.", path, exc)
+            return None
+
+    def _save_mw_cache(self, masses: List[Optional[float]]) -> None:
+        """Best-effort persist. A read-only model mount is a normal deployment."""
+        path = os.path.join(self.model_root, MW_INDEX_FILENAME)
+        try:
+            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".")
+            with os.fdopen(fd, "w") as fh:
+                json.dump(masses, fh)
+            os.replace(tmp, path)
+            logger.info("Wrote mass index to %s", path)
+        except Exception as exc:
+            logger.warning(
+                "Could not cache the mass index to %s: %s — it will be recomputed "
+                "on the next start.", path, exc,
+            )
+
+    def _ensure_store(self) -> None:
+        """Loads the rankingset. On the path of every query, so it stays cheap."""
         with self._lock:
-            if self._mw_sorted is not None:
+            if self._rankingset_store is not None:
                 return
             store = self.fp_loader.load_rankingset(self.fp_type)
             _warn_if_not_normalized(store, self.fp_type, self.model_root)
             self._rankingset_store = store
-            n = store.shape[0]
-            self._num_rows = n
-            mw_by_idx: Dict[int, float] = {}
-            for i in range(n):
-                mw = _mw_from_entry(self._metadata.get(str(i)))
-                if mw is not None:
-                    mw_by_idx[i] = mw
+            self._num_rows = store.shape[0]
+
+    def _ensure_mw_index(self) -> None:
+        """
+        Builds the mass index, separately from loading the store: deriving
+        masses is minutes of RDKit against a cold cache, and only MW-filtered
+        queries need them. Doing both in one step would put that cost in front
+        of every first query, filtered or not.
+        """
+        self._ensure_store()
+        with self._lock:
+            if self._mw_sorted is not None:
+                return
+            n = self._num_rows
+            assert n is not None
+
+            masses = self._load_mw_cache(n)
+            if masses is None:
+                # RDKit parses roughly 2k structures/s, so a full database is
+                # minutes. Precompute with scripts/website/build_mw_index.py to
+                # keep this off the first filtered request.
+                logger.warning(
+                    "No %s in %s — deriving %d masses from structures. This takes "
+                    "a few minutes and is cached for subsequent starts.",
+                    MW_INDEX_FILENAME, self.model_root, n,
+                )
+                masses = [_mw_from_entry(self._metadata.get(str(i))) for i in range(n)]
+                self._save_mw_cache(masses)
+
+            mw_by_idx: Dict[int, float] = {
+                i: float(m) for i, m in enumerate(masses) if isinstance(m, (int, float))
+            }
+            if not mw_by_idx:
+                logger.error(
+                    "No molecular masses could be derived for %s — MW filtering "
+                    "will be rejected rather than silently ignored.", self.model_root,
+                )
             self._mw_by_idx = mw_by_idx
             self._mw_sorted = sorted((mw, idx) for idx, mw in mw_by_idx.items())
             # Precomputed once: indices_in_mw_range runs per request and would
@@ -401,7 +503,7 @@ class ModelSession:
         mw_max: Optional[float],
     ) -> List[int]:
         """Return all retrieval indices whose MW is within [mw_min, mw_max]."""
-        self._ensure_mw_index()
+        self._ensure_store()
         assert self._num_rows is not None
 
         if mw_min is None and mw_max is None:
@@ -409,10 +511,17 @@ class ModelSession:
                 self._all_indices = list(range(self._num_rows))
             return self._all_indices
 
+        self._ensure_mw_index()
         assert self._mw_sorted is not None and self._mw_values is not None
         assert self._no_mw is not None
         if not self._mw_sorted:
-            return list(range(self._num_rows))
+            # Returning everything here is how the filter came to be silently
+            # ignored: the caller asked to narrow the search and got the whole
+            # database back, with nothing to say so.
+            raise MWDataUnavailable(
+                f"No molecular masses are available for the model at {self.model_root!r}, "
+                "so the MW filter cannot be applied."
+            )
 
         lo = bisect.bisect_left(self._mw_values, mw_min)  if mw_min is not None else 0
         hi = bisect.bisect_right(self._mw_values, mw_max) if mw_max is not None else len(self._mw_values)
@@ -425,8 +534,7 @@ class ModelSession:
 
     def get_rankingset(self) -> RankingSet:
         """Lazily load the full retrieval rankingset."""
-        if self._rankingset_store is None:
-            self._ensure_mw_index()
+        self._ensure_store()
         if self._rankingset_wrapper is None:
             assert self._rankingset_store is not None
             self._rankingset_wrapper = RankingSet(store=self._rankingset_store, metric="cosine")

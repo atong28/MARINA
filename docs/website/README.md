@@ -93,6 +93,7 @@ checkpoints/
     ├── best.ckpt
     ├── retrieval.pkl
     ├── metadata.json
+    ├── mw_index.json        (optional; see below)
     └── RankingEntropy/
         ├── rankingset.pt
         └── bitinfo_to_idx.pkl
@@ -102,6 +103,22 @@ checkpoints/
 not exist is skipped with a warning at startup rather than crashing the backend,
 so check `docker compose logs backend` for `models.json:` warnings if a model
 you expect is missing from the selector.
+
+### Molecular-weight index
+
+The retrieval MW filter needs a monoisotopic mass per database entry.
+`metadata.json` does not carry one, so the backend derives them from the
+structures with RDKit and caches the result as `mw_index.json`. That pass runs
+at roughly 2k structures/s — minutes for a full database — and happens on the
+first MW-filtered request unless it is precomputed:
+
+```bash
+python scripts/website/build_mw_index.py checkpoints/marina_best
+```
+
+Precompute it whenever a model directory is first deployed. If the mount is
+read-only the index is rebuilt on every start, which is correct but slow; run
+the script and ship the file instead.
 
 Hosting more than one model, or a SPECTRE checkpoint, is documented in
 [`backend/README.md`](../../backend/README.md#data-layout).

@@ -82,12 +82,14 @@ export const HELP = {
       'to improve the fingerprint — it does not filter results. Leave blank if unknown.',
 
     mwFilter:
-      'Restricts retrieved results to compounds whose recorded mass falls within ' +
-      'this range. Both bounds are optional — leave either blank for no bound on ' +
-      'that side. This filter is applied after neural network retrieval and does ' +
-      'not affect the fingerprint itself.\n\n' +
-      'Compounds with no mass recorded in the database are kept rather than ' +
-      'filtered out, so a sparsely-annotated entry cannot be hidden by the filter.',
+      'Restricts retrieved results to compounds whose monoisotopic mass falls ' +
+      'within this range — the same value shown as "Exact mass" on each result ' +
+      'card, so filtering to a mass you read off a card returns that card. Both ' +
+      'bounds are optional — leave either blank for no bound on that side. This ' +
+      'filter is applied after neural network retrieval and does not affect the ' +
+      'fingerprint itself.\n\n' +
+      'The few compounds whose structure cannot be parsed carry no mass and are ' +
+      'kept rather than filtered out, so an unparseable entry cannot be hidden.',
 
     resultsCount:
       'How many top-ranked compounds to retrieve from the database (1–50). ' +
