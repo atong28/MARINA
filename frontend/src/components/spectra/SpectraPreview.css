@@ -63,6 +63,20 @@
   color: #898781;
 }
 
+.spectra__reset {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 11px;
+  color: #444;
+}
+
+.spectra__reset:hover {
+  background: #f0f0f0;
+}
+
 .spectra__legend {
   display: flex;
   flex-wrap: wrap;
@@ -94,6 +108,17 @@
   width: 100%;
   height: auto;
   overflow: visible;
+}
+
+/* Transparent overlay that takes the drag, zoom and hover events. */
+.spectra__surface {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.spectra__surface--dragging {
+  cursor: grabbing;
 }
 
 .spectra__tick {

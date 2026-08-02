@@ -46,7 +46,6 @@ export interface QueueSnapshot {
 export interface UsageStatsResponse {
   queries_total: number
   by_kind: Record<string, number>
-  unique_clients: number
   counting_since: number
 }
 

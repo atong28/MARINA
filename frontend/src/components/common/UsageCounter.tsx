@@ -1,7 +1,7 @@
 /**
- * Cumulative queries served and distinct visitors, from GET /api/stats.
- * Renders nothing until the first successful fetch, so a backend without the
- * endpoint simply shows no counter rather than an error.
+ * Cumulative queries served, from GET /api/stats. Nothing about who sent them
+ * is counted or stored. Renders nothing until the first successful fetch, so a
+ * backend without the endpoint simply shows no counter rather than an error.
  */
 import { useUsageStats } from '../../services/api'
 import './UsageCounter.css'
@@ -31,10 +31,6 @@ function UsageCounter() {
     <div className="usage-counter" title={since ? `Counting since ${since}` : undefined}>
       <span className="usage-counter__item">
         <strong>{formatCount(data.queries_total)}</strong> queries
-      </span>
-      <span className="usage-counter__sep">·</span>
-      <span className="usage-counter__item">
-        <strong>{formatCount(data.unique_clients)}</strong> visitors
       </span>
       {since && <span className="usage-counter__since">since {since}</span>}
     </div>

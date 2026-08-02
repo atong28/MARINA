@@ -1,12 +1,14 @@
 /**
- * Scale and tick maths for the spectra preview.
+ * Scale, tick and view maths for the spectra preview.
  *
- * The axis directions are the point of these tests: NMR chemical-shift axes
- * must run high → low ppm, and MS must run low → high m/z. Getting either
- * backwards produces a plot that looks plausible and is wrong.
+ * The axis directions are the point of these tests: f2 (¹H) must run high → low
+ * left→right, f1 (¹³C) low → high top→bottom, and MS low → high m/z. Getting
+ * any of them backwards produces a plot that looks plausible and is wrong.
  */
 import { describe, it, expect } from 'vitest'
-import { linear, padDomain, niceTicks, fmtShift, fmtIntensity } from './SpectraPreview'
+import {
+  linear, padDomain, originDomain, niceTicks, fmtShift, fmtIntensity, zoomAxis, viewEquals,
+} from './SpectraPreview'
 
 describe('linear', () => {
   it('maps the domain onto the range', () => {
@@ -54,6 +56,31 @@ describe('padDomain', () => {
     const [lo, hi] = padDomain(0, 0)
     expect(hi).toBeGreaterThan(lo)
     expect(Number.isFinite(lo) && Number.isFinite(hi)).toBe(true)
+  })
+})
+
+describe('originDomain', () => {
+  it('reaches 0 exactly for an all-positive spectrum', () => {
+    const [lo, hi] = originDomain(2.1, 7.3)
+    expect(lo).toBe(0)
+    expect(hi).toBeGreaterThan(7.3)
+  })
+
+  it('keeps a negative shift visible', () => {
+    const [lo, hi] = originDomain(-0.4, 7.3)
+    expect(lo).toBeLessThan(-0.4)
+    expect(hi).toBeGreaterThan(7.3)
+  })
+
+  it('contains the origin for a carbon range', () => {
+    const [lo, hi] = originDomain(22.8, 172.4)
+    expect(lo).toBe(0)
+    expect(hi).toBeGreaterThan(172.4)
+  })
+
+  it('gives an all-zero spectrum a usable width', () => {
+    const [lo, hi] = originDomain(0, 0)
+    expect(hi).toBeGreaterThan(lo)
   })
 })
 
@@ -126,22 +153,68 @@ describe('formatters', () => {
   })
 })
 
-describe('ppm axis direction', () => {
-  it('places a high shift left of a low one', () => {
-    const [lo, hi] = padDomain(1.0, 8.0)
-    const x = linear(hi, lo, 0, 500)
+describe('HSQC axis direction', () => {
+  // The plot builds its opening window as
+  //   { xLeft: hHi, xRight: hLo, yTop: cLo, yBottom: cHi }
+  // from originDomain, which is what these reproduce.
+  const [hLo, hHi] = originDomain(1.0, 8.0)
+  const [cLo, cHi] = originDomain(20, 180)
+  const x = linear(hHi, hLo, 0, 500)
+  const y = linear(cLo, cHi, 0, 400) // y grows downward in SVG
+
+  it('places a high proton shift left of a low one', () => {
     expect(x(8.0)).toBeLessThan(x(1.0))
   })
 
-  it('places a high carbon shift above a low one', () => {
-    const [lo, hi] = padDomain(20, 180)
-    const y = linear(hi, lo, 0, 400)     // y grows downward in SVG
-    expect(y(180)).toBeLessThan(y(20))
+  it('places a high carbon shift below a low one', () => {
+    expect(y(180)).toBeGreaterThan(y(20))
   })
 
+  it('puts the origin in the top-right corner', () => {
+    expect(x(0)).toBeCloseTo(500, 6) // right edge
+    expect(y(0)).toBeCloseTo(0, 6) // top edge
+  })
+})
+
+describe('m/z axis direction', () => {
   it('places a high m/z right of a low one', () => {
     const [lo, hi] = padDomain(100, 600)
     const x = linear(lo, hi, 0, 500)
     expect(x(600)).toBeGreaterThan(x(100))
+  })
+})
+
+describe('zoomAxis', () => {
+  it('holds the cursor position fixed while shrinking the span', () => {
+    const [lo, hi] = zoomAxis(0, 10, 4, 0.5, 10)
+    expect(hi - lo).toBeCloseTo(5, 6)
+    // 4 sits 40% along before and after.
+    expect((4 - lo) / (hi - lo)).toBeCloseTo(0.4, 6)
+  })
+
+  it('works on a reversed axis', () => {
+    const [left, right] = zoomAxis(8, 0, 2, 0.5, -8)
+    expect(left).toBeGreaterThan(right) // still reversed
+    expect(Math.abs(right - left)).toBeCloseTo(4, 6)
+  })
+
+  it('refuses to zoom in past the limit', () => {
+    expect(zoomAxis(0, 10, 5, 1e-6, 10)).toEqual([0, 10])
+  })
+
+  it('refuses to zoom out past the limit', () => {
+    expect(zoomAxis(0, 10, 5, 1e6, 10)).toEqual([0, 10])
+  })
+})
+
+describe('viewEquals', () => {
+  const v = { xLeft: 8, xRight: 0, yTop: 0, yBottom: 180 }
+
+  it('matches an identical window', () => {
+    expect(viewEquals(v, { ...v })).toBe(true)
+  })
+
+  it('detects a panned window', () => {
+    expect(viewEquals(v, { ...v, xLeft: 7.5 })).toBe(false)
   })
 })

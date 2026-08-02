@@ -1,17 +1,21 @@
 /**
  * Unified spreadsheet for all spectral input types.
  *
- * Columns: HSQC H | HSQC C | HSQC Int | H NMR | C NMR | MS m/z | MS Int
+ * Columns are grouped by modality — HSQC (3) | ¹H | ¹³C | MS (2) — with a
+ * gutter between groups so the modalities read as separate blocks while
+ * staying one grid, which keeps the column indices below simple.
  *
  * The component owns its display state; it notifies the parent of changes
- * via the four onXxxChange callbacks, emitting fixed-length arrays that use
- * NaN to represent empty cells so positions are preserved.
+ * via onSpectraChange, emitting fixed-length arrays that use NaN to represent
+ * empty cells so positions are preserved.
  */
 import { useMemo, useCallback, useRef, useState, useEffect } from 'react'
 import { HotTable, type HotTableRef } from '@handsontable/react-wrapper'
 import { registerAllModules } from 'handsontable/registry'
 import 'handsontable/styles/handsontable.min.css'
 import 'handsontable/styles/ht-theme-main.min.css'
+import Toast, { type ToastMessage } from '../common/Toast'
+import { parseMnovaTable, peakCount, KIND_LABELS, MnovaParseError, type MnovaPaste } from '../../services/mnovaPaste'
 import './SpreadsheetTable.css'
 
 registerAllModules()
@@ -46,15 +50,42 @@ interface SpreadsheetTableProps {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_ROWS = 400
+
+const COL_HSQC_H = 0
+const COL_HSQC_C = 1
+const COL_HSQC_I = 2
+const COL_H_NMR = 3
+const COL_C_NMR = 4
+
 const COL_HEADERS = [
-  'HSQC H (ppm)',
-  'HSQC C (ppm)',
-  'HSQC Intensity',
-  'H NMR (ppm)',
-  'C NMR (ppm)',
-  'MS m/z',
-  'MS Intensity',
+  'f2 — ¹H (ppm)',
+  'f1 — ¹³C (ppm)',
+  'Intensity',
+  'δ (ppm)',
+  'δ (ppm)',
+  'm/z',
+  'Intensity',
 ]
+
+const GROUP_HEADERS = [
+  { label: 'HSQC', colspan: 3 },
+  { label: '¹H NMR', colspan: 1 },
+  { label: '¹³C NMR', colspan: 1 },
+  { label: 'Mass spec', colspan: 2 },
+]
+
+/** First column of each modality after the first — these carry the gutter. */
+const GROUP_STARTS = new Set([COL_H_NMR, COL_C_NMR, 5])
+
+// Height follows the data: enough rows to see everything entered, capped so a
+// long peak list does not push the rest of the page off screen.
+const MIN_VISIBLE_ROWS = 10
+const MAX_VISIBLE_ROWS = 30
+// Measured against ht-theme-main; 2px of slack keeps the last row clear of a
+// scrollbar if a theme update shifts these by a pixel.
+const ROW_HEIGHT = 29
+const HEADER_HEIGHT = 30
+const HEIGHT_SLACK = 2
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,6 +119,19 @@ export function gridEquals(a: Cell[][], b: Cell[][]): boolean {
   return true
 }
 
+/** Index of the last row holding any value, or -1 when the grid is empty. */
+export function lastFilledRow(grid: Cell[][]): number {
+  for (let r = grid.length - 1; r >= 0; r--) {
+    if (grid[r].some((v) => v !== '' && v !== null && v !== undefined)) return r
+  }
+  return -1
+}
+
+/** Rows to show: the data plus one spare, floored and capped. */
+export function visibleRowCount(lastRow: number): number {
+  return Math.min(MAX_VISIBLE_ROWS, Math.max(MIN_VISIBLE_ROWS, lastRow + 2))
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function SpreadsheetTable({
@@ -98,6 +142,8 @@ function SpreadsheetTable({
   const hotRef = useRef<HotTableRef>(null)
   const isInternalRef = useRef(false)
   const lastSyncRef = useRef<Cell[][] | null>(null)
+  const toastSeq = useRef(0)
+  const [toast, setToast] = useState<ToastMessage | null>(null)
   const [validation, setValidation] = useState<Omit<ValidationSummary, 'anyInvalid'>>({
     hsqcInvalid: 0, hInvalid: 0, cInvalid: 0, msInvalid: 0,
   })
@@ -126,14 +172,18 @@ function SpreadsheetTable({
       editor: 'numeric' as const,
       width: 130,
       allowEmpty: true,
+      className: GROUP_STARTS.has(i) ? 'ht-modality-start' : undefined,
     })),
   [])
 
-  const colWidth = useMemo(
-    () => columnDefs.reduce((s, c) => s + (c.width || 130), 0) + 50,
-    [columnDefs],
-  )
-  const tableHeight = 30 + 10 * 24 // header + 10 visible rows
+  const tableHeight =
+    HEADER_HEIGHT * 2 + visibleRowCount(lastFilledRow(tableData)) * ROW_HEIGHT + HEIGHT_SLACK
+
+  const showToast = useCallback((text: string, tone: ToastMessage['tone']) => {
+    setToast({ id: ++toastSeq.current, text, tone })
+  }, [])
+
+  const dismissToast = useCallback(() => setToast(null), [])
 
   // Parse grid data into flat arrays, validate, and emit to parent.
   const extractAndEmit = useCallback((grid: Cell[][]) => {
@@ -202,10 +252,26 @@ function SpreadsheetTable({
     }
   }, [tableData])
 
+  /** Writes a grid back to Handsontable and the store in one internal update. */
+  const commitGrid = useCallback((data: Cell[][]) => {
+    const hot = hotRef.current?.hotInstance
+    if (!hot) return
+    isInternalRef.current = true
+    extractAndEmit(data)
+    hot.loadData(data)
+    lastSyncRef.current = data.map((r) => [...r])
+    setTimeout(() => { isInternalRef.current = false }, 0)
+  }, [extractAndEmit])
+
+  const readGrid = useCallback((): Cell[][] | null => {
+    const hot = hotRef.current?.hotInstance
+    if (!hot) return null
+    return (hot.getData() as Cell[][]).map((r) => r.map((v) => v ?? '') as Cell[])
+  }, [])
+
   const handleCondense = useCallback(() => {
-    if (!hotRef.current?.hotInstance) return
-    const hot = hotRef.current.hotInstance
-    const data = (hot.getData() as Cell[][]).map((r) => r.map((v) => v ?? '') as Cell[])
+    const data = readGrid()
+    if (!data) return
 
     const condense = (cols: number[]) => {
       let write = 0
@@ -225,17 +291,69 @@ function SpreadsheetTable({
     condense([4])
     condense([5, 6])
 
-    isInternalRef.current = true
-    extractAndEmit(data)
-    hot.loadData(data)
-    lastSyncRef.current = data.map((r) => [...r])
-    setTimeout(() => { isInternalRef.current = false }, 0)
-  }, [extractAndEmit])
+    commitGrid(data)
+  }, [readGrid, commitGrid])
+
+  /**
+   * Replaces the columns of one modality with a parsed Mnova table.
+   * Returns how many peaks were written (the table may overflow MAX_ROWS).
+   */
+  const applyMnovaPaste = useCallback((parsed: MnovaPaste): number => {
+    const data = readGrid()
+    if (!data) return 0
+
+    const cols = parsed.kind === 'hsqc'
+      ? [COL_HSQC_H, COL_HSQC_C, COL_HSQC_I]
+      : [parsed.kind === 'h_nmr' ? COL_H_NMR : COL_C_NMR]
+    data.forEach((row) => cols.forEach((c) => { row[c] = '' }))
+
+    const written = Math.min(peakCount(parsed), MAX_ROWS)
+    for (let i = 0; i < written; i++) {
+      if (parsed.kind === 'hsqc') {
+        const p = parsed.peaks[i]
+        data[i][COL_HSQC_H] = p.f2
+        data[i][COL_HSQC_C] = p.f1
+        data[i][COL_HSQC_I] = p.intensity
+      } else {
+        data[i][cols[0]] = parsed.shifts[i]
+      }
+    }
+
+    commitGrid(data)
+    return written
+  }, [readGrid, commitGrid])
+
+  const handleMnovaPaste = useCallback(async () => {
+    let text: string
+    try {
+      text = await navigator.clipboard.readText()
+    } catch {
+      showToast(
+        'Could not read the clipboard. Allow clipboard access for this site, then try again.',
+        'error',
+      )
+      return
+    }
+
+    let parsed: MnovaPaste
+    try {
+      parsed = parseMnovaTable(text)
+    } catch (err) {
+      showToast(err instanceof MnovaParseError ? err.message : String(err), 'error')
+      return
+    }
+
+    const total = peakCount(parsed)
+    const written = applyMnovaPaste(parsed)
+    const overflow = total > written ? ` (first ${written} of ${total} — the sheet holds ${MAX_ROWS} rows)` : ''
+    showToast(`Pasted ${KIND_LABELS[parsed.kind]} — ${written} peaks${overflow}`, 'info')
+  }, [applyMnovaPaste, showToast])
 
   const anyInvalid = (validation.hsqcInvalid + validation.hInvalid + validation.cInvalid + validation.msInvalid) > 0
 
   return (
     <div className="spreadsheet-table">
+      <Toast message={toast} onDismiss={dismissToast} />
       <div className="spreadsheet-table__toolbar">
         {anyInvalid ? (
           <span className="spreadsheet-table__validation-error">
@@ -244,19 +362,29 @@ function SpreadsheetTable({
         ) : (
           <span className="spreadsheet-table__validation-ok">No validation errors</span>
         )}
-        <button className="spreadsheet-table__condense-btn" onClick={handleCondense}>
-          Condense rows
-        </button>
+        <div className="spreadsheet-table__actions">
+          <button className="spreadsheet-table__btn" onClick={handleMnovaPaste}>
+            Paste NMR Table from MestreNova
+          </button>
+          <button className="spreadsheet-table__btn" onClick={handleCondense}>
+            Condense rows
+          </button>
+        </div>
       </div>
       <HotTable
         ref={hotRef}
         data={tableData}
         columns={columnDefs}
         colHeaders={COL_HEADERS}
+        nestedHeaders={[GROUP_HEADERS, COL_HEADERS]}
         rowHeaders
         height={tableHeight}
-        width={colWidth}
+        width="100%"
+        stretchH="all"
         afterChange={handleAfterChange}
+        afterGetColHeader={(col: number, TH: HTMLTableCellElement) => {
+          if (GROUP_STARTS.has(col)) TH.classList.add('ht-modality-start')
+        }}
         licenseKey="non-commercial-and-evaluation"
         themeName="ht-theme-main"
         copyPaste={{ pasteMode: 'overwrite' } as never}

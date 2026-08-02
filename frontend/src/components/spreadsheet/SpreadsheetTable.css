@@ -20,15 +20,28 @@
   color: #16a34a;
 }
 
-.spreadsheet-table__condense-btn {
+.spreadsheet-table__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.spreadsheet-table__btn {
   padding: 4px 10px;
   border: 1px solid #d0d0d0;
   border-radius: 5px;
   background: #fff;
   font-size: 12px;
   color: #444;
+  white-space: nowrap;
 }
 
-.spreadsheet-table__condense-btn:hover {
+.spreadsheet-table__btn:hover {
   background: #f0f0f0;
+}
+
+/* Gutter between modality groups: a wide border in the page colour reads as a
+   channel cut through the sheet, without spacer columns that would shift every
+   column index. */
+.spreadsheet-table .ht-modality-start {
+  border-left: 12px solid #f5f6f8;
 }

@@ -11,7 +11,7 @@ import asyncio
 import logging
 
 import torch
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.schemas import CustomSmilesCardRequest, CustomSmilesCardResponse, ResultCard
 from app.similarity import cosine as _cosine, tanimoto as _tanimoto
@@ -26,7 +26,7 @@ router = APIRouter()
     response_model=CustomSmilesCardResponse,
     status_code=status.HTTP_200_OK,
 )
-async def custom_smiles_card(request: Request, body: CustomSmilesCardRequest):
+async def custom_smiles_card(body: CustomSmilesCardRequest):
     """
     Score an arbitrary SMILES against a reference fingerprint and return a ResultCard.
 
@@ -122,5 +122,5 @@ async def custom_smiles_card(request: Request, body: CustomSmilesCardRequest):
         exact_mass=exact_mass,
     )
 
-    record_query("custom_card", request)
+    record_query("custom_card")
     return CustomSmilesCardResponse(result=card)

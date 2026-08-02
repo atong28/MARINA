@@ -4,7 +4,7 @@ POST /api/smiles-search – nearest-neighbour retrieval from a SMILES query.
 import logging
 
 import torch
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.schemas import SmilesSearchRequest, SmilesSearchResponse, ResultCard
 from app.stats import record_query
@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.post("/smiles-search", response_model=SmilesSearchResponse, status_code=status.HTTP_200_OK)
-async def smiles_search(request: Request, body: SmilesSearchRequest):
+async def smiles_search(body: SmilesSearchRequest):
     """
     Compute the MARINA fingerprint for a SMILES string and retrieve similar molecules.
     Runs in the main process (no model forward pass needed).
@@ -66,7 +66,7 @@ async def smiles_search(request: Request, body: SmilesSearchRequest):
             img_size=MOLECULE_IMG_SIZE, max_cards=k,
         )
 
-        record_query("smiles_search", request)
+        record_query("smiles_search")
 
         result_cards = [ResultCard(**c) for c in cards]
         return SmilesSearchResponse(

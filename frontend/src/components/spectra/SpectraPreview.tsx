@@ -6,19 +6,26 @@
  * that are actually present.
  *
  * Axis conventions follow standard spectroscopic practice:
- *   • NMR chemical-shift axes always run high → low ppm (left→right, and
- *     top→bottom for the HSQC carbon axis), so HSQC has its origin bottom-right.
+ *   • HSQC — f2 (¹H) descends left→right, f1 (¹³C) ascends top→bottom, and the
+ *     axes are drawn on the bottom and the right, so the origin sits in the
+ *     top-right corner.
+ *   • ¹H / ¹³C — shift descends left→right.
+ *   • Every NMR view opens on a window that contains 0 ppm, so a spectrum is
+ *     never shown floating on an axis that hides where the origin is.
  *   • MS runs m/z low → high left→right, intensity normalized to base peak.
+ *
+ * All plots are drag-to-pan and wheel-to-zoom; double-click (or the reset
+ * button) returns to the opening view.
  */
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import HelpButton from '../common/HelpButton'
 import { HELP } from '../../helpContent'
 import './SpectraPreview.css'
 
 // ── Palette (validated: see dataviz palette, light surface) ───────────────────
 
-const SERIES_POS = '#2a78d6' // slot 1 — CH / CH₃ (positive HSQC phase)
-const SERIES_NEG = '#eb6834' // slot 2 — CH₂ (negative HSQC phase)
+const SERIES_BLUE = '#2a78d6' // slot 1 — negative HSQC phase (CH₂), 1-D sticks
+const SERIES_RED = '#e34948' // slot 8 — positive HSQC phase (CH / CH₃)
 const GRID = '#e1e0d9'
 const AXIS = '#c3c2b7'
 const SURFACE = '#ffffff'
@@ -42,6 +49,19 @@ export function padDomain(lo: number, hi: number, frac = 0.05): [number, number]
   return [lo - p, hi + p]
 }
 
+/**
+ * Like padDomain, but the window always contains 0 and is not padded past it.
+ * A ppm axis that starts at the first peak makes a cluster of shifts look like
+ * it spans the whole spectrum; anchoring on the origin keeps the scale honest.
+ */
+export function originDomain(lo: number, hi: number, frac = 0.05): [number, number] {
+  const l = Math.min(0, lo)
+  const h = Math.max(0, hi)
+  if (l === h) return [0, 1] // every shift is exactly 0
+  const p = (h - l) * frac
+  return [l === 0 ? 0 : l - p, h === 0 ? 0 : h + p]
+}
+
 export interface Ticks {
   values: number[]
   fmt: (v: number) => string
@@ -60,6 +80,11 @@ export function niceTicks(lo: number, hi: number, target = 5): Ticks {
   return { values, fmt: (v) => v.toFixed(decimals) }
 }
 
+/** Ticks for an axis whose endpoints may be in either order. */
+function axisTicks(a: number, b: number, target: number): Ticks {
+  return niceTicks(Math.min(a, b), Math.max(a, b), target)
+}
+
 // ── Formatting ────────────────────────────────────────────────────────────────
 
 export function fmtShift(v: number): string {
@@ -69,6 +94,172 @@ export function fmtShift(v: number): string {
 export function fmtIntensity(v: number): string {
   if (v === 0) return '0'
   return Math.abs(v) >= 1e4 || Math.abs(v) < 1e-2 ? v.toExponential(2) : v.toFixed(2)
+}
+
+// ── Pan & zoom ────────────────────────────────────────────────────────────────
+
+interface Rect {
+  x0: number
+  x1: number
+  y0: number
+  y1: number
+}
+
+/**
+ * The visible window, named by where each bound lands on screen rather than by
+ * magnitude — so a reversed ppm axis (xLeft > xRight) needs no special cases in
+ * the pan and zoom maths.
+ */
+export interface View {
+  xLeft: number
+  xRight: number
+  yTop: number
+  yBottom: number
+}
+
+export function viewEquals(a: View, b: View): boolean {
+  return (
+    a.xLeft === b.xLeft && a.xRight === b.xRight && a.yTop === b.yTop && a.yBottom === b.yBottom
+  )
+}
+
+/** Zoom bounds, as a multiple of the opening span. */
+const MIN_SPAN_FRAC = 0.002
+const MAX_SPAN_FRAC = 50
+
+/** Scales one axis about `center`, refusing steps that leave the zoom bounds. */
+export function zoomAxis(
+  lo: number,
+  hi: number,
+  center: number,
+  factor: number,
+  baseSpan: number,
+): [number, number] {
+  const span = Math.abs((hi - lo) * factor)
+  const limit = Math.abs(baseSpan) || 1
+  if (span < limit * MIN_SPAN_FRAC || span > limit * MAX_SPAN_FRAC) return [lo, hi]
+  return [center + (lo - center) * factor, center + (hi - center) * factor]
+}
+
+interface PlotViewOpts {
+  /** ¹³C is a data axis on HSQC; on the 1-D plots the vertical is fixed. */
+  panY?: boolean
+  onHover?: (vx: number, vy: number, cx: number, cy: number) => void
+  onLeave?: () => void
+}
+
+/**
+ * Drag-to-pan / wheel-to-zoom over an SVG viewBox. `base` must be memoised —
+ * a new identity means new data, which resets the view.
+ */
+function usePlotView(base: View, rect: Rect, vbWidth: number, opts: PlotViewOpts = {}) {
+  const { panY = false, onHover, onLeave } = opts
+  const [view, setView] = useState<View>(base)
+  const [dragging, setDragging] = useState(false)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const dragRef = useRef<{ cx: number; cy: number; from: View } | null>(null)
+
+  useEffect(() => setView(base), [base])
+
+  /** Converts a client point into viewBox units. */
+  const toViewBox = useCallback(
+    (clientX: number, clientY: number) => {
+      const box = svgRef.current!.getBoundingClientRect()
+      const scale = box.width / vbWidth || 1
+      const cx = clientX - box.left
+      const cy = clientY - box.top
+      return { vx: cx / scale, vy: cy / scale, cx, cy, scale }
+    },
+    [vbWidth],
+  )
+
+  // React routes wheel through a passive root listener, so preventDefault from
+  // an onWheel prop is ignored and the page scrolls along with the zoom.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onWheel = (e: WheelEvent) => {
+      const { vx, vy } = toViewBox(e.clientX, e.clientY)
+      if (vx < rect.x0 || vx > rect.x1 || vy < rect.y0 || vy > rect.y1) return
+      e.preventDefault()
+      const factor = Math.exp(e.deltaY * 0.0015)
+      setView((v) => {
+        const dx = v.xLeft + ((vx - rect.x0) / (rect.x1 - rect.x0)) * (v.xRight - v.xLeft)
+        const [xLeft, xRight] = zoomAxis(v.xLeft, v.xRight, dx, factor, base.xRight - base.xLeft)
+        if (!panY) return { ...v, xLeft, xRight }
+        const dy = v.yTop + ((vy - rect.y0) / (rect.y1 - rect.y0)) * (v.yBottom - v.yTop)
+        const [yTop, yBottom] = zoomAxis(v.yTop, v.yBottom, dy, factor, base.yBottom - base.yTop)
+        return { xLeft, xRight, yTop, yBottom }
+      })
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [base, rect, panY, toViewBox])
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragRef.current = { cx: e.clientX, cy: e.clientY, from: view }
+      setDragging(true)
+    },
+    [view],
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      const { vx, vy, cx, cy, scale } = toViewBox(e.clientX, e.clientY)
+      const drag = dragRef.current
+      if (!drag) {
+        onHover?.(vx, vy, cx, cy)
+        return
+      }
+      const dvx = (e.clientX - drag.cx) / scale
+      const dvy = (e.clientY - drag.cy) / scale
+      const sx = ((drag.from.xRight - drag.from.xLeft) / (rect.x1 - rect.x0)) * dvx
+      const sy = ((drag.from.yBottom - drag.from.yTop) / (rect.y1 - rect.y0)) * dvy
+      setView({
+        xLeft: drag.from.xLeft - sx,
+        xRight: drag.from.xRight - sx,
+        yTop: panY ? drag.from.yTop - sy : drag.from.yTop,
+        yBottom: panY ? drag.from.yBottom - sy : drag.from.yBottom,
+      })
+    },
+    [rect, panY, toViewBox, onHover],
+  )
+
+  const endDrag = useCallback((e: React.PointerEvent<SVGRectElement>) => {
+    if (!dragRef.current) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    dragRef.current = null
+    setDragging(false)
+  }, [])
+
+  const handlePointerLeave = useCallback(() => {
+    if (!dragRef.current) onLeave?.()
+  }, [onLeave])
+
+  const reset = useCallback(() => setView(base), [base])
+
+  return {
+    svgRef,
+    view,
+    dragging,
+    reset,
+    isDefault: viewEquals(view, base),
+    x: linear(view.xLeft, view.xRight, rect.x0, rect.x1),
+    y: linear(view.yTop, view.yBottom, rect.y0, rect.y1),
+    /** Spread onto the transparent overlay rect covering the plot area. */
+    bind: {
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: endDrag,
+      onPointerCancel: endDrag,
+      onPointerLeave: handlePointerLeave,
+      onDoubleClick: reset,
+    },
+  }
 }
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
@@ -91,26 +282,19 @@ function Tooltip({ hover }: { hover: Hover | null }) {
   )
 }
 
-/** Converts a mouse event into viewBox coordinates plus the CSS-px scale factor. */
-function toViewBox(e: React.MouseEvent<SVGRectElement>, vbWidth: number) {
-  const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect()
-  const scale = rect.width / vbWidth
-  const cx = e.clientX - rect.left
-  const cy = e.clientY - rect.top
-  return { vx: cx / scale, vy: cy / scale, cx, cy }
+function ResetButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="spectra__reset" onClick={onClick}>
+      Reset view
+    </button>
+  )
 }
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
 
-interface Rect {
-  x0: number
-  x1: number
-  y0: number
-  y1: number
-}
-
 interface AxesProps {
   rect: Rect
+  width: number
   height: number
   x: Scale
   xTicks: Ticks
@@ -118,10 +302,16 @@ interface AxesProps {
   y?: Scale
   yTicks?: Ticks
   yLabel?: string
+  /** HSQC draws its shift axis on the right, opposite the reversed ¹H axis. */
+  ySide?: 'left' | 'right'
 }
 
-function Axes({ rect, height, x, xTicks, xLabel, y, yTicks, yLabel }: AxesProps) {
+function Axes({
+  rect, width, height, x, xTicks, xLabel, y, yTicks, yLabel, ySide = 'left',
+}: AxesProps) {
   const { x0, x1, y0, y1 } = rect
+  const right = ySide === 'right'
+  const yAxisX = right ? x1 : x0
   return (
     <g>
       {xTicks.values.map((t) => (
@@ -135,20 +325,29 @@ function Axes({ rect, height, x, xTicks, xLabel, y, yTicks, yLabel }: AxesProps)
       {y && yTicks?.values.map((t) => (
         <g key={`y${t}`}>
           <line x1={x0} x2={x1} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth={1} />
-          <text className="spectra__tick" x={x0 - 6} y={y(t) + 3.5} textAnchor="end">
+          <text
+            className="spectra__tick"
+            x={right ? x1 + 6 : x0 - 6}
+            y={y(t) + 3.5}
+            textAnchor={right ? 'start' : 'end'}
+          >
             {yTicks.fmt(t)}
           </text>
         </g>
       ))}
       <line x1={x0} x2={x1} y1={y1} y2={y1} stroke={AXIS} strokeWidth={1} />
-      {y && <line x1={x0} x2={x0} y1={y0} y2={y1} stroke={AXIS} strokeWidth={1} />}
+      {y && <line x1={yAxisX} x2={yAxisX} y1={y0} y2={y1} stroke={AXIS} strokeWidth={1} />}
       <text className="spectra__axis-label" x={(x0 + x1) / 2} y={height - 3} textAnchor="middle">
         {xLabel}
       </text>
       {yLabel && (
         <text
           className="spectra__axis-label"
-          transform={`translate(10 ${(y0 + y1) / 2}) rotate(-90)`}
+          transform={
+            right
+              ? `translate(${width - 6} ${(y0 + y1) / 2}) rotate(90)`
+              : `translate(10 ${(y0 + y1) / 2}) rotate(-90)`
+          }
           textAnchor="middle"
         >
           {yLabel}
@@ -158,10 +357,11 @@ function Axes({ rect, height, x, xTicks, xLabel, y, yTicks, yLabel }: AxesProps)
   )
 }
 
-// ── HSQC: 2-D scatter, both ppm axes reversed ────────────────────────────────
+// ── HSQC: 2-D scatter, origin top-right ──────────────────────────────────────
 
 const HSQC_W = 400
 const HSQC_H = 350
+const HSQC_RECT: Rect = { x0: 16, x1: HSQC_W - 52, y0: 12, y1: HSQC_H - 32 }
 
 interface HSQCPoint {
   h: number
@@ -171,40 +371,28 @@ interface HSQCPoint {
 
 function HSQCPlot({ points }: { points: HSQCPoint[] }) {
   const [hover, setHover] = useState<Hover | null>(null)
+  const clipId = useId()
 
-  const view = useMemo(() => {
-    const rect: Rect = { x0: 52, x1: HSQC_W - 14, y0: 12, y1: HSQC_H - 32 }
-    const [hLo, hHi] = padDomain(
+  const base = useMemo<View>(() => {
+    const [hLo, hHi] = originDomain(
       Math.min(...points.map((p) => p.h)),
       Math.max(...points.map((p) => p.h)),
     )
-    const [cLo, cHi] = padDomain(
+    const [cLo, cHi] = originDomain(
       Math.min(...points.map((p) => p.c)),
       Math.max(...points.map((p) => p.c)),
     )
-    // Reversed: high ppm at left (x) and at top (y).
-    const x = linear(hHi, hLo, rect.x0, rect.x1)
-    const y = linear(cHi, cLo, rect.y0, rect.y1)
-    return {
-      rect,
-      x,
-      y,
-      xTicks: niceTicks(hLo, hHi, 5),
-      yTicks: niceTicks(cLo, cHi, 6),
-      placed: points.map((p) => ({ ...p, px: x(p.h), py: y(p.c) })),
-    }
+    // ¹H descends left→right; ¹³C ascends top→bottom. Origin: top-right.
+    return { xLeft: hHi, xRight: hLo, yTop: cLo, yBottom: cHi }
   }, [points])
 
-  const hasNegative = points.some((p) => p.i < 0)
-  const hasPositive = points.some((p) => p.i >= 0)
-  const showLegend = hasNegative && hasPositive
+  const placedRef = useRef<{ px: number; py: number; p: HSQCPoint }[]>([])
 
-  const handleMove = (e: React.MouseEvent<SVGRectElement>) => {
-    const { vx, vy, cx, cy } = toViewBox(e, HSQC_W)
-    let best: (typeof view.placed)[number] | null = null
+  const handleHover = useCallback((vx: number, vy: number, cx: number, cy: number) => {
+    let best: HSQCPoint | null = null
     let bestD = 24 * 24
-    for (const p of view.placed) {
-      const d = (p.px - vx) ** 2 + (p.py - vy) ** 2
+    for (const { px, py, p } of placedRef.current) {
+      const d = (px - vx) ** 2 + (py - vy) ** 2
       if (d < bestD) {
         bestD = d
         best = p
@@ -222,59 +410,91 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
           }
         : null,
     )
-  }
+  }, [])
+
+  const plot = usePlotView(base, HSQC_RECT, HSQC_W, {
+    panY: true,
+    onHover: handleHover,
+    onLeave: () => setHover(null),
+  })
+
+  const placed = points.map((p) => ({ px: plot.x(p.h), py: plot.y(p.c), p }))
+  placedRef.current = placed
+
+  const hasNegative = points.some((p) => p.i < 0)
+  const hasPositive = points.some((p) => p.i >= 0)
+  const showLegend = hasNegative && hasPositive
 
   return (
     <figure className="spectra__card spectra__card--hsqc">
       <figcaption className="spectra__title">
         HSQC <span className="spectra__count">{points.length} cross-peaks</span>
+        {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       {showLegend && (
         <div className="spectra__legend">
           <span className="spectra__legend-item">
-            <span className="spectra__swatch" style={{ background: SERIES_POS }} />
+            <span className="spectra__swatch" style={{ background: SERIES_RED }} />
             CH / CH₃ (positive)
           </span>
           <span className="spectra__legend-item">
-            <span className="spectra__swatch" style={{ background: SERIES_NEG }} />
+            <span className="spectra__swatch" style={{ background: SERIES_BLUE }} />
             CH₂ (negative)
           </span>
         </div>
       )}
       <div className="spectra__plot">
-        <svg viewBox={`0 0 ${HSQC_W} ${HSQC_H}`} role="img" aria-label="HSQC cross-peak map">
+        <svg
+          ref={plot.svgRef}
+          viewBox={`0 0 ${HSQC_W} ${HSQC_H}`}
+          role="img"
+          aria-label="HSQC cross-peak map"
+        >
+          <defs>
+            <clipPath id={clipId}>
+              <rect
+                x={HSQC_RECT.x0}
+                y={HSQC_RECT.y0}
+                width={HSQC_RECT.x1 - HSQC_RECT.x0}
+                height={HSQC_RECT.y1 - HSQC_RECT.y0}
+              />
+            </clipPath>
+          </defs>
           <Axes
-            rect={view.rect}
+            rect={HSQC_RECT}
+            width={HSQC_W}
             height={HSQC_H}
-            x={view.x}
-            xTicks={view.xTicks}
-            xLabel="¹H (ppm)"
-            y={view.y}
-            yTicks={view.yTicks}
-            yLabel="¹³C (ppm)"
+            x={plot.x}
+            xTicks={axisTicks(plot.view.xLeft, plot.view.xRight, 5)}
+            xLabel="f2 — ¹H (ppm)"
+            y={plot.y}
+            yTicks={axisTicks(plot.view.yTop, plot.view.yBottom, 6)}
+            yLabel="f1 — ¹³C (ppm)"
+            ySide="right"
           />
-          {view.placed.map((p, idx) => (
-            <circle
-              key={idx}
-              cx={p.px}
-              cy={p.py}
-              r={4}
-              fill={p.i < 0 ? SERIES_NEG : SERIES_POS}
-              stroke={SURFACE}
-              strokeWidth={2}
-            />
-          ))}
+          <g clipPath={`url(#${clipId})`}>
+            {placed.map(({ px, py, p }, idx) => (
+              <circle
+                key={idx}
+                cx={px}
+                cy={py}
+                r={4}
+                fill={p.i < 0 ? SERIES_BLUE : SERIES_RED}
+                stroke={SURFACE}
+                strokeWidth={2}
+              />
+            ))}
+          </g>
           <rect
-            x={view.rect.x0}
-            y={view.rect.y0}
-            width={view.rect.x1 - view.rect.x0}
-            height={view.rect.y1 - view.rect.y0}
-            fill="transparent"
-            onMouseMove={handleMove}
-            onMouseLeave={() => setHover(null)}
+            className={`spectra__surface${plot.dragging ? ' spectra__surface--dragging' : ''}`}
+            x={HSQC_RECT.x0}
+            y={HSQC_RECT.y0}
+            width={HSQC_RECT.x1 - HSQC_RECT.x0}
+            height={HSQC_RECT.y1 - HSQC_RECT.y0}
+            {...plot.bind}
           />
         </svg>
-        <Tooltip hover={hover} />
+        <Tooltip hover={plot.dragging ? null : hover} />
       </div>
     </figure>
   )
@@ -284,67 +504,94 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
 
 const PEAK_W = 700
 const PEAK_H = 130
+const PEAK_RECT: Rect = { x0: 14, x1: PEAK_W - 14, y0: 16, y1: PEAK_H - 32 }
 
 function PeakListPlot({ title, shifts }: { title: string; shifts: number[] }) {
   const [hover, setHover] = useState<Hover | null>(null)
+  const clipId = useId()
 
-  const view = useMemo(() => {
-    const rect: Rect = { x0: 14, x1: PEAK_W - 14, y0: 16, y1: PEAK_H - 32 }
-    const [lo, hi] = padDomain(Math.min(...shifts), Math.max(...shifts))
-    const x = linear(hi, lo, rect.x0, rect.x1) // reversed: high ppm at left
-    return { rect, x, xTicks: niceTicks(lo, hi, 7), placed: shifts.map((s) => ({ s, px: x(s) })) }
+  const base = useMemo<View>(() => {
+    const [lo, hi] = originDomain(Math.min(...shifts), Math.max(...shifts))
+    return { xLeft: hi, xRight: lo, yTop: 0, yBottom: 1 }
   }, [shifts])
 
-  const handleMove = (e: React.MouseEvent<SVGRectElement>) => {
-    const { vx, cx, cy } = toViewBox(e, PEAK_W)
+  const placedRef = useRef<{ px: number; s: number }[]>([])
+
+  const handleHover = useCallback((vx: number, _vy: number, cx: number, cy: number) => {
     let best: number | null = null
     let bestD = 12
-    for (const p of view.placed) {
-      const d = Math.abs(p.px - vx)
+    for (const { px, s } of placedRef.current) {
+      const d = Math.abs(px - vx)
       if (d < bestD) {
         bestD = d
-        best = p.s
+        best = s
       }
     }
     setHover(best === null ? null : { cx, cy, lines: [`δ ${fmtShift(best)} ppm`] })
-  }
+  }, [])
+
+  const plot = usePlotView(base, PEAK_RECT, PEAK_W, {
+    onHover: handleHover,
+    onLeave: () => setHover(null),
+  })
+
+  const placed = shifts.map((s) => ({ px: plot.x(s), s }))
+  placedRef.current = placed
 
   return (
     <figure className="spectra__card">
       <figcaption className="spectra__title">
         {title} <span className="spectra__count">{shifts.length} peaks</span>
+        {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       <div className="spectra__plot">
-        <svg viewBox={`0 0 ${PEAK_W} ${PEAK_H}`} role="img" aria-label={`${title} peak list`}>
+        <svg
+          ref={plot.svgRef}
+          viewBox={`0 0 ${PEAK_W} ${PEAK_H}`}
+          role="img"
+          aria-label={`${title} peak list`}
+        >
+          <defs>
+            <clipPath id={clipId}>
+              <rect
+                x={PEAK_RECT.x0}
+                y={PEAK_RECT.y0}
+                width={PEAK_RECT.x1 - PEAK_RECT.x0}
+                height={PEAK_RECT.y1 - PEAK_RECT.y0}
+              />
+            </clipPath>
+          </defs>
           <Axes
-            rect={view.rect}
+            rect={PEAK_RECT}
+            width={PEAK_W}
             height={PEAK_H}
-            x={view.x}
-            xTicks={view.xTicks}
+            x={plot.x}
+            xTicks={axisTicks(plot.view.xLeft, plot.view.xRight, 7)}
             xLabel="δ (ppm)"
           />
-          {view.placed.map((p, idx) => (
-            <line
-              key={idx}
-              x1={p.px}
-              x2={p.px}
-              y1={view.rect.y1}
-              y2={view.rect.y0}
-              stroke={SERIES_POS}
-              strokeWidth={1.5}
-            />
-          ))}
+          <g clipPath={`url(#${clipId})`}>
+            {placed.map(({ px }, idx) => (
+              <line
+                key={idx}
+                x1={px}
+                x2={px}
+                y1={PEAK_RECT.y1}
+                y2={PEAK_RECT.y0}
+                stroke={SERIES_BLUE}
+                strokeWidth={1.5}
+              />
+            ))}
+          </g>
           <rect
-            x={view.rect.x0}
-            y={view.rect.y0}
-            width={view.rect.x1 - view.rect.x0}
-            height={view.rect.y1 - view.rect.y0}
-            fill="transparent"
-            onMouseMove={handleMove}
-            onMouseLeave={() => setHover(null)}
+            className={`spectra__surface${plot.dragging ? ' spectra__surface--dragging' : ''}`}
+            x={PEAK_RECT.x0}
+            y={PEAK_RECT.y0}
+            width={PEAK_RECT.x1 - PEAK_RECT.x0}
+            height={PEAK_RECT.y1 - PEAK_RECT.y0}
+            {...plot.bind}
           />
         </svg>
-        <Tooltip hover={hover} />
+        <Tooltip hover={plot.dragging ? null : hover} />
       </div>
     </figure>
   )
@@ -354,6 +601,8 @@ function PeakListPlot({ title, shifts }: { title: string; shifts: number[] }) {
 
 const MS_W = 700
 const MS_H = 230
+const MS_RECT: Rect = { x0: 46, x1: MS_W - 14, y0: 14, y1: MS_H - 32 }
+const MS_Y_TICKS: Ticks = { values: [0, 25, 50, 75, 100], fmt: (v) => v.toFixed(0) }
 
 interface MSPeak {
   mz: number
@@ -362,33 +611,28 @@ interface MSPeak {
 
 function MassSpecPlot({ peaks }: { peaks: MSPeak[] }) {
   const [hover, setHover] = useState<Hover | null>(null)
+  const clipId = useId()
 
-  const view = useMemo(() => {
-    const rect: Rect = { x0: 46, x1: MS_W - 14, y0: 14, y1: MS_H - 32 }
+  const base = useMemo<View>(() => {
     const [lo, hi] = padDomain(
       Math.min(...peaks.map((p) => p.mz)),
       Math.max(...peaks.map((p) => p.mz)),
     )
-    const base = Math.max(...peaks.map((p) => Math.abs(p.intensity))) || 1
-    const x = linear(lo, hi, rect.x0, rect.x1) // ascending m/z, left → right
-    const y = linear(0, 100, rect.y1, rect.y0)
-    return {
-      rect,
-      x,
-      y,
-      base,
-      xTicks: niceTicks(lo, hi, 6),
-      yTicks: { values: [0, 25, 50, 75, 100], fmt: (v: number) => v.toFixed(0) },
-      placed: peaks.map((p) => ({ ...p, px: x(p.mz), rel: (Math.abs(p.intensity) / base) * 100 })),
-    }
+    return { xLeft: lo, xRight: hi, yTop: 100, yBottom: 0 }
   }, [peaks])
 
-  const handleMove = (e: React.MouseEvent<SVGRectElement>) => {
-    const { vx, cx, cy } = toViewBox(e, MS_W)
-    let best: (typeof view.placed)[number] | null = null
+  const relative = useMemo(() => {
+    const strongest = Math.max(...peaks.map((p) => Math.abs(p.intensity))) || 1
+    return peaks.map((p) => ({ ...p, rel: (Math.abs(p.intensity) / strongest) * 100 }))
+  }, [peaks])
+
+  const placedRef = useRef<{ px: number; p: (typeof relative)[number] }[]>([])
+
+  const handleHover = useCallback((vx: number, _vy: number, cx: number, cy: number) => {
+    let best: (typeof relative)[number] | null = null
     let bestD = 12
-    for (const p of view.placed) {
-      const d = Math.abs(p.px - vx)
+    for (const { px, p } of placedRef.current) {
+      const d = Math.abs(px - vx)
       if (d < bestD) {
         bestD = d
         best = p
@@ -406,47 +650,68 @@ function MassSpecPlot({ peaks }: { peaks: MSPeak[] }) {
           }
         : null,
     )
-  }
+  }, [])
+
+  const plot = usePlotView(base, MS_RECT, MS_W, {
+    onHover: handleHover,
+    onLeave: () => setHover(null),
+  })
+
+  const placed = relative.map((p) => ({ px: plot.x(p.mz), p }))
+  placedRef.current = placed
 
   return (
     <figure className="spectra__card">
       <figcaption className="spectra__title">
         MS/MS <span className="spectra__count">{peaks.length} peaks</span>
+        {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       <div className="spectra__plot">
-        <svg viewBox={`0 0 ${MS_W} ${MS_H}`} role="img" aria-label="Mass spectrum">
+        <svg ref={plot.svgRef} viewBox={`0 0 ${MS_W} ${MS_H}`} role="img" aria-label="Mass spectrum">
+          <defs>
+            <clipPath id={clipId}>
+              <rect
+                x={MS_RECT.x0}
+                y={MS_RECT.y0}
+                width={MS_RECT.x1 - MS_RECT.x0}
+                height={MS_RECT.y1 - MS_RECT.y0}
+              />
+            </clipPath>
+          </defs>
           <Axes
-            rect={view.rect}
+            rect={MS_RECT}
+            width={MS_W}
             height={MS_H}
-            x={view.x}
-            xTicks={view.xTicks}
+            x={plot.x}
+            xTicks={axisTicks(plot.view.xLeft, plot.view.xRight, 6)}
             xLabel="m/z"
-            y={view.y}
-            yTicks={view.yTicks}
+            y={plot.y}
+            yTicks={MS_Y_TICKS}
             yLabel="Rel. intensity (%)"
           />
-          {view.placed.map((p, idx) => (
-            <line
-              key={idx}
-              x1={p.px}
-              x2={p.px}
-              y1={view.rect.y1}
-              y2={view.y(p.rel)}
-              stroke={SERIES_POS}
-              strokeWidth={1.5}
-            />
-          ))}
+          <g clipPath={`url(#${clipId})`}>
+            {placed.map(({ px, p }, idx) => (
+              <line
+                key={idx}
+                x1={px}
+                x2={px}
+                y1={MS_RECT.y1}
+                y2={plot.y(p.rel)}
+                stroke={SERIES_BLUE}
+                strokeWidth={1.5}
+              />
+            ))}
+          </g>
           <rect
-            x={view.rect.x0}
-            y={view.rect.y0}
-            width={view.rect.x1 - view.rect.x0}
-            height={view.rect.y1 - view.rect.y0}
-            fill="transparent"
-            onMouseMove={handleMove}
-            onMouseLeave={() => setHover(null)}
+            className={`spectra__surface${plot.dragging ? ' spectra__surface--dragging' : ''}`}
+            x={MS_RECT.x0}
+            y={MS_RECT.y0}
+            width={MS_RECT.x1 - MS_RECT.x0}
+            height={MS_RECT.y1 - MS_RECT.y0}
+            {...plot.bind}
           />
         </svg>
-        <Tooltip hover={hover} />
+        <Tooltip hover={plot.dragging ? null : hover} />
       </div>
     </figure>
   )

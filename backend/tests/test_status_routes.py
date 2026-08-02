@@ -19,7 +19,7 @@ def test_queue_position_for_an_unknown_id_is_answerable(client):
 
 def test_stats_shape(client):
     body = client.get("/api/stats").json()
-    assert set(body) >= {"queries_total", "by_kind", "unique_clients", "counting_since"}
+    assert set(body) == {"queries_total", "by_kind", "counting_since"}
     assert isinstance(body["queries_total"], int)
 
 

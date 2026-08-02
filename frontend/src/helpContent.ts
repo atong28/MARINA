@@ -25,10 +25,10 @@ export const HELP = {
       '• Offline — the backend is not responding; check that the containers are running.',
 
     usage:
-      'Cumulative usage since counting began: total queries served (predictions, ' +
-      'SMILES searches and custom cards) and the number of distinct visitors.\n\n' +
-      'Visitors are counted by a salted, one-way hash of the IP address — no ' +
-      'addresses are stored, and the hashes cannot be reversed into a visitor list.',
+      'Total queries served since counting began — predictions, SMILES searches ' +
+      'and custom cards.\n\n' +
+      'This is the only usage figure kept. Nothing identifying the sender is ' +
+      'counted or stored: no addresses, no hashes, no visitor count.',
   },
 
   // ── Mode tabs ────────────────────────────────────────────────────────────────
@@ -58,19 +58,27 @@ export const HELP = {
       '• ¹³C NMR — one column: chemical shift (ppm).\n' +
       '• Mass Spec — two columns: m/z and intensity. Both values required per row.\n\n' +
       'Leave any section empty if you don\'t have that data type. ' +
-      'You can paste data directly from Excel or a spreadsheet app.',
+      'You can paste data directly from Excel or a spreadsheet app.\n\n' +
+      '"Paste NMR Table from MestreNova" reads a peak table copied out of Mnova ' +
+      '(with its header row) and works out whether it is ¹H, ¹³C or HSQC, ' +
+      'including tables Mnova has continued into further columns on the right. ' +
+      'It replaces the columns of that one modality and leaves the others alone. ' +
+      'MS/MS tables are not handled.',
 
     preview:
       'Renders whatever is currently in the spreadsheet, updating as you type or paste. ' +
       'Only complete rows are plotted, so partially-filled rows will not appear.\n\n' +
-      '• HSQC — cross-peak map with ¹H on the x-axis and ¹³C on the y-axis, both ' +
-      'running high→low ppm (origin bottom-right). Peaks are colored by the sign of ' +
-      'the intensity, the phase convention of a multiplicity-edited HSQC: positive is ' +
-      'CH/CH₃, negative is CH₂.\n' +
+      '• HSQC — cross-peak map with f2 (¹H) descending left→right and f1 (¹³C) ' +
+      'ascending top→bottom, axes drawn on the bottom and right, origin top-right. ' +
+      'Peaks are colored by the sign of the intensity, the phase convention of a ' +
+      'multiplicity-edited HSQC: positive (CH/CH₃) is red, negative (CH₂) is blue.\n' +
       '• ¹H / ¹³C NMR — peak positions on a high→low ppm axis. These columns carry no ' +
       'intensity, so all sticks are drawn at the same height.\n' +
       '• MS/MS — m/z increasing left→right, intensities normalized to the base peak.\n\n' +
-      'Hover any plot to read off the nearest peak.',
+      'Every NMR view opens on a window that includes 0 ppm, so the scale is never ' +
+      'misleading about where the origin is.\n\n' +
+      'Hover any plot to read off the nearest peak. Drag to pan, scroll to zoom, ' +
+      'and double-click (or use Reset view) to return to the opening window.',
 
     mw:
       'The molecular weight of the compound in Daltons (exact or nominal). ' +

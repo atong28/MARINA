@@ -95,7 +95,7 @@ async def predict(request: Request, body: PredictRequest):
         img_size=MOLECULE_IMG_SIZE, max_cards=k,
     )
 
-    record_query("predict", request)
+    record_query("predict")
 
     result_cards = [ResultCard(**c) for c in cards]
     return PredictResponse(

@@ -12,10 +12,6 @@
   font-weight: 600;
 }
 
-.usage-counter__sep {
-  color: #d1d5db;
-}
-
 .usage-counter__since {
   color: #9ca3af;
 }
