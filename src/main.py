@@ -63,6 +63,20 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
     # create a wandb run
     wandb_run = configure_wandb(args, results_path, today)
 
+    # Warm-start from a checkpoint before training. `train_marina` builds its own
+    # Trainer and never sees load_from_checkpoint, so without this the flag silently
+    # does nothing on a training run and the model trains from scratch.
+    if args.train and args.load_from_checkpoint:
+        state = torch.load(args.load_from_checkpoint, map_location='cpu')
+        state_dict = state.get('state_dict', state)
+        missing, unexpected = model.load_state_dict(state_dict, strict=False)
+        logger.info(
+            f'[Main] Warm-started from {args.load_from_checkpoint} '
+            f'(missing={len(missing)}, unexpected={len(unexpected)})'
+        )
+        if missing or unexpected:
+            logger.warning(f'[Main] missing={missing[:8]} unexpected={unexpected[:8]}')
+
     # train a model using the args as input
     if args.train:
         train_marina(

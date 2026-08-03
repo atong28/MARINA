@@ -54,9 +54,14 @@ elif os.environ.get('DATASET_ROOT'):
 else:
     raise ValueError('Unknown setup – set the DATASET_ROOT environment variable')
 
+# params.json exists to restore a checkpoint's *architecture* so the weights load.
+# Training-schedule fields must not come back with it, or a finetune silently inherits
+# the pretraining run's learning rate, budget and experiment name.
 DO_NOT_OVERRIDE = [
     'train', 'test', 'visualize', 'load_from_checkpoint', 'input_types', 'requires',
-    'benchmark', 'restrictions', 'benchmark_split'
+    'benchmark', 'restrictions', 'benchmark_split',
+    'experiment_name', 'project_name', 'seed', 'lr', 'epochs', 'patience',
+    'early_stopping_metric', 'modality_drop_override',
 ]
 
 HSQC_TYPE = 0

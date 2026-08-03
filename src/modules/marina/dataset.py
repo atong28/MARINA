@@ -134,13 +134,20 @@ class MARINADataset(Dataset):
             
     def compute_drop_percentage(self, data: dict[int, Any]):
         drop_percentage = {}
+        override = getattr(self.args, 'modality_drop_override', None)
         logger.debug(f'[MARINADataset] Computing drop percentage for input types: {self.input_types}')
         for input_type in self.input_types:
-            if input_type not in NON_SPECTRAL_INPUTS:
+            if override is not None and input_type not in NON_SPECTRAL_INPUTS:
+                # mw is deliberately excluded: it is always present in every dataset,
+                # so leaving it at the hardcoded 0.5 keeps it identical across runs.
+                drop_percentage[input_type] = override
+            elif input_type not in NON_SPECTRAL_INPUTS:
                 percent_present = sum(1 for entry in data.values() if entry[f'has_{input_type}']) / len(data)
                 drop_percentage[input_type] = 1 - (0.5 / percent_present) if percent_present > 0.5 else 0.0
             else:
                 drop_percentage[input_type] = 0.5 # hard coded for now for mw (always present)
+        if override is not None:
+            logger.info(f'[MARINADataset] modality_drop_override={override}; using it for all input types')
         return drop_percentage
 
     def __len__(self):

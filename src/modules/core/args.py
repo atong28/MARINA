@@ -50,6 +50,11 @@ class SMARTArgs:
     # jittering default value to wobble the spectra
     jittering: float = 0.5
 
+    # Fixed per-modality drop probability. None keeps the computed default
+    # (1 - 0.5/availability). Set 0.0 to disable dropping entirely, which is what a
+    # mostly single-modality dataset wants since always_keep already protects those.
+    modality_drop_override: Optional[float] = None
+
     # peak augmentation (injection + dropout); applies to hsqc/c_nmr/h_nmr during training only
     aug_add_prob: float = 0.0
     aug_remove_prob: float = 0.0
