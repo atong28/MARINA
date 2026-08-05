@@ -1,0 +1,115 @@
+{
+  "ckpt": "/root/gurusmart/Moonshot/results/marina-final-run-seed-1/2026-05-07_23-56-57/epoch_epoch=615.ckpt",
+  "n_molecules": 23648,
+  "seed": 0,
+  "modalities": [
+    "hsqc",
+    "c_nmr",
+    "h_nmr",
+    "mw",
+    "mass_spec"
+  ],
+  "all_inputs_cos": 0.9545989357570189,
+  "budget_sums_to": 1.0000000119377002,
+  "attribution": {
+    "hsqc": {
+      "share": 0.1050933146488844,
+      "share_peaks_only": 0.45222165646152424,
+      "mod_token_share": 0.002669264573730838,
+      "mean_live_tokens": 22.614047699594046,
+      "share_per_token": 0.019997377845348857
+    },
+    "c_nmr": {
+      "share": 0.05682802580407895,
+      "share_peaks_only": 0.2445337655246525,
+      "mod_token_share": 0.0013343104190780392,
+      "mean_live_tokens": 25.621363328822735,
+      "share_per_token": 0.009544135586632285
+    },
+    "h_nmr": {
+      "share": 0.028704510303529253,
+      "share_peaks_only": 0.12351690724331611,
+      "mod_token_share": 0.001363280519225738,
+      "mean_live_tokens": 25.32133795669824,
+      "share_per_token": 0.004877977121688479
+    },
+    "mw": {
+      "share": 0.002050658185268136,
+      "share_peaks_only": 0.008824082145249797,
+      "mod_token_share": 0.002054474901764607,
+      "mean_live_tokens": 1.0,
+      "share_per_token": 0.008824082145249797
+    },
+    "mass_spec": {
+      "share": 0.03971686087427749,
+      "share_peaks_only": 0.17090358862525734,
+      "mod_token_share": -0.00035726631949543864,
+      "mean_live_tokens": 33.58766069012179,
+      "share_per_token": 0.005088284956847873
+    }
+  },
+  "unattributed": {
+    "ffn": 0.7199059614309278,
+    "cls_init": -3.062711198447697e-19,
+    "bias": 0.040636616596430336
+  },
+  "ablation": {
+    "hsqc": {
+      "removed": [
+        "hsqc"
+      ],
+      "cos_without": 0.9422374710345524,
+      "drop": 0.012361464722466575
+    },
+    "c_nmr": {
+      "removed": [
+        "c_nmr"
+      ],
+      "cos_without": 0.9489848946040957,
+      "drop": 0.005614041152923188
+    },
+    "h_nmr": {
+      "removed": [
+        "h_nmr"
+      ],
+      "cos_without": 0.9512416734101807,
+      "drop": 0.003357262346838197
+    },
+    "mw": {
+      "removed": [
+        "mw"
+      ],
+      "cos_without": 0.9539347801544025,
+      "drop": 0.0006641556026164563
+    },
+    "mass_spec": {
+      "removed": [
+        "mass_spec"
+      ],
+      "cos_without": 0.94791247761101,
+      "drop": 0.006686458146008878
+    },
+    "hsqc+c_nmr+h_nmr": {
+      "removed": [
+        "hsqc",
+        "c_nmr",
+        "h_nmr"
+      ],
+      "cos_without": 0.778276440982172,
+      "drop": 0.17632249477484696
+    }
+  },
+  "agreement": {
+    "spearman_share_vs_drop": 0.9
+  },
+  "redundancy": {
+    "group": [
+      "hsqc",
+      "c_nmr",
+      "h_nmr"
+    ],
+    "sum_of_individual_drops": 0.02133276822222796,
+    "joint_drop": 0.17632249477484696,
+    "superadditivity": 8.265335887872508
+  }
+}
