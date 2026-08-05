@@ -11,6 +11,13 @@ from .log import get_logger
 
 logger = get_logger(__file__)
 
+# Fixed order, iterated in full on every rank. The number of collectives issued
+# in on_validation_epoch_end must not depend on which files a rank can see.
+SOURCES = (
+    ("benchmark", "benchmark.pkl"),
+    ("benchmark_journal", "benchmark-journal.pkl"),
+)
+
 
 class BenchmarkCosineCallback(pl.Callback):
     """
@@ -32,6 +39,7 @@ class BenchmarkCosineCallback(pl.Callback):
             args.input_types if args.restrictions is None else args.restrictions
         )
         self._prepared = False
+        self._active = False
         # name -> list of (raw_input_dict, normalized_target_fp)
         self._entries: dict[str, list] = {}
 
@@ -42,26 +50,26 @@ class BenchmarkCosineCallback(pl.Callback):
         if BENCHMARK_ROOT is None:
             logger.warning("[BenchmarkCosine] BENCHMARK_ROOT not set; skipping.")
             return
-        sources = [
-            ("benchmark", "benchmark.pkl"),
-            ("benchmark_journal", "benchmark-journal.pkl"),
-        ]
-        for name, fname in sources:
+        self._active = True
+        for name, fname in SOURCES:
             path = os.path.join(BENCHMARK_ROOT, fname)
-            if not os.path.exists(path):
-                continue
-            with open(path, "rb") as f:
-                data = pickle.load(f)
-            if self.args.benchmark_split != "all":
-                data = {
-                    k: v for k, v in data.items()
-                    if v["split"] == self.args.benchmark_split
-                }
             prepared = []
-            for entry in data.values():
-                sfp = self.fp_loader.build_mfp_for_smiles(entry["smiles"])
-                sfp = sfp / torch.norm(sfp)
-                prepared.append((entry["input"], sfp))
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    data = pickle.load(f)
+                if self.args.benchmark_split != "all":
+                    data = {
+                        k: v for k, v in data.items()
+                        if v["split"] == self.args.benchmark_split
+                    }
+                for entry in data.values():
+                    sfp = self.fp_loader.build_mfp_for_smiles(entry["smiles"])
+                    sfp = sfp / torch.norm(sfp)
+                    prepared.append((entry["input"], sfp))
+            else:
+                logger.warning(f"[BenchmarkCosine] {path} missing; '{name}' will be empty.")
+            # Registered even when empty: a rank that skipped this source would
+            # issue one fewer all_reduce below and deadlock the others.
             self._entries[name] = prepared
             logger.info(
                 f"[BenchmarkCosine] Prepared {len(prepared)} '{name}' entries "
@@ -73,7 +81,7 @@ class BenchmarkCosineCallback(pl.Callback):
         if trainer.sanity_checking:
             return
         self._prepare()
-        if not self._entries:
+        if not self._active:
             return
 
         dm = trainer.datamodule
@@ -81,7 +89,8 @@ class BenchmarkCosineCallback(pl.Callback):
         world = trainer.world_size
         rank = trainer.global_rank
 
-        for name, prepared in self._entries.items():
+        for name, _ in SOURCES:
+            prepared = self._entries[name]
             shard = prepared[rank::world] if world > 1 else prepared
             local_sum = 0.0
             for raw_input, sfp in shard:
