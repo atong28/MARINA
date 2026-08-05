@@ -4,14 +4,17 @@
 #   marina-m2-s0   MARINA2 (MARINA1 + experimental spectra substituted) from scratch
 #   marina-m4-s0   MARINA4 (MARINA1 with 13C/1H collapsed to per-peak) from scratch
 #
-# Both run stock `main` with default args, identical to the MARINA1 final run except
-# for the dataset zip, so any benchmark delta is attributable to the data alone.
+# Both run `main` with default args, identical to the MARINA1 final run except for
+# the dataset zip, so any benchmark delta is attributable to the data alone.
 # marina-m4-s0 doubles as the pretrained checkpoint for the MARINA4 -> MARINA3
 # finetuning arm.
 #
-# The two finetuning arms and the 0.668-dropout test are NOT here: they need
-# exp/marina234 (modality_drop_override, finetune arg protection, warm-start on
-# train) to be pushed first.
+# The two finetuning arms and the 0.668-dropout test live in the -ft and -seeds
+# specs. They needed modality_drop_override, finetune arg protection and warm-start
+# on train, which is why they pin exp/marina234 with an explicit `git checkout`.
+# As of 2026-08-04 that work is on `main` too, so those checkouts are no longer
+# required -- they are left in place so the in-flight runs stay on the exact code
+# they started with.
 apiVersion: batch/v1
 kind: Job
 metadata:
