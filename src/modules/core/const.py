@@ -54,6 +54,21 @@ elif os.environ.get('DATASET_ROOT'):
 else:
     raise ValueError('Unknown setup – set the DATASET_ROOT environment variable')
 
+# The branches above sniff __file__ to pick a default per deployment. That is fine as a
+# default but must not outrank an explicit instruction, so environment variables are applied
+# on top. Previously they could not be: '/code' matched first on Nautilus, so DATASET_ROOT
+# was silently dropped there even though scripts/analysis docstrings tell you to set it.
+# Overriding per-variable rather than per-branch keeps the other roots intact when only one
+# is set.
+CODE_ROOT = os.environ.get('CODE_ROOT', CODE_ROOT)
+DATASET_ROOT = os.environ.get('DATASET_ROOT', DATASET_ROOT)
+BENCHMARK_ROOT = os.environ.get('BENCHMARK_ROOT', BENCHMARK_ROOT)
+PVC_ROOT = os.environ.get('PVC_ROOT', PVC_ROOT)
+for _name, _value in (('CODE_ROOT', CODE_ROOT), ('DATASET_ROOT', DATASET_ROOT),
+                      ('BENCHMARK_ROOT', BENCHMARK_ROOT), ('PVC_ROOT', PVC_ROOT)):
+    if os.environ.get(_name):
+        logger.info('%s overridden from environment: %s', _name, _value)
+
 # params.json exists to restore a checkpoint's *architecture* so the weights load.
 # Training-schedule fields must not come back with it, or a finetune silently inherits
 # the pretraining run's learning rate, budget and experiment name.

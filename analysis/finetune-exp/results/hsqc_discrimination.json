@@ -1,0 +1,69 @@
+{
+  "sign_only": {
+    "n_molecules": 4000,
+    "n_peaks": 78900,
+    "c_shift": {
+      "min": 1.79,
+      "max": 210.74,
+      "mean": 62.93
+    },
+    "h_shift": {
+      "min": -0.13,
+      "max": 10.73,
+      "mean": 3.54
+    },
+    "c_decimals_pct": {
+      "0": 9.54,
+      "1": 82.12,
+      "2": 8.28,
+      "3": 0.06
+    },
+    "h_decimals_pct": {
+      "0": 1.05,
+      "1": 10.4,
+      "2": 86.21,
+      "3": 2.31,
+      "4": 0.02
+    }
+  },
+  "intensity": {
+    "n_molecules": 4000,
+    "n_peaks": 52630,
+    "c_shift": {
+      "min": -22.84,
+      "max": 205.9,
+      "mean": 79.28
+    },
+    "h_shift": {
+      "min": 0.08,
+      "max": 10.61,
+      "mean": 4.71
+    },
+    "c_decimals_pct": {
+      "0": 1.61,
+      "1": 1.77,
+      "2": 1.79,
+      "7": 94.82
+    },
+    "h_decimals_pct": {
+      "0": 0.17,
+      "1": 0.15,
+      "2": 0.37,
+      "3": 0.12,
+      "4": 0.01,
+      "5": 0.01,
+      "6": 0.11,
+      "7": 99.06
+    },
+    "third_col": {
+      "abs_min": 2625.869,
+      "abs_median": 7071.2,
+      "abs_max": 245246.6,
+      "pct_negative": 36.5,
+      "pos_abs_median": 6948.8,
+      "neg_abs_median": 7301.5,
+      "n_distinct_values_in_10k": 9067,
+      "log10_abs_std": 0.204
+    }
+  }
+}

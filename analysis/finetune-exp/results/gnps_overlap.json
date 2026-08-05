@@ -1,0 +1,74 @@
+{
+  "gnps_library": {
+    "ms2plus_spectra": 1641229,
+    "unique_canonical_smiles": 212761,
+    "by_mode": {
+      "negative": {
+        "spectra": 217705,
+        "molecules": 27627
+      },
+      "positive": {
+        "spectra": 1423147,
+        "molecules": 207250
+      },
+      "unknown": {
+        "spectra": 377,
+        "molecules": 376
+      }
+    },
+    "by_library_quality": {
+      "1": 1464342,
+      "3": 166109,
+      "2": 6155,
+      "4": 4623
+    },
+    "by_instrument_top10": {
+      "LC-ESI-Orbitrap": 828983,
+      "ESI-Orbitrap": 645837,
+      "ESI-qTof": 36003,
+      "LC-ESI-ToF": 31397,
+      "LC-ESI-qTof": 25580,
+      "ESI-Hybrid FT": 23747,
+      "ESI-QQQ": 7702,
+      "LC-ESI-Maxis II HD Q-TOF Bruker": 7642,
+      "ESI-LC-ESI-ITFT": 5516,
+      "ESI-Ion Trap": 3997
+    }
+  },
+  "overlap_with_marina1": {
+    "marina1_unique_smiles": 487028,
+    "matched_spectra": 579458,
+    "matched_molecules": 22841,
+    "pct_of_marina1": 4.69,
+    "by_mode": {
+      "negative": {
+        "spectra": 97402,
+        "molecules": 10076
+      },
+      "positive": {
+        "spectra": 481904,
+        "molecules": 20936
+      },
+      "unknown": {
+        "spectra": 152,
+        "molecules": 151
+      }
+    },
+    "by_marina1_split": {
+      "train": 20501,
+      "test": 1172,
+      "val": 1168
+    },
+    "by_library_quality": {
+      "1": 443107,
+      "3": 133347,
+      "2": 1926,
+      "4": 1078
+    },
+    "gold_only_molecules": 14687,
+    "positive_only_molecules": 12644,
+    "negative_only_molecules": 1784,
+    "both_modes_molecules": 8292,
+    "spectra_per_molecule_median": 7.0
+  }
+}

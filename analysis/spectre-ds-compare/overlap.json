@@ -1,0 +1,12 @@
+{
+  "spectre_raw_unique": 195185,
+  "spectre_canon": 195148,
+  "marina_index_raw": 487028,
+  "marina_index_canon": 486835,
+  "marina_retrieval_raw": 518901,
+  "marina_retrieval_canon": 518736,
+  "index_subset_of_retrieval": true,
+  "spectre_in_marina_index": 185160,
+  "spectre_in_marina_retrieval": 192567,
+  "spectre_not_in_marina_retrieval": 2581
+}

@@ -232,3 +232,36 @@ node_modules/
 
 # Large regenerable analysis arrays; the .png/.csv summaries are tracked.
 scripts/analysis/*.npz
+
+# ============================================================
+# analysis/ — standalone analyses consolidated 2026-08-04
+# ============================================================
+# Tracked:   scripts, READMEs, pixi.toml + pixi.lock, LaTeX sources and
+#            compiled PDFs, figures, and small JSON/CSV/MD results.
+# Not tracked: anything re-downloadable or regenerable. Together the
+#            excluded files are ~8.5 GB and would make the repo unclonable.
+
+# Materialized pixi environments — rebuild with `pixi install` in each dir
+**/.pixi/
+
+# Third-party raw downloads (~5.4 GB): GNPS, MassBank, nmrshiftdb2, NMRexp,
+# MassSpecGym, MMSD, SPECTRE LMDB. Provenance and re-fetch notes are in each
+# directory's README.
+analysis/*/raw/
+
+# Large derived artifacts — regenerable by re-running the pipeline
+analysis/**/*.parquet
+analysis/**/*.pkl
+analysis/**/*.npz
+analysis/**/*.pt
+analysis/**/*.mdb
+analysis/**/*.tsv
+analysis/**/*.smi
+analysis/domain-compare/smiles/*.txt
+
+# spectre-ds-compare scratch extractions (a 384 MB tensor, 9,775 loose .pt
+# files, and two index-only unzips of the SPECTRE release)
+analysis/spectre-ds-compare/extract/
+analysis/spectre-ds-compare/extract_full/
+analysis/spectre-ds-compare/full_1d/
+analysis/spectre-ds-compare/sample*/

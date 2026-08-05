@@ -1,0 +1,46 @@
+{
+  "total_hsqc_molecules": 486208,
+  "by_provenance": {
+    "mnova_simulated": 380552,
+    "acd_simulated": 95954,
+    "experimental_jeol": 9702
+  },
+  "by_provenance_pct": {
+    "mnova_simulated": 78.27,
+    "acd_simulated": 19.74,
+    "experimental_jeol": 2.0
+  },
+  "by_provenance_split": {
+    "acd_simulated": {
+      "train": 86319,
+      "val": 4833,
+      "test": 4802
+    },
+    "experimental_jeol": {
+      "train": 8741,
+      "val": 503,
+      "test": 458
+    },
+    "mnova_simulated": {
+      "train": 342446,
+      "val": 19209,
+      "test": 18897
+    }
+  },
+  "peaks_per_molecule": {
+    "acd_simulated": {
+      "mean": 19.04,
+      "median": 17.0
+    },
+    "experimental_jeol": {
+      "mean": 19.86,
+      "median": 19.0
+    },
+    "mnova_simulated": {
+      "mean": 23.41,
+      "median": 19.0
+    }
+  },
+  "experimental_total": 9702,
+  "simulated_total": 476506
+}

@@ -1,0 +1,28 @@
+{
+  "c_nmr": {
+    "molecules_compared": 2623,
+    "naive_per_atom_vs_per_peak": {
+      "median_deviation_ppm": 0.595,
+      "gross_disagreement_frac": 0.2028
+    },
+    "deduplicated_peak_vs_peak": {
+      "median_deviation_ppm": 0.295,
+      "gross_disagreement_frac": 0.048,
+      "unique_peak_count_ratio_median": 1.0
+    },
+    "gross_disagreement_tolerance_ppm": 5.0
+  },
+  "h_nmr": {
+    "molecules_compared": 1259,
+    "naive_per_atom_vs_per_peak": {
+      "median_deviation_ppm": 0.1085,
+      "gross_disagreement_frac": 0.2327
+    },
+    "deduplicated_peak_vs_peak": {
+      "median_deviation_ppm": 0.051,
+      "gross_disagreement_frac": 0.1199,
+      "unique_peak_count_ratio_median": 1.0
+    },
+    "gross_disagreement_tolerance_ppm": 0.5
+  }
+}

@@ -1,5 +1,32 @@
 # MARINA Repository
 
+Multi-modal NMR/MS to molecular-fingerprint retrieval model, the web application that
+serves it, and the analyses supporting the papers.
+
+| Directory | What |
+|---|---|
+| [`src/`](src/) | Training and evaluation code — model, datasets, losses, CLI |
+| [`analysis/`](analysis/README.md) | Standalone analyses, each with its own environment, README and report |
+| [`scripts/`](scripts/) | Dataset pipeline, benchmarking, website deployment |
+| [`backend/`](backend/), [`frontend/`](frontend/) | The web application |
+| [`nautilus/`](nautilus/) | Kubernetes job specs for GPU training on NRP Nautilus |
+
+## Analyses
+
+[`analysis/`](analysis/README.md) holds eight self-contained analyses — fingerprint
+redundancy, dataset domain comparisons, CLS-token attribution, and the MARINA2/3/4 dataset
+builder among them. Each pins its own pixi environment and documents its own run order.
+Four carry a LaTeX report with a compiled PDF.
+
+Data living outside the repo is resolved through a single environment variable:
+
+```bash
+export MARINA_DATA_ROOT=/path/to/data-root   # holds Datasets/, Benchmark/, Checkpoints/
+```
+
+Bulk inputs and large derived artifacts are not committed; see
+[`analysis/README.md`](analysis/README.md) for what ships and what has to be re-fetched.
+
 ## Website Setup
 
 Full deployment documentation lives in [`docs/website/`](docs/website/README.md):

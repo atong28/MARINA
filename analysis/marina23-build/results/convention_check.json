@@ -1,0 +1,31 @@
+{
+  "sample": 4000,
+  "marina1_c_nmr": {
+    "len/total_carbons  median": 1.0,
+    "len/unique_envs    median": 1.037,
+    "exact match to total carbons": 0.9958,
+    "exact match to unique envs": 0.4417
+  },
+  "marina1_h_nmr": {
+    "len/total_hydrogens median": 0.75,
+    "len/unique_envs     median": 1.273,
+    "exact match to total hydrogens": 0.0823,
+    "exact match to unique envs": 0.111
+  },
+  "substitution_length_change_c_nmr": {
+    "molecules_substituted_in_val": 839,
+    "len_after/len_before median": 1.0,
+    "p10": 0.747,
+    "p90": 1.0,
+    "frac_shorter": 0.2992,
+    "frac_longer": 0.0036
+  },
+  "substitution_length_change_h_nmr": {
+    "molecules_substituted_in_val": 712,
+    "len_after/len_before median": 1.2,
+    "p10": 0.714,
+    "p90": 1.75,
+    "frac_shorter": 0.1615,
+    "frac_longer": 0.6433
+  }
+}

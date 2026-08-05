@@ -1,0 +1,19 @@
+{
+  "molecules": 18651,
+  "c_nmr": 16717,
+  "h_nmr": 14503,
+  "both": 12569,
+  "source_nmrshiftdb2": {
+    "c_nmr": 8095,
+    "h_nmr": 3281
+  },
+  "source_nmrexp": {
+    "c_nmr": 11245,
+    "h_nmr": 12481
+  },
+  "nmrshiftdb2_overrode_nmrexp": {
+    "c_nmr": 2623,
+    "h_nmr": 1259
+  },
+  "nmrexp_parse_failures": 0
+}

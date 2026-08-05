@@ -1,0 +1,7 @@
+{
+  "source": "nmrshiftdb2",
+  "rows_read": 43580,
+  "unique_raw_strings": 42480,
+  "failed_canonicalization": 1,
+  "unique_canonical": 42114
+}

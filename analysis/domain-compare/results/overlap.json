@@ -1,0 +1,38 @@
+{
+  "mmsd": {
+    "n_molecules": 64654,
+    "exact_shared_with_marina1": 989,
+    "exact_shared_pct_of_source": 1.53,
+    "n_scaffolds": 30459,
+    "scaffolds_shared_with_marina1": 3144,
+    "scaffolds_shared_pct_of_source": 10.322
+  },
+  "nmrexp": {
+    "n_molecules": 1457540,
+    "exact_shared_with_marina1": 13103,
+    "exact_shared_pct_of_source": 0.899,
+    "n_scaffolds": 319270,
+    "scaffolds_shared_with_marina1": 10420,
+    "scaffolds_shared_pct_of_source": 3.264
+  },
+  "nmrshiftdb2": {
+    "n_molecules": 42114,
+    "exact_shared_with_marina1": 8589,
+    "exact_shared_pct_of_source": 20.395,
+    "n_scaffolds": 12156,
+    "scaffolds_shared_with_marina1": 4421,
+    "scaffolds_shared_pct_of_source": 36.369
+  },
+  "massspecgym": {
+    "n_molecules": 28936,
+    "exact_shared_with_marina1": 16565,
+    "exact_shared_pct_of_source": 57.247,
+    "n_scaffolds": 14206,
+    "scaffolds_shared_with_marina1": 7229,
+    "scaffolds_shared_pct_of_source": 50.887
+  },
+  "marina1": {
+    "n_molecules": 486835,
+    "n_scaffolds": 122528
+  }
+}

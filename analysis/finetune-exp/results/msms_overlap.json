@@ -1,0 +1,57 @@
+{
+  "massspecgym": {
+    "spectra_total": 231104,
+    "unique_canonical_smiles": 28936,
+    "by_mode": {
+      "positive": 231104
+    },
+    "by_adduct_top10": {
+      "[M+H]+": 195237,
+      "[M+Na]+": 35867
+    },
+    "by_instrument": {
+      "Orbitrap": 172058,
+      "QTOF": 53823
+    },
+    "collision_energy": {
+      "non_null": 121746,
+      "min": 0.0,
+      "median": 30.0,
+      "max": 358.40016
+    }
+  },
+  "overlap_with_marina1": {
+    "marina1_unique_smiles": 487028,
+    "matched_spectra": 185566,
+    "matched_molecules": 16565,
+    "pct_of_marina1": 3.401,
+    "pct_of_massspecgym_spectra": 80.3,
+    "matched_by_mode": {
+      "positive": 185566
+    },
+    "matched_molecules_by_mode": {
+      "positive": 16565
+    },
+    "matched_molecules_by_marina1_split": {
+      "train": 14873,
+      "val": 866,
+      "test": 826
+    },
+    "matched_by_adduct_top10": {
+      "[M+H]+": 151861,
+      "[M+Na]+": 33705
+    },
+    "spectra_per_molecule": {
+      "mean": 11.2,
+      "median": 4.0,
+      "p90": 29.0,
+      "max": 548
+    },
+    "spectra_per_molecule_positive_only": {
+      "molecules": 16565,
+      "mean": 11.2,
+      "median": 4.0,
+      "max": 548
+    }
+  }
+}

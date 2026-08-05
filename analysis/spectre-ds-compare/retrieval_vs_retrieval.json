@@ -1,0 +1,34 @@
+{
+  "spectre_raw": 526316,
+  "spectre_raw_unique": 526316,
+  "spectre_canon": 526083,
+  "spectre_canon_collapse": 233,
+  "marina_canon": 518736,
+  "shared": 513888,
+  "only_spectre": 12195,
+  "only_marina": 4848,
+  "only_spectre_reasons": {
+    "other": 6186,
+    "salt_or_mixture": 5865,
+    "mw_lt_100": 80,
+    "mw_gt_1000": 64
+  },
+  "only_spectre_sources": {
+    "hyunDB": 7826,
+    "Coconut DB": 2754,
+    "dataset_train_2d": 552,
+    "training dataset train 2d": 448,
+    "dataset_train_1d": 147,
+    "training dataset train 1d": 95,
+    "dataset_val_2d": 78,
+    "dataset_test_2d": 77,
+    "training dataset test 2d": 70,
+    "training dataset val 2d": 44,
+    "LOTUS DB": 38,
+    "dataset_test_1d": 21,
+    "training dataset val 1d": 19,
+    "dataset_val_1d": 14,
+    "training dataset test 1d": 12
+  },
+  "spectre_raw_with_dot": 5866
+}
