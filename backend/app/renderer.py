@@ -77,6 +77,111 @@ def render_plain_svg(smiles: str, img_size: int = 300) -> Optional[str]:
         return None
 
 
+def render_fragment_svg(
+    fragment_smiles: str,
+    atom_symbol: str = "",
+    img_size: int = 120,
+) -> Optional[str]:
+    """
+    Draw a fingerprint bit's substructure on its own, for the panel thumbnails.
+
+    These come from `Chem.PathToSubmol`, so they are *partial* structures: an
+    aromatic environment clipped out of its ring arrives as "cc(C)oc(c)c", whose
+    lowercase atoms are non-ring and fail a normal sanitize. Kekulisation and
+    aromaticity perception are therefore skipped and the fragment is drawn as
+    the open substructure it actually is.
+
+    Radius-0 bits carry no fragment at all — they are one atom, so the element
+    symbol is drawn instead.
+    """
+    if not _check_rdkit():
+        return None
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import rdDepictor
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        smiles = fragment_smiles or atom_symbol
+        if not smiles:
+            return None
+
+        mol = Chem.MolFromSmiles(smiles, sanitize=False)
+        if mol is None:
+            return None
+        mol.UpdatePropertyCache(strict=False)
+        Chem.SanitizeMol(
+            mol,
+            Chem.SanitizeFlags.SANITIZE_ALL
+            ^ Chem.SanitizeFlags.SANITIZE_KEKULIZE
+            ^ Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
+            ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES,
+            catchErrors=True,
+        )
+
+        # These fragments are cut out of a larger molecule, so their open
+        # valences are bonds to the rest of the structure — not hydrogens.
+        # Left alone RDKit fills them in, drawing a lone oxygen as "H2O" and an
+        # ether oxygen as "OH", which asserts atoms the parent may not have.
+        for atom in mol.GetAtoms():
+            atom.SetNoImplicit(True)
+            atom.SetNumExplicitHs(0)
+
+        rdDepictor.Compute2DCoords(mol)
+
+        drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
+        opts = drawer.drawOptions()
+        # The mol is already prepared; re-preparing would re-run the kekulisation
+        # that these partial fragments cannot survive.
+        opts.prepareMolsBeforeDrawing = False
+        opts.clearBackground = False
+        drawer.DrawMolecule(mol)
+        drawer.FinishDrawing()
+        return drawer.GetDrawingText()
+    except Exception as exc:
+        logger.debug("render_fragment_svg failed for %r: %s", fragment_smiles, exc)
+        return None
+
+
+def render_bit_svg(
+    smiles: str,
+    atoms: list,
+    bonds: list,
+    img_size: int = 300,
+) -> Optional[str]:
+    """
+    Render a depiction with one fingerprint bit's environment picked out.
+
+    Stays vector: unlike the similarity map there is no contour fill, so the
+    payload is a few kilobytes and the atom highlights are crisp at any zoom.
+    Out-of-range indices are dropped rather than raising — the client may hold
+    a bit list from a previous molecule while a new one is loading.
+    """
+    if not _check_rdkit():
+        return None
+    try:
+        from rdkit import Chem
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return None
+
+        n_atoms, n_bonds = mol.GetNumAtoms(), mol.GetNumBonds()
+        hl_atoms = [int(a) for a in atoms if 0 <= int(a) < n_atoms]
+        hl_bonds = [int(b) for b in bonds if 0 <= int(b) < n_bonds]
+
+        half = img_size // 2
+        drawer = rdMolDraw2D.MolDraw2DSVG(half, half)
+        rdMolDraw2D.PrepareAndDrawMolecule(
+            drawer, mol, highlightAtoms=hl_atoms, highlightBonds=hl_bonds,
+        )
+        drawer.FinishDrawing()
+        return drawer.GetDrawingText()
+    except Exception as exc:
+        logger.debug("render_bit_svg failed for %r: %s", smiles, exc)
+        return None
+
+
 def render_enhanced_svg(
     smiles: str,
     predicted_fp: torch.Tensor,

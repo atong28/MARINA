@@ -1,0 +1,173 @@
+.bit-panel {
+  padding: 8px 0 12px;
+}
+
+.bit-panel__status {
+  padding: 10px 14px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.bit-panel__status--error {
+  color: #b91c1c;
+}
+
+.bit-panel__calibration {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #15803d;
+  background: #f0fdf4;
+  border-radius: 4px;
+  padding: 3px 7px;
+  margin-bottom: 8px;
+  display: inline-block;
+  cursor: help;
+}
+
+/* An uncalibrated confidence overstates presence, so it must not read as neutral. */
+.bit-panel__calibration--raw {
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.bit-panel__group {
+  margin-bottom: 10px;
+}
+
+.bit-panel__group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: help;
+}
+
+.bit-panel__group-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bit-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bit-panel__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: #fafafa;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.bit-panel__row:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.bit-panel__row:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.bit-panel__row--selected {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.bit-panel__thumb {
+  width: 44px;
+  height: 40px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 3px;
+}
+
+.bit-panel__thumb--empty {
+  display: block;
+}
+
+.bit-panel__labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.bit-panel__frag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bit-panel__meta {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.bit-panel__band {
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.bit-panel__pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Group accents: the "missing" list is the diagnostic one, so it is the loudest. */
+.bit-panel__group--missing .bit-panel__group-title { color: #b91c1c; }
+.bit-panel__group--missing .bit-panel__row { background: #fef2f2; }
+.bit-panel__group--match .bit-panel__group-title { color: #15803d; }
+.bit-panel__group--unexpected .bit-panel__group-title { color: #92400e; }
+
+.bit-panel__truncated {
+  font-size: 11px;
+  color: #9ca3af;
+  padding-top: 4px;
+}
+
+.bit-panel__footnote {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #9ca3af;
+}
+
+.bit-panel__footnote code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

@@ -125,6 +125,60 @@ export interface CustomSmilesCardResponse {
   result: ResultCard
 }
 
+/**
+ * How a predicted bit relates to the candidate being displayed.
+ * - `missing`    – model is confident, this structure lacks it (most diagnostic)
+ * - `match`      – model is confident and the structure has it
+ * - `unexpected` – structure has it but the model did not call it
+ * - `uncertain`  – model is unsure and the structure lacks it
+ */
+export type BitGroup = 'missing' | 'match' | 'unexpected' | 'uncertain'
+
+export interface BitExplanation {
+  index: number
+  fragment_smiles: string
+  atom_symbol: string
+  radius: number
+  raw_confidence: number
+  confidence: number
+  band: string
+  present: boolean
+  group: BitGroup
+  atoms: number[]
+  bonds: number[]
+  /** Drawing of the substructure, present only when requested. */
+  fragment_svg?: string | null
+}
+
+export interface BitExplainRequest {
+  smiles: string
+  pred_fp: number[]
+  model_id?: string
+  limit?: number
+  include_fragment_svg?: boolean
+}
+
+export interface BitExplainResponse {
+  smiles: string
+  /** False when the model ships no calibration curve — confidences are then raw. */
+  calibrated: boolean
+  bits: BitExplanation[]
+  totals: Record<BitGroup, number>
+  total_shown: number
+  total_available: number
+}
+
+export interface BitHighlightRequest {
+  smiles: string
+  atoms: number[]
+  bonds: number[]
+}
+
+export interface BitHighlightResponse {
+  smiles: string
+  svg?: string
+}
+
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
 /**
@@ -194,6 +248,12 @@ export const api = {
     const { signal } = makeController('customSmilesCard')
     return fetchJson('/custom-smiles-card', { method: 'POST', body: JSON.stringify(data), signal })
   },
+
+  explainBits: (data: BitExplainRequest): Promise<BitExplainResponse> =>
+    fetchJson('/fingerprints/explain', { method: 'POST', body: JSON.stringify(data) }),
+
+  highlightBit: (data: BitHighlightRequest): Promise<BitHighlightResponse> =>
+    fetchJson('/fingerprints/highlight', { method: 'POST', body: JSON.stringify(data) }),
 
   queue: () => fetchJson<QueueSnapshot>('/queue'),
 

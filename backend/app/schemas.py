@@ -3,7 +3,7 @@ Pydantic request and response models for all API endpoints.
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import (
@@ -80,6 +80,53 @@ class FingerprintIndicesRequest(BaseModel):
 class FingerprintIndicesResponse(BaseModel):
     smiles:     str              = Field(..., description="Input SMILES")
     fp_indices: Optional[List[int]] = Field(None, description="Active bit indices (sorted)")
+
+
+class BitExplainRequest(BaseModel):
+    smiles:   str           = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
+                                     description="Candidate structure to locate bits on")
+    pred_fp:  List[float]   = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
+                                     description="Predicted fingerprint from /predict or /smiles-search")
+    model_id: Optional[str] = Field(None)
+    limit:    int           = Field(60, ge=1, le=500, description="Max rows to return")
+    include_fragment_svg: bool = Field(False, description="Attach a drawing of each substructure")
+
+
+class BitExplanation(BaseModel):
+    index:           int
+    fragment_smiles: str   = Field(..., description="Substructure SMILES ('' for radius-0 bits)")
+    atom_symbol:     str   = Field(..., description="Element at the environment centre")
+    radius:          int
+    raw_confidence:  float = Field(..., ge=0.0, le=1.0, description="Uncalibrated sigmoid output")
+    confidence:      float = Field(..., ge=0.0, le=1.0, description="Calibrated presence probability")
+    band:            str   = Field(..., description="Very likely / Likely / Possible / Unlikely")
+    present:         bool  = Field(..., description="Whether the candidate actually contains it")
+    group:           str   = Field(..., description="missing / match / unexpected / uncertain")
+    atoms:           List[int] = Field(default_factory=list, description="Atom indices to highlight")
+    bonds:           List[int] = Field(default_factory=list, description="Bond indices to highlight")
+    fragment_svg:    Optional[str] = Field(None, description="Drawing of the substructure, when requested")
+
+
+class BitHighlightRequest(BaseModel):
+    smiles: str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH)
+    atoms:  List[int] = Field(default_factory=list, max_length=1000,
+                              description="Atom indices to highlight")
+    bonds:  List[int] = Field(default_factory=list, max_length=1000,
+                              description="Bond indices to highlight")
+
+
+class BitHighlightResponse(BaseModel):
+    smiles: str
+    svg:    Optional[str] = Field(None, description="SVG markup, or null if rendering is unavailable")
+
+
+class BitExplainResponse(BaseModel):
+    smiles:          str
+    calibrated:      bool = Field(..., description="False when the model ships no calibration curve")
+    bits:            List[BitExplanation]
+    totals:          Dict[str, int] = Field(..., description="Row count per group before truncation")
+    total_shown:     int
+    total_available: int
 
 
 # ── Result card ───────────────────────────────────────────────────────────────

@@ -7,9 +7,14 @@ interface ResultsGridProps {
   results: ResultCardType[]
   customResults?: CustomResult[]
   onRemoveCustom?: (id: string) => void
+  /** Reference fingerprint from the last search; drives the substructure panel. */
+  predFp?: number[] | null
+  modelId?: string
 }
 
-function ResultsGrid({ results, customResults = [], onRemoveCustom }: ResultsGridProps) {
+function ResultsGrid({
+  results, customResults = [], onRemoveCustom, predFp, modelId,
+}: ResultsGridProps) {
   if (results.length === 0 && customResults.length === 0) return null
 
   return (
@@ -27,6 +32,8 @@ function ResultsGrid({ results, customResults = [], onRemoveCustom }: ResultsGri
                 position={i + 1}
                 isCustom
                 onRemove={onRemoveCustom ? () => onRemoveCustom(entry.id) : undefined}
+                predFp={predFp}
+                modelId={modelId}
               />
             ))}
           </div>
@@ -44,6 +51,8 @@ function ResultsGrid({ results, customResults = [], onRemoveCustom }: ResultsGri
                 key={`${result.index}-${result.smiles}`}
                 result={result}
                 position={i + 1}
+                predFp={predFp}
+                modelId={modelId}
               />
             ))}
           </div>

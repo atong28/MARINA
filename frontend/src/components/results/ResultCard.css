@@ -139,3 +139,33 @@
 .result-card__remove-btn:hover {
   background: #fef2f2;
 }
+
+.result-card__expand {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.result-card__expand-hint {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.result-card__expand:hover .result-card__expand-hint,
+.result-card__expand:focus-visible .result-card__expand-hint {
+  opacity: 1;
+}

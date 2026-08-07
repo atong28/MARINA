@@ -1,0 +1,13 @@
+[workspace]
+name = "bit-confidence"
+version = "0.1.0"
+description = "Isolated analysis: does a MARINA fingerprint bit's predicted probability mean what it says? Measures reliability on marina-final-run-seed-2 (the deployed checkpoint), fits an isotonic recalibration curve, and exports it as a small lookup table the website can ship alongside the model. Torch-free; consumes preds.npz produced with MARINA's own env."
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+numpy = "*"
+scipy = "*"
+scikit-learn = "*"
+matplotlib = "*"

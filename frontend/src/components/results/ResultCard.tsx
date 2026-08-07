@@ -1,5 +1,6 @@
-import { memo } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { ResultCard as ResultCardType } from '../../services/api'
+import CompoundDetail from './CompoundDetail'
 import MoleculeViewer from './MoleculeViewer'
 import './ResultCard.css'
 
@@ -16,13 +17,24 @@ interface ResultCardProps {
   /** When true, renders a "Remove" button instead of database links */
   isCustom?: boolean
   onRemove?: () => void
+  /** Reference fingerprint for this session; enables the expanded view. */
+  predFp?: number[] | null
+  modelId?: string
 }
 
-function ResultCard({ result, position, isCustom = false, onRemove }: ResultCardProps) {
+function ResultCard({
+  result, position, isCustom = false, onRemove, predFp, modelId,
+}: ResultCardProps) {
   const { database_links } = result
 
   const cosine = result.cosine_similarity ?? result.similarity
   const tanimoto = result.tanimoto_similarity
+
+  const [expanded, setExpanded] = useState(false)
+
+  const canExplain = Boolean(predFp && predFp.length > 0)
+  const open = useCallback(() => setExpanded(true), [])
+  const close = useCallback(() => setExpanded(false), [])
 
   const hasLinks = !isCustom && Boolean(
     database_links?.coconut || database_links?.lotus || database_links?.npmrd
@@ -55,7 +67,30 @@ function ResultCard({ result, position, isCustom = false, onRemove }: ResultCard
         )}
       </div>
 
-      <MoleculeViewer svg={result.svg || result.plain_svg} smiles={result.smiles} />
+      {canExplain ? (
+        <button
+          type="button"
+          className="result-card__expand"
+          onClick={open}
+          title="Expand this compound to see its substructures"
+        >
+          <MoleculeViewer svg={result.svg || result.plain_svg} smiles={result.smiles} />
+          <span className="result-card__expand-hint">Expand ↗</span>
+        </button>
+      ) : (
+        <MoleculeViewer svg={result.svg || result.plain_svg} smiles={result.smiles} />
+      )}
+
+      {expanded && canExplain && (
+        <CompoundDetail
+          result={result}
+          position={position}
+          isCustom={isCustom}
+          predFp={predFp as number[]}
+          modelId={modelId}
+          onClose={close}
+        />
+      )}
 
       <div className="result-card__footer">
         {isCustom ? (

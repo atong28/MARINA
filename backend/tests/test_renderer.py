@@ -153,3 +153,95 @@ def test_plain_render_stays_vector():
 
 def test_plain_render_returns_none_for_invalid_smiles():
     assert render_plain_svg("not-a-smiles") is None
+
+
+# ── Single-bit highlighting ───────────────────────────────────────────────────
+
+def test_render_bit_svg_marks_the_requested_atoms():
+    """The highlight view stays vector — no contour fill, so no rasterisation."""
+    from app.renderer import render_bit_svg
+
+    svg = render_bit_svg(RETRIEVED, atoms=[0, 1, 2], bonds=[0, 1], img_size=300)
+    assert svg is not None
+    assert svg.lstrip().startswith("<?xml") or "<svg" in svg
+    assert not svg.startswith("data:image")
+
+
+def test_render_bit_svg_tolerates_out_of_range_indices():
+    """The client can hold a bit list from the previous molecule mid-swap."""
+    from app.renderer import render_bit_svg
+
+    assert render_bit_svg(RETRIEVED, atoms=[9999], bonds=[9999], img_size=300) is not None
+
+
+def test_render_bit_svg_with_no_highlight_still_renders():
+    from app.renderer import render_bit_svg
+
+    assert render_bit_svg(RETRIEVED, atoms=[], bonds=[], img_size=300) is not None
+
+
+def test_render_bit_svg_returns_none_for_bad_smiles():
+    from app.renderer import render_bit_svg
+
+    assert render_bit_svg("not-a-smiles", atoms=[0], bonds=[], img_size=300) is None
+
+
+def test_render_bit_svg_differs_when_highlighting():
+    """Guards against silently returning the plain depiction."""
+    from app.renderer import render_bit_svg
+
+    plain = render_bit_svg(RETRIEVED, atoms=[], bonds=[], img_size=300)
+    marked = render_bit_svg(RETRIEVED, atoms=[0, 1, 2], bonds=[0, 1], img_size=300)
+    assert plain != marked
+
+
+# ── Fragment thumbnails ───────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("frag", [
+    "CCCCC",              # plain chain
+    "C=O",                # double bond
+    "ccc",                # aromatic atoms clipped out of their ring
+    "cc(C)oc(c)c",        # aromatic heterocycle fragment
+    "CC(O)C(O)C(C)O",     # several dangling valences
+])
+def test_render_fragment_svg_draws_partial_structures(frag):
+    """
+    PathToSubmol fragments are partial: lowercase atoms are non-ring and fail a
+    normal sanitize, so a plain MolFromSmiles path would return None for half
+    the bit pool.
+    """
+    from app.renderer import render_fragment_svg
+
+    svg = render_fragment_svg(frag)
+    assert svg is not None and "<svg" in svg
+
+
+def test_render_fragment_svg_falls_back_to_the_centre_atom():
+    """Radius-0 bits carry no fragment SMILES at all — 52 of the 16,384."""
+    from app.renderer import render_fragment_svg
+
+    assert render_fragment_svg("", "O") is not None
+
+
+def test_render_fragment_svg_does_not_invent_hydrogens():
+    """
+    Open valences are bonds to the rest of the molecule, not hydrogens. Left to
+    RDKit a lone oxygen draws as "H2O" and an ether oxygen as "OH", asserting
+    atoms the parent structure may not have.
+    """
+    from app.renderer import render_fragment_svg
+
+    assert "H" not in _svg_text(render_fragment_svg("", "O"))
+    assert "H" not in _svg_text(render_fragment_svg("CC(O)C(O)C(C)O"))
+
+
+def _svg_text(svg: str) -> str:
+    """Concatenate the glyph labels an SVG draws, ignoring markup."""
+    import re
+    return "".join(re.findall(r">([^<>]*)</text>", svg or ""))
+
+
+def test_render_fragment_svg_returns_none_when_nothing_to_draw():
+    from app.renderer import render_fragment_svg
+
+    assert render_fragment_svg("", "") is None

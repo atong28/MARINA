@@ -466,6 +466,12 @@ function MainPage() {
         results={results}
         customResults={customResults}
         onRemoveCustom={removeCustomResult}
+        // Only prediction results carry per-bit confidences. A SMILES search
+        // scores against the query molecule's own binary fingerprint, where
+        // every present bit is exactly 1.0 — there is no confidence to report,
+        // and the calibration curve was fitted on predicted probabilities.
+        predFp={resultSource === 'prediction' ? predictedFp : null}
+        modelId={selectedModelId ?? undefined}
       />
     </div>
   )
