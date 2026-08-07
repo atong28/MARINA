@@ -56,7 +56,11 @@ def train_marina(
         logger=wandb_logger,
         callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos, progress_bar],
         accumulate_grad_batches=args.accumulate_grad_batches_num,
-        strategy='auto',
+        # MARINA3 batches routinely contain no 1H / 13C / MS-MS at all (no modality
+        # exceeds 53.7% coverage), so those per-modality encoders receive no gradient
+        # and plain DDP aborts at reducer._rebuild_buckets(). Numerically identical to
+        # find_unused_parameters=False; only the reduction-set discovery changes.
+        strategy='ddp_find_unused_parameters_true',
         gradient_clip_val=1.0
     )
 
