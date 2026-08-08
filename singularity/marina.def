@@ -8,10 +8,12 @@ From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
 # Nautilus -- unpinned conda-forge would silently drift across numpy 2.x / pandas 3.x
 # majors, which are both very new.
 #
-# TARGET GPU: this uses the cu128 torch wheel. If the target partition is Volta (V100,
-# sm_70) verify the wheel actually carries sm_70 kernels before committing to it --
-# see the arch check at the end of %post. To fall back, change TORCH_INDEX to
-# https://download.pytorch.org/whl/cu126 and the base image to 12.6.x-cudnn-runtime.
+# TARGET GPU: SDSC Expanse, 4x V100 SMX2 32GB (sm_70).
+# Verified that torch 2.8.0+cu128 does carry Volta kernels -- read off the wheel itself:
+#   torch._C._cuda_getArchFlags() -> sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+# so cu128 is correct here and no cu126 fallback is needed. The %post arch dump below
+# re-asserts this at build time; if sm_70 ever disappears from a future wheel, switch
+# TORCH_INDEX to https://download.pytorch.org/whl/cu126 and the base to 12.6-cudnn-runtime.
 #
 # The code is NOT baked in; bind-mount the repo at runtime:
 #   singularity exec --nv -B /path/to/MARINA:/code -B /path/to/data:/workspace \
