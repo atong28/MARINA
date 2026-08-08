@@ -40,14 +40,27 @@ def train_marina(
     ckpt_callback = cb.ModelCheckpoint(
         monitor=metric,
         mode='max',
-        # The monitored checkpoint is the *best* epoch, which is not where a killed run
-        # left off. Resuming needs a rolling `last.ckpt` or it would silently rewind to
-        # the best epoch and redo every epoch since.
-        save_last=args.resume,
+        save_last=False,
         save_top_k=1,
         dirpath=ckpt_dir,
         filename='epoch_{epoch:d}'
     )
+    callbacks = [early_stopping, lr_monitor, ckpt_callback, error_callback,
+                 benchmark_cos, progress_bar]
+
+    if args.resume:
+        # A rolling checkpoint on its own schedule. save_last=True on the monitored
+        # callback would NOT do this: it only fires when the metric improves, so once
+        # val/mean_cos plateaus the "last" checkpoint goes stale for hundreds of epochs
+        # and resuming from it silently redoes all of them.
+        # monitor=None + save_top_k=1 overwrites one file every_n_epochs, so the write
+        # cost is bounded regardless of run length.
+        callbacks.append(cb.ModelCheckpoint(
+            dirpath=ckpt_dir,
+            filename='last',
+            save_top_k=1,
+            every_n_epochs=args.checkpoint_every_n_epochs,
+        ))
     early_stopping = EarlyStopping(
         monitor=metric,
         mode='max',
@@ -65,7 +78,7 @@ def train_marina(
         accelerator="auto",
         precision="bf16-mixed",
         logger=wandb_logger,
-        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos, progress_bar],
+        callbacks=callbacks,
         accumulate_grad_batches=args.accumulate_grad_batches_num,
         # MARINA3 batches routinely contain no 1H / 13C / MS-MS at all (no modality
         # exceeds 53.7% coverage), so those per-modality encoders receive no gradient

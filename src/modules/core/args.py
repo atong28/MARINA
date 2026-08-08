@@ -18,6 +18,11 @@ class SMARTArgs:
     # Nautilus the default results dir is an emptyDir that dies with the pod.
     # Requires a stable SMART_RUN_ID across chunks so they share one results directory.
     resume: bool = False
+    # How often --resume writes its rolling checkpoint. This is the only knob on resume's
+    # I/O cost: a 2.17GB checkpoint takes ~4.6s to the PVC (measured 470 MB/s) versus ~1.4s
+    # to ephemeral, so every 5 epochs is well under 1% of a 600s epoch. Raise it if the
+    # filesystem is loaded, at the cost of redoing up to this many epochs after a restart.
+    checkpoint_every_n_epochs: int = 5
     # whether to do training
     train: bool = True
     # whether to do testing
