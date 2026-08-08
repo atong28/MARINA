@@ -29,8 +29,10 @@ def setup_file_logging(logger: logging.Logger, file_path: str) -> None:
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
     
-    # Create file handler
-    file_handler = logging.FileHandler(file_path, mode='w')
+    # Append rather than truncate: a resumed run reopens the same log file, and mode='w'
+    # would discard the previous chunk's history exactly when it is most needed. For a
+    # non-resumed run the path is unique per timestamp, so this is equivalent.
+    file_handler = logging.FileHandler(file_path, mode='a')
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

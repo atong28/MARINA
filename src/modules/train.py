@@ -1,4 +1,5 @@
 import os
+import time
 
 import torch
 import pytorch_lightning as pl
@@ -101,8 +102,16 @@ def train_marina(
             logger.info(f'[Main] No {candidate} yet; starting this run from scratch.')
 
     logger.info("[Main] Begin Training!")
+    fit_start = time.time()
     trainer.fit(model, datamodule=data_module, ckpt_path=resume_ckpt)
+    logger.info(f'[Main] fit() finished in {time.time() - fit_start:.1f}s')
     trainer.strategy.barrier()
 
     if args.test and trainer.local_rank == 0:
+        # Everything from here on holds the GPUs while doing little with them. Timing the
+        # test phase separately from the results move is what distinguishes "the benchmark
+        # is slow" from "the copy is slow" -- the two are otherwise one opaque gap between
+        # the last training log line and the job exiting.
+        test_start = time.time()
         test_marina(args, data_module, model, results_path, None, wandb_run=wandb_run, fp_loader=fp_loader)
+        logger.info(f'[Main] test/benchmark phase finished in {time.time() - test_start:.1f}s')

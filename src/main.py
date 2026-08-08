@@ -80,8 +80,12 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
 
     logger = get_logger(__file__)
 
+    # Resolved before the wandb/logging setup so logs.txt and params.json land alongside
+    # the checkpoints on persistent storage; otherwise a preempted run takes its log with it.
+    ckpt_dir = _resume_ckpt_dir(args, final_path, logger)
+
     # create a wandb run
-    wandb_run = configure_wandb(args, results_path, today)
+    wandb_run = configure_wandb(args, results_path, today, log_dir=ckpt_dir)
 
     # Warm-start from a checkpoint before training. `train_marina` builds its own
     # Trainer and never sees load_from_checkpoint, so without this the flag silently
@@ -106,7 +110,7 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
             results_path,
             wandb_run=wandb_run,
             fp_loader=fp_loader,
-            ckpt_dir=_resume_ckpt_dir(args, final_path, logger)
+            ckpt_dir=ckpt_dir
         )
     elif args.test:
         test_marina(
