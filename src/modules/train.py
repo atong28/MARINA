@@ -1,3 +1,5 @@
+import os
+
 import torch
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
@@ -19,10 +21,16 @@ def train_marina(
     model: MARINA | SPECTRE,
     results_path: str,
     wandb_run=None,
-    fp_loader: EntropyFPLoader | None = None
+    fp_loader: EntropyFPLoader | None = None,
+    ckpt_dir: str | None = None
 ) -> None:
     torch.set_float32_matmul_precision('high')
     logger.info(f'[Main] Results Path: {results_path}')
+    # ckpt_dir is where checkpoints are written. It differs from results_path only when
+    # resuming, where they must outlive the pod.
+    ckpt_dir = ckpt_dir or results_path
+    if ckpt_dir != results_path:
+        logger.info(f'[Main] Checkpoint Path: {ckpt_dir}')
     try:
         logger.info(f'[Main] Using GPU : {torch.cuda.get_device_name()}')
     except:
@@ -32,9 +40,12 @@ def train_marina(
     ckpt_callback = cb.ModelCheckpoint(
         monitor=metric,
         mode='max',
-        save_last=False,
+        # The monitored checkpoint is the *best* epoch, which is not where a killed run
+        # left off. Resuming needs a rolling `last.ckpt` or it would silently rewind to
+        # the best epoch and redo every epoch since.
+        save_last=args.resume,
         save_top_k=1,
-        dirpath=results_path,
+        dirpath=ckpt_dir,
         filename='epoch_{epoch:d}'
     )
     early_stopping = EarlyStopping(
@@ -64,8 +75,20 @@ def train_marina(
         gradient_clip_val=1.0
     )
 
+    # Lightning restores optimizer, LR schedule, epoch counter and callback state (including
+    # EarlyStopping's patience counter) only via ckpt_path. Passing the checkpoint to
+    # load_from_checkpoint instead would restore weights alone and restart the schedule.
+    resume_ckpt = None
+    if args.resume:
+        candidate = os.path.join(ckpt_dir, 'last.ckpt')
+        if os.path.exists(candidate):
+            resume_ckpt = candidate
+            logger.info(f'[Main] Resuming from {resume_ckpt}')
+        else:
+            logger.info(f'[Main] No {candidate} yet; starting this run from scratch.')
+
     logger.info("[Main] Begin Training!")
-    trainer.fit(model, datamodule=data_module)
+    trainer.fit(model, datamodule=data_module, ckpt_path=resume_ckpt)
     trainer.strategy.barrier()
 
     if args.test and trainer.local_rank == 0:

@@ -11,6 +11,13 @@ class SMARTArgs:
     seed: int = 0
     # path to load checkpoint from
     load_from_checkpoint: str | None = None
+    # Resume a run in place rather than warm-starting from it. load_from_checkpoint only
+    # restores weights, so a chained job restarts the LR warmup and early-stopping patience
+    # from scratch; this restores optimizer, schedule, epoch counter and callback state too.
+    # Also writes checkpoints somewhere persistent and keeps a rolling `last.ckpt`, since on
+    # Nautilus the default results dir is an emptyDir that dies with the pod.
+    # Requires a stable SMART_RUN_ID across chunks so they share one results directory.
+    resume: bool = False
     # whether to do training
     train: bool = True
     # whether to do testing

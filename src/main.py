@@ -37,6 +37,26 @@ MARINA_DATAMODULE_CLASSES = {
     "SPECTRE": SPECTREDataModule,
 }
 
+def _resume_ckpt_dir(args, final_path: str, logger):
+    """
+    Where checkpoints go when --resume is set: somewhere that outlives the pod.
+
+    results_path lives under DATASET_ROOT, which on Nautilus is an emptyDir -- a preempted
+    or walltime-killed run loses its checkpoints entirely and has nothing to resume from.
+    final_path is on the PVC. Returns None to leave the default alone when not resuming.
+    """
+    if not args.resume:
+        return None
+    if not final_path:
+        logger.warning(
+            '[Main] --resume set but no persistent results path is configured (PVC_ROOT '
+            'unset); checkpoints stay on ephemeral storage and will not survive the pod.'
+        )
+        return None
+    os.makedirs(final_path, exist_ok=True)
+    return final_path
+
+
 def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
     fp_loader = make_fp_loader(
         args.fp_type,
@@ -85,7 +105,8 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
             model,
             results_path,
             wandb_run=wandb_run,
-            fp_loader=fp_loader
+            fp_loader=fp_loader,
+            ckpt_dir=_resume_ckpt_dir(args, final_path, logger)
         )
     elif args.test:
         test_marina(

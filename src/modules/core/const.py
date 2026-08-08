@@ -74,7 +74,7 @@ for _name, _value in (('CODE_ROOT', CODE_ROOT), ('DATASET_ROOT', DATASET_ROOT),
 # the pretraining run's learning rate, budget and experiment name.
 DO_NOT_OVERRIDE = [
     'train', 'test', 'visualize', 'load_from_checkpoint', 'input_types', 'requires',
-    'benchmark', 'restrictions', 'benchmark_split',
+    'benchmark', 'restrictions', 'benchmark_split', 'resume',
     'experiment_name', 'project_name', 'seed', 'lr', 'epochs', 'patience',
     'early_stopping_metric', 'modality_drop_override',
 ]

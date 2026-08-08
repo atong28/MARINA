@@ -45,11 +45,21 @@ def configure_wandb(args: MARINAArgs | SPECTREArgs, results_path: str, today: st
 
         wandb.login(key=key)
 
+        # resume="allow" only resumes when an explicit id is given; without one wandb
+        # mints a fresh id every time, so each chunk of a chained run would land in its
+        # own W&B run. experiment_id is stable across chunks exactly when the launcher
+        # pins SMART_RUN_ID, which is the same condition that makes the results
+        # directory stable -- so tying the run id to it keeps the two in step.
+        init_kwargs = {}
+        if getattr(args, "resume", False):
+            init_kwargs["id"] = experiment_id
+
         wandb_run = wandb.init(
             project=args.project_name,
             name=experiment_id,
             config=vars(args),
             resume="allow",
+            **init_kwargs,
         )
     else:
         # ensure path exists before creating a logger
