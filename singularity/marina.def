@@ -1,33 +1,35 @@
 Bootstrap: docker
 From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
 
-# MARINA training image for SDSC.
+# MARINA training image for SDSC Expanse.
 #
-# Mirrors the pixi.toml environment. Conda package versions are pinned to the same
-# ranges pixi resolves, so an image built months from now still matches the runs on
-# Nautilus -- unpinned conda-forge would silently drift across numpy 2.x / pandas 3.x
-# majors, which are both very new.
+# TARGET GPU: 4x V100 SMX2 32GB (sm_70), Expanse `gpu` partition.
+# torch 2.8.0+cu128 does carry Volta kernels -- read off the wheel itself:
+#   torch.cuda.get_arch_list() -> sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+# The %post check below ASSERTS this and fails the build if sm_70 ever disappears from a
+# future wheel, rather than printing it and letting a broken image ship. If that assert
+# fires, switch TORCH_INDEX to .../whl/cu126 and the base image to 12.6-cudnn-runtime.
 #
-# TARGET GPU: SDSC Expanse, 4x V100 SMX2 32GB (sm_70).
-# Verified that torch 2.8.0+cu128 does carry Volta kernels -- read off the wheel itself:
-#   torch._C._cuda_getArchFlags() -> sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
-# so cu128 is correct here and no cu126 fallback is needed. The %post arch dump below
-# re-asserts this at build time; if sm_70 ever disappears from a future wheel, switch
-# TORCH_INDEX to https://download.pytorch.org/whl/cu126 and the base to 12.6-cudnn-runtime.
+# SCOPE: this image runs training (`src.main`) and nothing else. Its package set is the
+# measured import closure of src/, not a mirror of pixi.toml -- see the notes in %post.
+# Dataset prep, analysis and the website still use the pixi env.
 #
 # The code is NOT baked in; bind-mount the repo at runtime:
-#   singularity exec --nv -B /path/to/MARINA:/code -B /path/to/data:/workspace \
-#     marina.sif bash -c 'cd /code && torchrun --nproc_per_node 4 --module src.main marina ...'
+#   singularity exec --nv --pwd /code -B /path/to/MARINA:/code -B /path/to/data:/workspace \
+#     marina.sif torchrun --standalone --nproc_per_node 4 --module src.main marina ...
 
 %labels
     Author Anthony Tong
-    Description MARINA / SMART-Moonshot training environment (micromamba, matches pixi.toml)
+    Description MARINA training environment (micromamba; pins verified against the pixi env)
+    Python 3.13
+    Torch 2.8.0+cu128
+    PytorchLightning 2.6.1
 
 %help
     MARINA training environment
-    - Python 3.13, CUDA 12.8 base, torch 2.8.0+cu128
-    - conda-forge packages via micromamba, pinned to pixi.toml ranges
-    - Bind the repo to /code and the dataset root to /workspace
+    - Python 3.13, CUDA 12.8 base, torch 2.8.0+cu128, sm_70 verified for V100
+    - Bind the repo to /code, the dataset root to /workspace, and run with --pwd /code
+    - Every version is exact-pinned; `singularity test marina.sif` re-checks the imports
 
 %environment
     export LC_ALL=C.UTF-8
@@ -47,9 +49,14 @@ From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
     export MAMBA_ROOT_PREFIX=/opt/micromamba
     export TORCH_INDEX=https://download.pytorch.org/whl/cu128
 
+    # bzip2 is required: the micromamba tarball below is bz2 and `tar -j` shells out to it.
+    # git is required at *runtime*, not build time -- wandb records the commit of the
+    # bind-mounted repo, and silently logs no git metadata if the binary is missing.
+    # build-essential/pkg-config are deliberately absent: every pinned package below
+    # resolves to a binary wheel or conda package. Re-add them if a rebuild ever needs
+    # to compile from source.
     apt-get update && apt-get install -y --no-install-recommends \
         bash ca-certificates curl wget git bzip2 \
-        build-essential pkg-config \
         libglib2.0-0 libxext6 libxrender1 libsm6 libx11-6 \
         libfontconfig1 libfreetype6 libstdc++6 \
         && rm -rf /var/lib/apt/lists/*
@@ -60,28 +67,27 @@ From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
         | tar -xvj -C /tmp bin/micromamba
     mv /tmp/bin/micromamba /usr/local/bin/micromamba
     chmod +x /usr/local/bin/micromamba
+    # Recorded in the build log so a future image can be traced to its installer, even
+    # though the package pins below are what actually determine the resolved environment.
+    micromamba --version
 
-    # Versions mirror pixi.toml [dependencies]. pydantic and torchmetrics are listed
-    # explicitly because src/modules/*/args.py imports pydantic directly and the code
-    # imports torchmetrics directly -- in the pixi env both arrive only transitively
-    # (pydantic via wandb, torchmetrics via lightning), which is fragile.
+    # Exact pins, read off the working pixi env (.pixi/envs/default, python 3.13.12) rather
+    # than copied from pixi.toml's ranges: a range still drifts between builds, and numpy
+    # 2.x/pandas 3.x are new enough that a minor bump is a real risk.
+    #
+    # This list is the measured import closure of src/ plus python itself. matplotlib,
+    # pandas, jupyter, ipython, ipykernel, gdown, openpyxl and git-lfs are in pixi.toml but
+    # have ZERO imports under src/ -- they serve dataset prep and notebooks, neither of
+    # which runs in this image. Dropping them removes the whole Jupyter dependency tree.
     micromamba create -y -p /opt/conda/envs/smart -c conda-forge \
-        "python>=3.13,<3.14" \
-        "numpy>=2.4.2,<3" \
-        "matplotlib>=3.10.8,<4" \
-        "pandas>=3.0.1,<4" \
-        "wandb>=0.25.0,<0.26" \
-        "rdkit>=2025.9.6,<2026" \
-        "pydantic>=2.12,<3" \
-        "ipython>=9.10.0,<10" \
-        "ipykernel>=7.2.0,<8" \
-        "jupyter>=1.1.1,<2" \
-        "tqdm>=4.67.3,<5" \
-        "tyro>=1.0.8,<2" \
-        "gdown>=5.2.1,<6" \
-        "openpyxl>=3.1.5,<4" \
-        "pyarrow>=23.0.1,<24" \
-        "git-lfs>=3.7.1,<4" \
+        python=3.13.12 \
+        numpy=2.4.2 \
+        pyarrow=23.0.1 \
+        pydantic=2.12.5 \
+        rdkit=2025.9.6 \
+        tqdm=4.67.3 \
+        tyro=1.0.8 \
+        wandb=0.25.0 \
         pip
 
     /opt/conda/envs/smart/bin/pip install --upgrade pip setuptools wheel
@@ -89,24 +95,30 @@ From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
     /opt/conda/envs/smart/bin/pip install \
         torch==2.8.0 --index-url "${TORCH_INDEX}"
 
-    # lightning pulls pytorch_lightning and torchmetrics; both are imported directly
-    # by the code, so they are asserted in the smoke test below rather than assumed.
+    # pytorch-lightning is pinned EXPLICITLY even though `lightning` depends on it. That
+    # dependency is declared unpinned ("pytorch-lightning", no specifier), so a build months
+    # from now would resolve whatever is newest -- and src/ imports `pytorch_lightning`
+    # directly, not `lightning`, so a major bump would land straight on the code path.
+    # torchmetrics is likewise imported directly and was previously only transitive.
+    #
+    # `lightning` itself is NOT installed: nothing under src/ imports it, and it ships a
+    # second copy of the same codebase. Add `lightning==2.6.1` here if that changes.
     /opt/conda/envs/smart/bin/pip install \
-        lightning==2.6.1 \
-        torchmetrics \
-        torch_geometric==2.7.0
+        pytorch-lightning==2.6.1 \
+        torchmetrics==1.8.2
 
     micromamba clean -a -y
     rm -rf /root/.cache/pip
 
-    echo "=== smoke test: every module the MARINA source imports ==="
+    echo "=== smoke test: the measured import closure of src/ ==="
 # heredoc body must start at column 0: the terminator has to be unindented, and the
 # Python inside would otherwise be an IndentationError.
 /opt/conda/envs/smart/bin/python - <<'PY'
 import importlib, sys
-mods = ["numpy", "matplotlib", "pandas", "pyarrow", "pydantic", "rdkit",
-        "torch", "torchmetrics", "lightning", "pytorch_lightning",
-        "tqdm", "tyro", "wandb", "torch_geometric"]
+
+# Exactly the third-party modules imported anywhere under src/.
+mods = ["numpy", "pyarrow", "pydantic", "pytorch_lightning", "rdkit",
+        "torch", "torchmetrics", "tqdm", "tyro", "wandb"]
 bad = []
 for m in mods:
     try:
@@ -114,22 +126,51 @@ for m in mods:
         print(f"  {m:20s} {getattr(mod, '__version__', 'ok')}")
     except Exception as e:
         bad.append(f"{m}: {e}")
-# The code does `from pydantic.dataclasses import dataclass`
-from pydantic.dataclasses import dataclass  # noqa: F401
+
+# src/modules/*/args.py does `from pydantic.dataclasses import dataclass`, which is a
+# distinct import path from `pydantic` and has broken independently of it before.
+try:
+    from pydantic.dataclasses import dataclass  # noqa: F401
+except Exception as e:
+    bad.append(f"pydantic.dataclasses: {e}")
+
 if bad:
-    print("MISSING:", *bad, sep="\n  ")
+    print("FAILED:", *bad, sep="\n  ")
     sys.exit(1)
 print("all imports OK")
 PY
 
-    echo "=== torchrun present (pixi.toml drives training via torchrun --module) ==="
-    /opt/conda/envs/smart/bin/torchrun --version || true
+    echo "=== assert this wheel can actually run on V100 (sm_70) ==="
+/opt/conda/envs/smart/bin/python - <<'PY'
+import sys, torch
 
-    echo "=== CUDA architectures baked into this torch wheel ==="
-    # If the target partition is V100 (sm_70) and 7.0 is absent here, this image will
-    # NOT run there -- rebuild against cu126 instead.
-    /opt/conda/envs/smart/bin/python -c \
-        "import torch; print('torch', torch.__version__); print('arch_list:', torch.cuda.get_arch_list())"
+# torch.cuda.get_arch_list() short-circuits to [] when no GPU is visible, and images are
+# normally built on a CPU-only host -- using it here would fail every build for the wrong
+# reason. _cuda_getArchFlags() reads the flags compiled into the binary and needs no device.
+archs = ""
+try:
+    archs = torch._C._cuda_getArchFlags() or ""
+except Exception as e:
+    print(f"  (_cuda_getArchFlags unavailable: {e})")
+    archs = " ".join(torch.cuda.get_arch_list())
+
+print("torch", torch.__version__)
+print("arch flags:", archs or "<undetermined>")
+
+if not archs:
+    # A private API moved. Don't fail the build on no evidence -- but make it loud, because
+    # the V100 guarantee is now unverified and %test on a GPU node is the only backstop.
+    print("WARNING: could not read compiled arch flags; sm_70 support is UNVERIFIED.")
+elif "sm_70" not in archs.split():
+    print("FATAL: no sm_70 in this wheel; it cannot run on Expanse V100 nodes.",
+          "Rebuild against cu126 and the 12.6-cudnn-runtime base (see header).", sep="\n")
+    sys.exit(1)
+else:
+    print("sm_70 present: image is valid for V100")
+PY
+
+    echo "=== torchrun present (training is launched via torchrun --module) ==="
+    /opt/conda/envs/smart/bin/torchrun --version
 
 %runscript
     export PATH=/opt/conda/envs/smart/bin:$PATH
@@ -137,4 +178,11 @@ PY
 
 %test
     export PATH=/opt/conda/envs/smart/bin:$PATH
-    python -c "import torch, rdkit, pydantic, lightning, tyro, pyarrow; print('image OK')"
+    python -c "
+import pytorch_lightning, torch, torchmetrics, rdkit, pydantic, tyro, pyarrow, wandb, numpy, tqdm
+from pydantic.dataclasses import dataclass
+# Same reason as %post: get_arch_list() is empty without a visible GPU, and \`singularity
+# test\` is usually run on a login node.
+assert 'sm_70' in torch._C._cuda_getArchFlags().split(), 'no sm_70'
+print('image OK:', torch.__version__, '| pl', pytorch_lightning.__version__)
+"
