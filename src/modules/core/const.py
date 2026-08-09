@@ -64,8 +64,13 @@ CODE_ROOT = os.environ.get('CODE_ROOT', CODE_ROOT)
 DATASET_ROOT = os.environ.get('DATASET_ROOT', DATASET_ROOT)
 BENCHMARK_ROOT = os.environ.get('BENCHMARK_ROOT', BENCHMARK_ROOT)
 PVC_ROOT = os.environ.get('PVC_ROOT', PVC_ROOT)
+# On SDSC the repo is bind-mounted at /code, so the Nautilus branch above matches and
+# points the key file at a PVC path that does not exist there. Overridable for the same
+# reason as the roots.
+WANDB_API_KEY_FILE = os.environ.get('WANDB_API_KEY_FILE', WANDB_API_KEY_FILE)
 for _name, _value in (('CODE_ROOT', CODE_ROOT), ('DATASET_ROOT', DATASET_ROOT),
-                      ('BENCHMARK_ROOT', BENCHMARK_ROOT), ('PVC_ROOT', PVC_ROOT)):
+                      ('BENCHMARK_ROOT', BENCHMARK_ROOT), ('PVC_ROOT', PVC_ROOT),
+                      ('WANDB_API_KEY_FILE', WANDB_API_KEY_FILE)):
     if os.environ.get(_name):
         logger.info('%s overridden from environment: %s', _name, _value)
 

@@ -45,14 +45,22 @@ def configure_wandb(args: MARINAArgs | SPECTREArgs, results_path: str, today: st
         with open(os.path.join(log_dir, "params.json"), "w") as fp:
             json.dump(vars(args), fp, indent=2)
 
-        if not os.path.exists(WANDB_API_KEY_FILE):
-            raise RuntimeError(
-                f"WANDB API key file not found at {WANDB_API_KEY_FILE}")
+        # SDSC compute nodes have no outbound network, so the chain runs WANDB_MODE=offline
+        # and the login node syncs the run directory afterwards. login() needs the network,
+        # and offline runs never authenticate, so the key file is not required there.
+        if os.environ.get('WANDB_MODE') == 'offline':
+            logger.info('[Main] WANDB_MODE=offline; skipping login, sync from a login node.')
+        else:
+            # WANDB_API_KEY_FILE is None on env-var setups, which os.path.exists rejects
+            # with a TypeError rather than the intended error message.
+            if not WANDB_API_KEY_FILE or not os.path.exists(WANDB_API_KEY_FILE):
+                raise RuntimeError(
+                    f"WANDB API key file not found at {WANDB_API_KEY_FILE}")
 
-        with open(WANDB_API_KEY_FILE) as kf:
-            key = json.load(kf)["key"]
+            with open(WANDB_API_KEY_FILE) as kf:
+                key = json.load(kf)["key"]
 
-        wandb.login(key=key)
+            wandb.login(key=key)
 
         # resume="allow" only resumes when an explicit id is given; without one wandb
         # mints a fresh id every time, so each chunk of a chained run would land in its
