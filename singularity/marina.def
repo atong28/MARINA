@@ -170,7 +170,13 @@ else:
 PY
 
     echo "=== torchrun present (training is launched via torchrun --module) ==="
-    /opt/conda/envs/smart/bin/torchrun --version
+    # NOT `torchrun --version`: that flag does not exist, torchrun requires a
+    # training_script positional and exits 2, which fails the build under `set -e`.
+    # (The previous def hid this behind `|| true`, which checked nothing at all.)
+    # Check the console script is installed and its backing module imports instead.
+    test -x /opt/conda/envs/smart/bin/torchrun
+    /opt/conda/envs/smart/bin/python -c \
+        "import torch.distributed.run; print('torchrun entrypoint OK')"
 
 %runscript
     export PATH=/opt/conda/envs/smart/bin:$PATH
