@@ -12,8 +12,13 @@
 # MAX_CHUNKS is the backstop against a chunk that fails instantly every time.
 #
 #   Submit:  EXPERIMENT_NAME=marina-sdsc-s0 DATASET=MARINA1 \
-#            TRAIN_ARGS='--input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0' \
+#            TRAIN_ARGS='--input_types hsqc c_nmr h_nmr mw mass_spec --seed 0' \
 #            sbatch singularity/sdsc-train.sbatch
+#
+# Write --input_types space-separated, NOT as {hsqc,c_nmr,...}. The braced form in the
+# Nautilus job specs is bash brace expansion, which happens before variable expansion and
+# is NOT reapplied to the contents of $TRAIN_ARGS -- tyro would receive one literal token
+# "{hsqc,...}" and reject it as an invalid choice.
 #   Watch:   ssh -S ~/.ssh/sdsc.sock <user>@login.expanse.sdsc.edu 'squeue -u <user>'
 #
 #SBATCH --job-name=marina

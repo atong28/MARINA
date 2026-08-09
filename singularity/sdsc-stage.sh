@@ -116,7 +116,7 @@ Staged. Submit a chain with:
   ssh -S $SOCK $TARGET \\
     "cd $PROJECT_ROOT/code/MARINA && \\
      EXPERIMENT_NAME=marina-sdsc-s0 DATASET=${DATASETS[0]} \\
-     TRAIN_ARGS='--input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0' \\
+     TRAIN_ARGS='--input_types hsqc c_nmr h_nmr mw mass_spec --seed 0' \\
      sbatch singularity/sdsc-train.sbatch"
 
 EOF
