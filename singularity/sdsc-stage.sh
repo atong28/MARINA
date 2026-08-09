@@ -81,10 +81,30 @@ rsync -a -e "$RSYNC_E" "$LOCAL_ROOT/wandb_api_key.json" "$TARGET:$PROJECT_ROOT/"
 
 echo "==> verifying image"
 if "${SSH[@]}" "test -f '$PROJECT_ROOT/images/marina.sif'"; then
-    "${SSH[@]}" "module load singularitypro >/dev/null 2>&1; \
-        singularity exec '$PROJECT_ROOT/images/marina.sif' \
-        python -c \"import torch, rdkit, pydantic, lightning, torchmetrics, tyro, pyarrow, torch_geometric; \
-print('image OK, torch', torch.__version__); print('arch_list:', torch.cuda.get_arch_list())\""
+    ssh -S "$SOCK" "$TARGET" bash -s <<EOF
+set -eu
+module load singularitypro >/dev/null 2>&1 || true
+
+# OPENBLAS_NUM_THREADS is not optional here. Login nodes cap per-user memory while still
+# reporting every core, and OpenBLAS sizes its thread-local buffers from the core count --
+# enough to fail the allocation part-way through numpy's import, with "Memory allocation
+# still failed after 10 retries". Compute nodes do not hit this because torchrun sets
+# OMP_NUM_THREADS=1 for its workers, so this is pinned at the call site rather than baked
+# into the image, which would also constrain training.
+singularity exec \
+    --env OPENBLAS_NUM_THREADS=1 --env OMP_NUM_THREADS=1 \
+    '$PROJECT_ROOT/images/marina.sif' \
+    python -c "
+# Must match what marina.def actually installs. lightning and torch_geometric were dropped
+# from the image (nothing under src/ imports them) -- importing them here would fail a
+# perfectly good image.
+import torch, numpy, rdkit, pydantic, pytorch_lightning, torchmetrics, tyro, pyarrow, tqdm, wandb
+from pydantic.dataclasses import dataclass
+print('image OK | torch', torch.__version__, '| pl', pytorch_lightning.__version__)
+# get_arch_list() is empty without a visible GPU and login nodes have none.
+print('arch flags:', torch._C._cuda_getArchFlags())
+"
+EOF
 else
     echo "  NO IMAGE at $PROJECT_ROOT/images/marina.sif -- build and upload it (see header)" >&2
 fi

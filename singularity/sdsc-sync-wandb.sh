@@ -43,7 +43,11 @@ echo "Found \${#runs[@]} offline run(s)."
 module load singularitypro >/dev/null 2>&1 || true
 export WANDB_API_KEY=\$(python3 -c "import json;print(json.load(open('\$PROJECT_ROOT/wandb_api_key.json'))['key'])")
 
-singularity exec --cleanenv --env WANDB_API_KEY="\$WANDB_API_KEY" \
+# OPENBLAS_NUM_THREADS: this also runs on a login node, where OpenBLAS sizing its buffers
+# from the core count overruns the per-user memory cap during import. See sdsc-stage.sh.
+singularity exec --cleanenv \
+    --env WANDB_API_KEY="\$WANDB_API_KEY" \
+    --env OPENBLAS_NUM_THREADS=1 --env OMP_NUM_THREADS=1 \
     -B "\$PROJECT_ROOT":"\$PROJECT_ROOT" \
     "\$PROJECT_ROOT/images/marina.sif" \
     wandb sync "\${runs[@]}"
