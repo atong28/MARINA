@@ -22,7 +22,7 @@
 #   Watch:   ssh -S ~/.ssh/sdsc.sock <user>@login.expanse.sdsc.edu 'squeue -u <user>'
 #
 #SBATCH --job-name=marina
-#SBATCH --account=BIO260190
+#SBATCH --account=sdp158
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
