@@ -1,3 +1,6 @@
+import os
+import time
+
 import torch
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
@@ -19,10 +22,16 @@ def train_marina(
     model: MARINA | SPECTRE,
     results_path: str,
     wandb_run=None,
-    fp_loader: EntropyFPLoader | None = None
+    fp_loader: EntropyFPLoader | None = None,
+    ckpt_dir: str | None = None
 ) -> None:
     torch.set_float32_matmul_precision('high')
     logger.info(f'[Main] Results Path: {results_path}')
+    # ckpt_dir is where checkpoints are written. It differs from results_path only when
+    # resuming, where they must outlive the pod.
+    ckpt_dir = ckpt_dir or results_path
+    if ckpt_dir != results_path:
+        logger.info(f'[Main] Checkpoint Path: {ckpt_dir}')
     try:
         logger.info(f'[Main] Using GPU : {torch.cuda.get_device_name()}')
     except:
@@ -34,9 +43,25 @@ def train_marina(
         mode='max',
         save_last=False,
         save_top_k=1,
-        dirpath=results_path,
+        dirpath=ckpt_dir,
         filename='epoch_{epoch:d}'
     )
+    callbacks = [early_stopping, lr_monitor, ckpt_callback, error_callback,
+                 benchmark_cos, progress_bar]
+
+    if args.resume:
+        # A rolling checkpoint on its own schedule. save_last=True on the monitored
+        # callback would NOT do this: it only fires when the metric improves, so once
+        # val/mean_cos plateaus the "last" checkpoint goes stale for hundreds of epochs
+        # and resuming from it silently redoes all of them.
+        # monitor=None + save_top_k=1 overwrites one file every_n_epochs, so the write
+        # cost is bounded regardless of run length.
+        callbacks.append(cb.ModelCheckpoint(
+            dirpath=ckpt_dir,
+            filename='last',
+            save_top_k=1,
+            every_n_epochs=args.checkpoint_every_n_epochs,
+        ))
     early_stopping = EarlyStopping(
         monitor=metric,
         mode='max',
@@ -54,7 +79,7 @@ def train_marina(
         accelerator="auto",
         precision="bf16-mixed",
         logger=wandb_logger,
-        callbacks=[early_stopping, lr_monitor, ckpt_callback, error_callback, benchmark_cos, progress_bar],
+        callbacks=callbacks,
         accumulate_grad_batches=args.accumulate_grad_batches_num,
         # MARINA3 batches routinely contain no 1H / 13C / MS-MS at all (no modality
         # exceeds 53.7% coverage), so those per-modality encoders receive no gradient
@@ -64,9 +89,29 @@ def train_marina(
         gradient_clip_val=1.0
     )
 
+    # Lightning restores optimizer, LR schedule, epoch counter and callback state (including
+    # EarlyStopping's patience counter) only via ckpt_path. Passing the checkpoint to
+    # load_from_checkpoint instead would restore weights alone and restart the schedule.
+    resume_ckpt = None
+    if args.resume:
+        candidate = os.path.join(ckpt_dir, 'last.ckpt')
+        if os.path.exists(candidate):
+            resume_ckpt = candidate
+            logger.info(f'[Main] Resuming from {resume_ckpt}')
+        else:
+            logger.info(f'[Main] No {candidate} yet; starting this run from scratch.')
+
     logger.info("[Main] Begin Training!")
-    trainer.fit(model, datamodule=data_module)
+    fit_start = time.time()
+    trainer.fit(model, datamodule=data_module, ckpt_path=resume_ckpt)
+    logger.info(f'[Main] fit() finished in {time.time() - fit_start:.1f}s')
     trainer.strategy.barrier()
 
     if args.test and trainer.local_rank == 0:
+        # Everything from here on holds the GPUs while doing little with them. Timing the
+        # test phase separately from the results move is what distinguishes "the benchmark
+        # is slow" from "the copy is slow" -- the two are otherwise one opaque gap between
+        # the last training log line and the job exiting.
+        test_start = time.time()
         test_marina(args, data_module, model, results_path, None, wandb_run=wandb_run, fp_loader=fp_loader)
+        logger.info(f'[Main] test/benchmark phase finished in {time.time() - test_start:.1f}s')

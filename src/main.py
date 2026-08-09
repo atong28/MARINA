@@ -37,6 +37,26 @@ MARINA_DATAMODULE_CLASSES = {
     "SPECTRE": SPECTREDataModule,
 }
 
+def _resume_ckpt_dir(args, final_path: str, logger):
+    """
+    Where checkpoints go when --resume is set: somewhere that outlives the pod.
+
+    results_path lives under DATASET_ROOT, which on Nautilus is an emptyDir -- a preempted
+    or walltime-killed run loses its checkpoints entirely and has nothing to resume from.
+    final_path is on the PVC. Returns None to leave the default alone when not resuming.
+    """
+    if not args.resume:
+        return None
+    if not final_path:
+        logger.warning(
+            '[Main] --resume set but no persistent results path is configured (PVC_ROOT '
+            'unset); checkpoints stay on ephemeral storage and will not survive the pod.'
+        )
+        return None
+    os.makedirs(final_path, exist_ok=True)
+    return final_path
+
+
 def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
     fp_loader = make_fp_loader(
         args.fp_type,
@@ -60,8 +80,12 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
 
     logger = get_logger(__file__)
 
+    # Resolved before the wandb/logging setup so logs.txt and params.json land alongside
+    # the checkpoints on persistent storage; otherwise a preempted run takes its log with it.
+    ckpt_dir = _resume_ckpt_dir(args, final_path, logger)
+
     # create a wandb run
-    wandb_run = configure_wandb(args, results_path, today)
+    wandb_run = configure_wandb(args, results_path, today, log_dir=ckpt_dir)
 
     # Warm-start from a checkpoint before training. `train_marina` builds its own
     # Trainer and never sees load_from_checkpoint, so without this the flag silently
@@ -85,7 +109,8 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
             model,
             results_path,
             wandb_run=wandb_run,
-            fp_loader=fp_loader
+            fp_loader=fp_loader,
+            ckpt_dir=ckpt_dir
         )
     elif args.test:
         test_marina(

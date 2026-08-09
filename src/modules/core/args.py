@@ -11,6 +11,18 @@ class SMARTArgs:
     seed: int = 0
     # path to load checkpoint from
     load_from_checkpoint: str | None = None
+    # Resume a run in place rather than warm-starting from it. load_from_checkpoint only
+    # restores weights, so a chained job restarts the LR warmup and early-stopping patience
+    # from scratch; this restores optimizer, schedule, epoch counter and callback state too.
+    # Also writes checkpoints somewhere persistent and keeps a rolling `last.ckpt`, since on
+    # Nautilus the default results dir is an emptyDir that dies with the pod.
+    # Requires a stable SMART_RUN_ID across chunks so they share one results directory.
+    resume: bool = False
+    # How often --resume writes its rolling checkpoint. This is the only knob on resume's
+    # I/O cost: a 2.17GB checkpoint takes ~4.6s to the PVC (measured 470 MB/s) versus ~1.4s
+    # to ephemeral, so every 5 epochs is well under 1% of a 600s epoch. Raise it if the
+    # filesystem is loaded, at the cost of redoing up to this many epochs after a restart.
+    checkpoint_every_n_epochs: int = 5
     # whether to do training
     train: bool = True
     # whether to do testing
@@ -67,7 +79,7 @@ class SMARTArgs:
     # fp type for prediction and evaluation. fingerprint details should be stored in 
     #   DATASET_ROOT/RankingEntropy/
     # with the proper formatting.
-    fp_type: Literal['RankingEntropy'] = 'RankingEntropy'
+    fp_type: Literal['RankingEntropy', 'RankingEntropySubstructure'] = 'RankingEntropy'
     
     # additional test types to be used for testing, always will test on all inputs
     additional_test_types: list[list[str]] = field(default_factory=lambda: [
