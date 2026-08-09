@@ -46,6 +46,19 @@ def train_marina(
         dirpath=ckpt_dir,
         filename='epoch_{epoch:d}'
     )
+    early_stopping = EarlyStopping(
+        monitor=metric,
+        mode='max',
+        patience=args.patience
+    )
+    lr_monitor = cb.LearningRateMonitor(logging_interval="step")
+    error_callback = ErrorLoggingCallback()
+    benchmark_cos = BenchmarkCosineCallback(args, fp_loader)
+    # Lightning >=2.6 defaults to RichProgressBar whenever `rich` is importable
+    # (it is, via tyro). Rich renders nothing to a non-TTY, so pod logs show no
+    # epoch output at all. Pin tqdm, which still writes progress when piped.
+    progress_bar = cb.TQDMProgressBar()
+
     callbacks = [early_stopping, lr_monitor, ckpt_callback, error_callback,
                  benchmark_cos, progress_bar]
 
@@ -62,18 +75,7 @@ def train_marina(
             save_top_k=1,
             every_n_epochs=args.checkpoint_every_n_epochs,
         ))
-    early_stopping = EarlyStopping(
-        monitor=metric,
-        mode='max',
-        patience=args.patience
-    )
-    lr_monitor = cb.LearningRateMonitor(logging_interval="step")
-    error_callback = ErrorLoggingCallback()
-    benchmark_cos = BenchmarkCosineCallback(args, fp_loader)
-    # Lightning >=2.6 defaults to RichProgressBar whenever `rich` is importable
-    # (it is, via tyro). Rich renders nothing to a non-TTY, so pod logs show no
-    # epoch output at all. Pin tqdm, which still writes progress when piped.
-    progress_bar = cb.TQDMProgressBar()
+
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         accelerator="auto",
