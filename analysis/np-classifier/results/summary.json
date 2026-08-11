@@ -1,0 +1,185 @@
+{
+  "n": 518897,
+  "tiers": {
+    "pathway": {
+      "distinct": 7,
+      "labelled": 477415,
+      "labelled_pct": 92.01,
+      "multi_label": 22643,
+      "median_label_size": 57816,
+      "singleton_labels": 0,
+      "top": [
+        [
+          "Alkaloids",
+          137161
+        ],
+        [
+          "Terpenoids",
+          126240
+        ],
+        [
+          "Shikimates and Phenylpropanoids",
+          88886
+        ],
+        [
+          "Fatty acids",
+          57816
+        ],
+        [
+          "Polyketides",
+          51511
+        ],
+        [
+          "Amino acids and Peptides",
+          32986
+        ],
+        [
+          "Carbohydrates",
+          5626
+        ]
+      ]
+    },
+    "superclass": {
+      "distinct": 76,
+      "labelled": 398179,
+      "labelled_pct": 76.74,
+      "multi_label": 11163,
+      "median_label_size": 2017,
+      "singleton_labels": 0,
+      "top": [
+        [
+          "Glycerolipids",
+          31191
+        ],
+        [
+          "Diterpenoids",
+          27032
+        ],
+        [
+          "Flavonoids",
+          26115
+        ],
+        [
+          "Triterpenoids",
+          25878
+        ],
+        [
+          "Tryptophan alkaloids",
+          24642
+        ],
+        [
+          "Sesquiterpenoids",
+          24229
+        ],
+        [
+          "Coumarins",
+          21863
+        ],
+        [
+          "Steroids",
+          19091
+        ],
+        [
+          "Oligopeptides",
+          14420
+        ],
+        [
+          "Lysine alkaloids",
+          13594
+        ],
+        [
+          "Nicotinic acid alkaloids",
+          12771
+        ],
+        [
+          "Tyrosine alkaloids",
+          12003
+        ],
+        [
+          "Pseudoalkaloids",
+          10900
+        ],
+        [
+          "Anthranilic acid alkaloids",
+          10091
+        ],
+        [
+          "Small peptides",
+          9435
+        ]
+      ]
+    },
+    "class": {
+      "distinct": 686,
+      "labelled": 373539,
+      "labelled_pct": 71.99,
+      "multi_label": 33993,
+      "median_label_size": 141,
+      "singleton_labels": 3,
+      "top": [
+        [
+          "Triacylglycerols",
+          28482
+        ],
+        [
+          "Simple coumarins",
+          19147
+        ],
+        [
+          "Pyridine alkaloids",
+          12358
+        ],
+        [
+          "Carboline alkaloids",
+          9676
+        ],
+        [
+          "Cyclic peptides",
+          9274
+        ],
+        [
+          "Oleanane triterpenoids",
+          8429
+        ],
+        [
+          "Quinolizidine alkaloids",
+          7761
+        ],
+        [
+          "Isoquinoline alkaloids",
+          6180
+        ],
+        [
+          "Flavones",
+          5539
+        ],
+        [
+          "Chalcones",
+          5368
+        ],
+        [
+          "Cholestane steroids",
+          4946
+        ],
+        [
+          "Depsipeptides",
+          4887
+        ],
+        [
+          "Flavonols",
+          4699
+        ],
+        [
+          "Anthraquinones and anthrones",
+          4154
+        ],
+        [
+          "Chromones",
+          4060
+        ]
+      ]
+    }
+  },
+  "unlabelled_all_tiers": 41482,
+  "n_glycoside": 67084
+}

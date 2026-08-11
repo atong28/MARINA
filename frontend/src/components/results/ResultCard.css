@@ -69,6 +69,24 @@
   color: #6b7280;
 }
 
+.result-card__npclass {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.result-card__npclass-chip {
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #e0e7ff;
+  cursor: help;
+}
+
 .result-card__footer {
   padding: 10px 14px;
   border-top: 1px solid #f0f0f0;

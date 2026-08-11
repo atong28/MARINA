@@ -69,6 +69,27 @@ def _database_links(entry: Dict[str, Any]) -> Dict[str, Optional[str]]:
     return links
 
 
+def _npclassifier(session: Any, global_idx: int) -> Optional[Dict[str, Any]]:
+    """
+    NPClassifier annotation for a card, or None if this deployment has none.
+
+    Renamed `class` -> `npclass` on the way out: `class` is a reserved word in the
+    TypeScript client that consumes this.
+    """
+    getter = getattr(session, "get_npclassifier", None)
+    if getter is None:
+        return None
+    npc = getter(global_idx)
+    if not npc:
+        return None
+    return {
+        "pathway":     npc.get("pathway") or [],
+        "superclass":  npc.get("superclass") or [],
+        "npclass":     npc.get("class") or [],
+        "isglycoside": bool(npc.get("isglycoside", False)),
+    }
+
+
 def _primary(entry: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """Return (name, link) for the most authoritative database."""
     for db, url_template, id_key in [
@@ -121,6 +142,7 @@ def build_result_cards(
         name, primary_link = _primary(entry)
         db_links           = _database_links(entry)
         mass               = _exact_mass(smiles, entry)
+        npc                = _npclassifier(session, global_idx)
 
         cards.append({
             "index":                         global_idx,
@@ -135,5 +157,6 @@ def build_result_cards(
             "database_links":                db_links,
             "retrieved_molecule_fp_indices": fp_indices,
             "exact_mass":                    mass,
+            "npclassifier":                  npc,
         })
     return cards

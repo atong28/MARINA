@@ -44,6 +44,11 @@ function CompoundDetail({
     database_links?.coconut || database_links?.lotus || database_links?.npmrd,
   )
 
+  const npc = result.npclassifier
+  const npcTiers: Array<[string, string[]]> = npc
+    ? [['Pathway', npc.pathway], ['Superclass', npc.superclass], ['Class', npc.npclass]]
+    : []
+
   // Esc closes, and the overlay owns focus while it is open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -162,6 +167,31 @@ function CompoundDetail({
                 <div><dt>Exact mass</dt><dd>{result.exact_mass.toFixed(4)} Da</dd></div>
               )}
             </dl>
+
+            {npc && (
+              <div className="compound-detail__npclass">
+                <h4 className="compound-detail__npclass-title">
+                  NPClassifier
+                  {npc.isglycoside && (
+                    <span className="compound-detail__npclass-glyco">glycoside</span>
+                  )}
+                </h4>
+                {npcTiers.some(([, values]) => values.length > 0) ? (
+                  <dl className="compound-detail__facts">
+                    {npcTiers.map(([label, values]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{values.length ? values.join(', ') : '—'}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <div className="compound-detail__caption compound-detail__caption--muted">
+                    Not classified.
+                  </div>
+                )}
+              </div>
+            )}
 
             <code className="compound-detail__smiles">{result.smiles}</code>
 

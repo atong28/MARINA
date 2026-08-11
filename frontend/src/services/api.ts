@@ -55,6 +55,14 @@ export interface DatabaseLinks {
   npmrd?: string
 }
 
+export interface NPClassification {
+  pathway: string[]
+  superclass: string[]
+  /** Class tier — named `npclass` because `class` is reserved. */
+  npclass: string[]
+  isglycoside: boolean
+}
+
 export interface ResultCard {
   index: number
   smiles: string
@@ -68,6 +76,8 @@ export interface ResultCard {
   database_links: DatabaseLinks
   retrieved_molecule_fp_indices: number[]
   exact_mass?: number
+  /** Absent when the deployment ships no NPClassifier annotations. */
+  npclassifier?: NPClassification | null
 }
 
 export interface PredictResponse {

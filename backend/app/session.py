@@ -11,6 +11,9 @@ Each model directory must contain:
 Optional (auto-built if absent):
     RankingEntropy/rankingset.pt
     RankingEntropy/bitinfo_to_idx.pkl
+
+Optional (feature is simply off when absent):
+    npclassifier.json – NPClassifier annotations, keyed by str(index) like metadata.json
 """
 from __future__ import annotations
 
@@ -79,6 +82,33 @@ def _import_fp_loader():
 def _load_json(path: str) -> Any:
     with open(path, "r") as fh:
         return json.load(fh)
+
+
+def _load_npclassifier(path: str) -> Optional[Dict[str, Any]]:
+    """
+    NPClassifier annotations, or None when the model directory has none.
+
+    The file interns its label strings, so it is validated here rather than at every
+    lookup: a payload whose `labels` tables do not cover the ids in `entries` would
+    otherwise surface as a wrong class name on a result card, which is worse than no
+    annotation at all.
+    """
+    if not os.path.exists(path):
+        logger.info("No npclassifier.json at %s; class annotations disabled.", path)
+        return None
+    try:
+        payload = _load_json(path)
+        tiers = payload["tiers"]
+        labels = {t: payload["labels"][t] for t in tiers}
+        entries = payload["entries"]
+    except Exception as exc:
+        logger.warning("Ignoring unreadable %s: %s", path, exc)
+        return None
+    logger.info(
+        "Loaded NPClassifier annotations for %d molecules (%s) from %s",
+        len(entries), ", ".join(f"{len(labels[t])} {t}" for t in tiers), path,
+    )
+    return {"tiers": tiers, "labels": labels, "entries": entries}
 
 
 def _load_checkpoint(path: str) -> Dict[str, Any]:
@@ -264,6 +294,7 @@ class ModelSession:
     model_root: str
     device: torch.device
     _metadata: Dict[str, Any]
+    _npclassifier: Optional[Dict[str, Any]] = None
 
     # Lazily built retrieval index
     _rankingset_store:   Optional[torch.Tensor]          = field(default=None, repr=False)
@@ -380,6 +411,7 @@ class ModelSession:
         model.eval()
 
         metadata = _load_json(metadata_path)
+        npclassifier = _load_npclassifier(os.path.join(model_root, "npclassifier.json"))
 
         return cls(
             model_type=model_type,
@@ -389,12 +421,35 @@ class ModelSession:
             model_root=model_root,
             device=device,
             _metadata=metadata,
+            _npclassifier=npclassifier,
         )
 
     # ── Metadata helpers ─────────────────────────────────────────────────────
 
     def get_entry(self, idx: int) -> Optional[Dict[str, Any]]:
         return self._metadata.get(str(idx))
+
+    def get_npclassifier(self, idx: int) -> Optional[Dict[str, Any]]:
+        """
+        NPClassifier annotation for a retrieval index, de-interned into label strings.
+
+        None when annotations are not loaded or this molecule has no record. A molecule
+        NPClassifier declined to classify has a record with empty tiers, which is a
+        different fact and is reported as such.
+        """
+        if not self._npclassifier:
+            return None
+        row = self._npclassifier["entries"].get(str(idx))
+        if row is None:
+            return None
+        tiers = self._npclassifier["tiers"]
+        labels = self._npclassifier["labels"]
+        out: Dict[str, Any] = {}
+        for tier, ids in zip(tiers, row):
+            table = labels[tier]
+            out[tier] = [table[i] for i in ids if 0 <= i < len(table)]
+        out["isglycoside"] = bool(row[len(tiers)])
+        return out
 
     def get_smiles(self, idx: int) -> Optional[str]:
         entry = self.get_entry(idx)

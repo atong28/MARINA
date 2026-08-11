@@ -137,6 +137,15 @@ class DatabaseLinks(BaseModel):
     npmrd:   Optional[str] = None
 
 
+class NPClassification(BaseModel):
+    """NPClassifier annotation. Each tier can hold several labels, or none."""
+    pathway:     List[str] = Field(default_factory=list)
+    superclass:  List[str] = Field(default_factory=list)
+    npclass:     List[str] = Field(default_factory=list,
+                                   description="Class tier ('class' is reserved in JS)")
+    isglycoside: bool      = False
+
+
 class ResultCard(BaseModel):
     index:                        int
     smiles:                       str
@@ -150,6 +159,8 @@ class ResultCard(BaseModel):
     database_links:               DatabaseLinks   = Field(default_factory=DatabaseLinks)
     retrieved_molecule_fp_indices: List[int]      = Field(default_factory=list)
     exact_mass:                   Optional[float] = None
+    npclassifier:                 Optional[NPClassification] = Field(
+        None, description="Null when the model directory ships no annotations")
 
 
 # ── Predict response ──────────────────────────────────────────────────────────

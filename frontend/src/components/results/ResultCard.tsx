@@ -57,6 +57,21 @@ function ResultCard({
     database_links?.coconut || database_links?.lotus || database_links?.npmrd
   )
 
+  // The card has room for the most specific tier only; the full taxonomy is in the
+  // expanded view. Falls back up the hierarchy because NPClassifier often assigns a
+  // pathway to a molecule it cannot place in a class.
+  const npc = result.npclassifier
+  const npcSummary = npc ? (
+    npc.npclass.length ? npc.npclass
+      : npc.superclass.length ? npc.superclass
+      : npc.pathway
+  ) : []
+  const npcTitle = npc ? `NPClassifier: ${[
+    npc.pathway.join(', ') || '—',
+    npc.superclass.join(', ') || '—',
+    npc.npclass.join(', ') || '—',
+  ].join(' › ')}` : ''
+
   return (
     <div className={`result-card${isCustom ? ' result-card--custom' : ''}`}>
       <div className="result-card__header">
@@ -80,6 +95,15 @@ function ResultCard({
         {result.exact_mass !== undefined && result.exact_mass !== null && (
           <div className="result-card__mass">
             Exact mass: {result.exact_mass.toFixed(4)} Da
+          </div>
+        )}
+        {npcSummary.length > 0 && (
+          <div className="result-card__npclass">
+            {npcSummary.map((label) => (
+              <span key={label} className="result-card__npclass-chip" title={npcTitle}>
+                {label}
+              </span>
+            ))}
           </div>
         )}
       </div>

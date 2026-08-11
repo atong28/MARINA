@@ -167,6 +167,39 @@
   font-variant-numeric: tabular-nums;
 }
 
+.compound-detail__npclass {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compound-detail__npclass-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.compound-detail__npclass-glyco {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.compound-detail__npclass .compound-detail__facts dd {
+  font-weight: 600;
+}
+
 .compound-detail__smiles {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;

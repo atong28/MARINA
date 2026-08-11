@@ -259,6 +259,12 @@ analysis/**/*.tsv
 analysis/**/*.smi
 analysis/domain-compare/smiles/*.txt
 
+# np-classifier: the raw fetch log and the interned backend artifact. Both are
+# rebuildable from the API, and the small results (coverage, summary) are tracked.
+analysis/np-classifier/results/npclassifier.jsonl
+analysis/np-classifier/results/npclassifier.json
+analysis/np-classifier/results/fetch.log
+
 # spectre-ds-compare scratch extractions (a 384 MB tensor, 9,775 loose .pt
 # files, and two index-only unzips of the SPECTRE release)
 analysis/spectre-ds-compare/extract/

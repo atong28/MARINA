@@ -1,0 +1,22 @@
+{
+  "n_classified": 518897,
+  "n_errors": 4,
+  "n_unlabelled": 41482,
+  "distinct": {
+    "pathway": 7,
+    "superclass": 76,
+    "class": 686
+  },
+  "labelled_at_tier": {
+    "pathway": 477415,
+    "superclass": 398179,
+    "class": 373539
+  },
+  "n_glycoside": 67084,
+  "error_indices": [
+    231557,
+    497537,
+    497614,
+    500391
+  ]
+}
