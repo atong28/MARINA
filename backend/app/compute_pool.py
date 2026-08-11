@@ -76,6 +76,11 @@ def _worker_loop(req_q: mp.Queue, res_q: mp.Queue, marina_root: str) -> None:
 
     from app.registry import ensure_loaded
     from app.manifest import get_default_model_id
+    from app.session import disable_annotations
+
+    # This process answers "predict" only; result cards are built in the API
+    # process, so the annotation table would be ~270 MB of dead weight here.
+    disable_annotations()
 
     # Preload default model in this worker
     try:

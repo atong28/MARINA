@@ -10,6 +10,7 @@ import json
 
 import pytest
 
+from app import session as session_module
 from app.result_builder import _npclassifier as card_npclassifier
 from app.session import ModelSession, _load_npclassifier
 
@@ -53,6 +54,18 @@ def test_payload_missing_a_label_table_is_rejected(tmp_path):
     del bad["labels"]["superclass"]
     p = tmp_path / "npclassifier.json"
     p.write_text(json.dumps(bad))
+    assert _load_npclassifier(str(p)) is None
+
+
+def test_a_worker_that_disabled_annotations_skips_a_present_file(tmp_path, monkeypatch):
+    """Compute workers never build cards, so they must not pay the ~270 MB."""
+    # Patched first so the flag is restored even though disable_annotations is global.
+    monkeypatch.setattr(session_module, "_annotations_enabled", True)
+    p = tmp_path / "npclassifier.json"
+    p.write_text(json.dumps(_payload({"7": [[0], [0], [0], 1]})))
+    assert _load_npclassifier(str(p)) is not None      # loads by default
+
+    session_module.disable_annotations()
     assert _load_npclassifier(str(p)) is None
 
 

@@ -84,6 +84,23 @@ def _load_json(path: str) -> Any:
         return json.load(fh)
 
 
+# Compute workers never read the annotations (see disable_annotations), but they do
+# build a full ModelSession, so without this they would each hold a private copy.
+_annotations_enabled = True
+
+
+def disable_annotations() -> None:
+    """
+    Skip NPClassifier annotations in this process.
+
+    Result cards are built in the API process; a compute worker only returns
+    scores, indices and the predicted fingerprint. The table costs ~270 MB per
+    process, so a worker loading it pays for something it will never read.
+    """
+    global _annotations_enabled
+    _annotations_enabled = False
+
+
 def _load_npclassifier(path: str) -> Optional[Dict[str, Any]]:
     """
     NPClassifier annotations, or None when the model directory has none.
@@ -93,6 +110,8 @@ def _load_npclassifier(path: str) -> Optional[Dict[str, Any]]:
     otherwise surface as a wrong class name on a result card, which is worse than no
     annotation at all.
     """
+    if not _annotations_enabled:
+        return None
     if not os.path.exists(path):
         logger.info("No npclassifier.json at %s; class annotations disabled.", path)
         return None
