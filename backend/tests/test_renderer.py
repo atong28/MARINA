@@ -12,7 +12,8 @@ import pytest
 import torch
 
 from app.renderer import (
-    _atom_weights, _cos_sim, _mfp_from_bitinfo, render_enhanced_svg, render_plain_svg,
+    _atom_weights, _cos_sim, _mfp_from_bitinfo, highlighting_available,
+    render_enhanced_svg, render_plain_svg,
 )
 
 pytestmark = pytest.mark.usefixtures("marina_src")
@@ -245,3 +246,30 @@ def test_render_fragment_svg_returns_none_when_nothing_to_draw():
     from app.renderer import render_fragment_svg
 
     assert render_fragment_svg("", "") is None
+
+# ── HIGHLIGHT_ENABLED switch ──────────────────────────────────────────────────
+
+def test_highlighting_off_returns_none_rather_than_a_plain_copy(
+    stub_loader, predicted_fp, monkeypatch,
+):
+    """
+    Cards pair this with plain_svg, so returning a copy would double the payload
+    and leave the client unable to tell the two depictions apart.
+    """
+    import app.config
+    monkeypatch.setattr(app.config, "HIGHLIGHT_ENABLED", False)
+    assert render_enhanced_svg(RETRIEVED, predicted_fp, stub_loader, img_size=300) is None
+
+
+def test_highlighting_off_leaves_plain_rendering_alone(monkeypatch):
+    import app.config
+    monkeypatch.setattr(app.config, "HIGHLIGHT_ENABLED", False)
+    assert render_plain_svg(RETRIEVED, 400) is not None
+
+
+def test_highlighting_available_tracks_the_switch(monkeypatch):
+    import app.config
+    monkeypatch.setattr(app.config, "HIGHLIGHT_ENABLED", True)
+    assert highlighting_available() is True
+    monkeypatch.setattr(app.config, "HIGHLIGHT_ENABLED", False)
+    assert highlighting_available() is False

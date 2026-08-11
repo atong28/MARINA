@@ -55,6 +55,18 @@ def _check_cairo() -> bool:
     return _cairo_available
 
 
+def highlighting_available() -> bool:
+    """
+    Whether the server will produce highlighted depictions at all.
+
+    False when RDKit is missing or HIGHLIGHT_ENABLED=false, in which case every
+    card carries `plain_svg` only and a client-side highlight toggle has nothing
+    to switch to.
+    """
+    from app.config import HIGHLIGHT_ENABLED
+    return HIGHLIGHT_ENABLED and _check_rdkit()
+
+
 def render_plain_svg(smiles: str, img_size: int = 300) -> Optional[str]:
     """
     Render a plain molecule depiction (no fingerprint highlighting).
@@ -195,7 +207,14 @@ def render_enhanced_svg(
 
     Weights are signed (see _atom_weights), so RDKit's PiWG colour map renders
     supporting atoms green and contradicting atoms pink.
+
+    Returns None when highlighting is switched off (HIGHLIGHT_ENABLED=false)
+    rather than a duplicate of the plain depiction: callers pair this with
+    `plain_svg`, so a copy would double the payload for no visible difference.
     """
+    from app.config import HIGHLIGHT_ENABLED
+    if not HIGHLIGHT_ENABLED:
+        return None
     if not _check_rdkit():
         return render_plain_svg(smiles, img_size)
     try:

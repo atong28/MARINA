@@ -50,8 +50,8 @@ bash scripts/website/start.sh
 ### Website tests
 
 ```bash
-cd backend  && make test    # 172 pytest tests (~35 s); make test-fast for ~9 s
-cd frontend && npm test     # 43 vitest tests (~2 s)
+cd backend  && make test    # 231 pytest tests (~35 s); make test-fast for ~9 s
+cd frontend && npm test     # 89 vitest tests (~2 s)
 ```
 
 Neither suite needs a trained checkpoint or a running server. See

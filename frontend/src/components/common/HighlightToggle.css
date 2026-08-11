@@ -1,0 +1,27 @@
+.highlight-toggle-group {
+  display: flex;
+  align-items: center;
+}
+
+.highlight-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.highlight-toggle__input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #4a90d9;
+  cursor: pointer;
+}
+
+.highlight-toggle__text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}

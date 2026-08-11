@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, BitExplanation, ResultCard as ResultCardType } from '../../services/api'
+import { useAppStore } from '../../store/store'
 import BitPanel from './BitPanel'
+import { pickDepiction } from './ResultCard'
 import './CompoundDetail.css'
 
 /**
@@ -33,6 +35,7 @@ function CompoundDetail({
   const [selected, setSelected] = useState<BitExplanation | null>(null)
   const [highlightSvg, setHighlightSvg] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const highlightEnabled = useAppStore((s) => s.highlightEnabled)
 
   const { database_links } = result
   const cosine = result.cosine_similarity ?? result.similarity
@@ -86,7 +89,11 @@ function CompoundDetail({
     [onClose],
   )
 
-  const depiction = highlightSvg || result.svg || result.plain_svg
+  // A selected bit's highlight wins outright — it is what the user just asked
+  // to see, and it is not the similarity map, so the map toggle does not gate
+  // it. With no bit selected we fall back to the same depiction the card
+  // behind this overlay is showing, toggle included.
+  const depiction = highlightSvg || pickDepiction(result, highlightEnabled)
   const depictionSrc = depiction
     ? (depiction.startsWith('data:image')
         ? depiction

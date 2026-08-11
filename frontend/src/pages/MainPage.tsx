@@ -7,6 +7,7 @@ import { useAppStore } from '../store/store'
 import { getAvailableExamples, loadExample, type ExampleMeta } from '../services/exampleLoader'
 import ModelSelector from '../components/common/ModelSelector'
 import StatusIndicator from '../components/common/StatusIndicator'
+import HighlightToggle from '../components/common/HighlightToggle'
 import HelpButton from '../components/common/HelpButton'
 import QueueStatus from '../components/common/QueueStatus'
 import UsageCounter from '../components/common/UsageCounter'
@@ -209,6 +210,7 @@ function MainPage() {
             <HelpButton content={HELP.controls.model} placement="bottom" />
             <StatusIndicator health={health} />
             <HelpButton content={HELP.controls.status} placement="bottom" />
+            <HighlightToggle />
             <UsageCounter />
           </div>
           {SHOW_API_DOCS && (

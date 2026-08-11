@@ -91,6 +91,8 @@ services:
       # ── Misc ─────────────────────────────────────────────────────────────────
       PRELOAD_MODELS: ${PRELOAD_MODELS:-default}
       DATASET_ROOT: /data
+      # false → plain depictions only, and the UI hides its similarity-map toggle.
+      HIGHLIGHT_ENABLED: ${HIGHLIGHT_ENABLED:-true}
 
       # ── Usage stats ─────────────────────────────────────────────────────────
       # Persisted on a writable named volume; /data is mounted read-only.

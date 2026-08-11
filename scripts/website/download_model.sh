@@ -8,7 +8,7 @@ MODEL=marina_best
 mkdir -p checkpoints
 mkdir -p checkpoints/$MODEL
 
-gdown 1e-lhm2I2GnMLY2d9rDB3Tt7vP8RnjnJ3 --output checkpoints/$MODEL/$MODEL.zip
+gdown 18OPIPeDXfdU30zYNnjca244MjSpedWUn --output checkpoints/$MODEL/$MODEL.zip
 unzip checkpoints/$MODEL/$MODEL.zip -d checkpoints/$MODEL
 rm checkpoints/$MODEL/$MODEL.zip
 

@@ -56,6 +56,10 @@ MAX_COMPUTE_QUEUE: int = int(os.getenv("MAX_COMPUTE_QUEUE", "8"))
 # ── Rendering ─────────────────────────────────────────────────────────────────
 MOLECULE_IMG_SIZE: int = int(os.getenv("MOLECULE_IMG_SIZE", "400"))
 RDKIT_ENABLED: bool = os.getenv("RDKIT_ENABLED", "true").lower() == "true"
+# Similarity-map highlighting. Each highlighted card costs one leave-one-out
+# fingerprint ablation per atom, which dominates card-building time on CPU.
+# Set to false to serve plain depictions only; the UI then hides its toggle.
+HIGHLIGHT_ENABLED: bool = os.getenv("HIGHLIGHT_ENABLED", "true").lower() == "true"
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # Comma-separated list of allowed origins. The app is normally served from the

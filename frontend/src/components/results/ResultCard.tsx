@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from 'react'
 import { ResultCard as ResultCardType } from '../../services/api'
 import CompoundDetail from './CompoundDetail'
+import { useAppStore } from '../../store/store'
 import MoleculeViewer from './MoleculeViewer'
 import './ResultCard.css'
 
@@ -10,6 +11,21 @@ const TANIMOTO_HINT =
   'Generalised Tanimoto similarity. The query fingerprint holds predicted ' +
   'probabilities rather than 0/1 bits, so this is not the usual binary Tanimoto ' +
   'coefficient and is not comparable to one.'
+
+/**
+ * Which of the two depictions a card should show.
+ *
+ * With highlighting on, `svg` is the similarity map and `plain_svg` covers the
+ * molecules RDKit could not weight. With it off we show the plain drawing only
+ * and never fall back to `svg` — that image *is* the highlighted one, so
+ * showing it would contradict the toggle.
+ */
+export function pickDepiction(
+  result: Pick<ResultCardType, 'svg' | 'plain_svg'>,
+  highlight: boolean,
+): string | undefined {
+  return highlight ? result.svg || result.plain_svg : result.plain_svg
+}
 
 interface ResultCardProps {
   result: ResultCardType
@@ -26,6 +42,7 @@ function ResultCard({
   result, position, isCustom = false, onRemove, predFp, modelId,
 }: ResultCardProps) {
   const { database_links } = result
+  const highlightEnabled = useAppStore((s) => s.highlightEnabled)
 
   const cosine = result.cosine_similarity ?? result.similarity
   const tanimoto = result.tanimoto_similarity
@@ -74,11 +91,11 @@ function ResultCard({
           onClick={open}
           title="Expand this compound to see its substructures"
         >
-          <MoleculeViewer svg={result.svg || result.plain_svg} smiles={result.smiles} />
+          <MoleculeViewer svg={pickDepiction(result, highlightEnabled)} smiles={result.smiles} />
           <span className="result-card__expand-hint">Expand ↗</span>
         </button>
       ) : (
-        <MoleculeViewer svg={result.svg || result.plain_svg} smiles={result.smiles} />
+        <MoleculeViewer svg={pickDepiction(result, highlightEnabled)} smiles={result.smiles} />
       )}
 
       {expanded && canExplain && (

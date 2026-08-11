@@ -23,6 +23,16 @@ export const HELP = {
       '• Ready — a model is loaded and predictions can be submitted immediately.\n' +
       '• Loading — the server is reachable but still loading the model.\n' +
       '• Offline — the backend is not responding; check that the containers are running.',
+
+    highlight:
+      'Draws each result as a similarity map instead of a plain structure.\n\n' +
+      'Every atom is scored by how much removing it would change the match ' +
+      'between that compound\'s fingerprint and your query fingerprint. Green ' +
+      'shading marks atoms that support the match, pink marks atoms that argue ' +
+      'against it, and stronger colour means a larger contribution.\n\n' +
+      'This is a display setting only — both depictions are sent with every ' +
+      'result, so switching it does not re-run the search. It is remembered ' +
+      'between visits.',
   },
 
   // ── Mode tabs ────────────────────────────────────────────────────────────────

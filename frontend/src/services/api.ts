@@ -99,6 +99,9 @@ export interface HealthResponse {
   status: string
   model_loaded: boolean
   uptime_seconds: number
+  /** False when the server renders plain depictions only (HIGHLIGHT_ENABLED=false
+   *  or no RDKit), so cards carry no similarity map to switch to. */
+  highlight_available?: boolean
 }
 
 export interface ModelInfo {

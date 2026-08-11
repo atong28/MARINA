@@ -181,6 +181,7 @@ match: `docker compose up -d --build`.
 | `MAX_COMPUTE_WORKERS` | `2` | Worker processes serving `/api/predict`. |
 | `MAX_COMPUTE_QUEUE` | `8` | Pending jobs before the API returns 503. |
 | `PRELOAD_MODELS` | `default` | `default`, `all`, or comma-separated model IDs. |
+| `HIGHLIGHT_ENABLED` | `true` | `false` serves plain depictions only and hides the UI's **Similarity map** toggle. Saves a per-atom fingerprint ablation on every result card, which is the bulk of card-building time on CPU. |
 | `STATS_PATH` | `/var/lib/marina/stats.json` | On the writable `marina-state` volume; `/data` is read-only. |
 
 Backend-only variables (`RATE_LIMIT_PREDICT`, `MAX_TOP_K`, `PREDICT_TIMEOUT_S`,

@@ -12,6 +12,8 @@ FastAPI inference backend for MARINA/SPECTRE molecular structure annotation.
 | `POST` | `/api/predict` | Run MARINA inference on spectral data → top-k molecules |
 | `POST` | `/api/smiles-search` | Nearest-neighbour retrieval from a SMILES query |
 | `POST` | `/api/fingerprints/indices` | Return active entropy-fingerprint bit indices for a SMILES |
+| `POST` | `/api/fingerprints/explain` | Per-bit calibrated substructure confidences for the expanded view |
+| `POST` | `/api/fingerprints/highlight` | Depiction with one bit's atoms and bonds highlighted |
 | `POST` | `/api/custom-smiles-card` | Score an arbitrary SMILES against a session fingerprint |
 | `GET`  | `/api/queue` | Worker-pool queue depth |
 | `GET`  | `/api/queue/{request_id}` | Queue position for one in-flight prediction |
@@ -106,7 +108,7 @@ make test-fast   # skips worker-spawning and model-building tests (~9 s)
 pytest tests/test_renderer.py -q      # one module
 ```
 
-172 tests under `tests/`. Nothing requires a trained checkpoint: model-dependent
+231 tests under `tests/`. Nothing requires a trained checkpoint: model-dependent
 tests build a small, randomly-initialised model directory from
 `tests/conftest.py::build_model_dir`, which is enough to exercise loading,
 collation, retrieval and rendering. Tests needing the MARINA `src/` tree skip
@@ -123,7 +125,9 @@ rather than fail when it is not reachable.
 | `test_session_internals.py` | CSR row filtering (property-tested), MW index, cache bound |
 | `test_model_loading.py` | the `params.json` / `out_dim` / checkpoint guards |
 | `test_predictor.py` | preprocessing and the SPECTRE collation contract |
-| `test_renderer.py` | signed weights, both highlight polarities, payload size |
+| `test_renderer.py` | signed weights, both highlight polarities, payload size, the `HIGHLIGHT_ENABLED` switch |
+| `test_bit_explain.py` | per-bit substructure explanations for the expanded view |
+| `test_calibration.py` | per-bit probability calibration |
 | `test_compute_pool.py` | restart survival, queue positions (marked `slow`) |
 | `test_spectre_hosting.py` | end-to-end SPECTRE inference (marked `slow`) |
 
@@ -241,6 +245,25 @@ source tree are **not** watched (no spurious reloads from large checkpoints).
 | `DEVICE` | `cpu` | PyTorch device string: `cpu`, `cuda`, `cuda:0`, … |
 | `MAX_TOP_K` | `50` | Hard cap on `k` per request |
 | `PREDICT_TIMEOUT_S` | `60` | Seconds before predict returns 504 |
+
+### Rendering
+
+| Variable | Default | Description |
+|---|---|---|
+| `MOLECULE_IMG_SIZE` | `400` | Depiction size in pixels |
+| `RDKIT_ENABLED` | `true` | `false` disables all depictions |
+| `HIGHLIGHT_ENABLED` | `true` | `false` serves plain depictions only — see below |
+
+Every result card carries two depictions: `plain_svg`, a vector line drawing,
+and `svg`, the similarity map in which each atom is shaded by how much removing
+it would change the match against the query fingerprint. The frontend's
+**Similarity map** checkbox picks between them client-side, so toggling it never
+re-runs a search.
+
+Producing `svg` costs one leave-one-out fingerprint ablation *per atom per card*,
+which dominates card-building time on CPU. `HIGHLIGHT_ENABLED=false` skips it:
+`svg` comes back `null`, and `/api/health` reports `highlight_available: false`
+so the UI hides the checkbox rather than offering a switch with one position.
 
 ### Compute pool
 

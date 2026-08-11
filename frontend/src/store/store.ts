@@ -23,6 +23,10 @@ interface AppState {
   retrievalMwMin: number | null
   retrievalMwMax: number | null
 
+  // Whether result cards show the similarity-map depiction or the plain one.
+  // Purely a display choice: every card carries both, so this never re-queries.
+  highlightEnabled: boolean
+
   // Results and fingerprints from the last search
   results: ResultCard[]
   predictedFp: number[] | null
@@ -52,6 +56,7 @@ interface AppState {
   setMW: (mw: number | null) => void
   setSmilesInput: (smiles: string) => void
   setRetrievalMwRange: (min: number | null, max: number | null) => void
+  setHighlightEnabled: (enabled: boolean) => void
 
   setPredictResults: (results: ResultCard[], predictedFp: number[] | null) => void
   setSmilesResults: (results: ResultCard[], queryFp: number[] | null) => void
@@ -69,6 +74,7 @@ export interface CustomResult {
 let customIdSeq = 0
 
 const MODEL_STORAGE_KEY = 'marina.selectedModelId'
+const HIGHLIGHT_STORAGE_KEY = 'marina.highlightEnabled'
 
 function readStoredModelId(): string | null {
   try { return localStorage.getItem(MODEL_STORAGE_KEY) } catch { return null }
@@ -76,6 +82,15 @@ function readStoredModelId(): string | null {
 
 function writeStoredModelId(id: string) {
   try { localStorage.setItem(MODEL_STORAGE_KEY, id) } catch { /* ignore */ }
+}
+
+/** Defaults to on, so only an explicit "false" turns highlighting off. */
+function readStoredHighlight(): boolean {
+  try { return localStorage.getItem(HIGHLIGHT_STORAGE_KEY) !== 'false' } catch { return true }
+}
+
+function writeStoredHighlight(enabled: boolean) {
+  try { localStorage.setItem(HIGHLIGHT_STORAGE_KEY, String(enabled)) } catch { /* ignore */ }
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -93,6 +108,8 @@ export const useAppStore = create<AppState>((set) => ({
 
   retrievalMwMin: null,
   retrievalMwMax: null,
+
+  highlightEnabled: readStoredHighlight(),
 
   results: [],
   predictedFp: null,
@@ -125,6 +142,11 @@ export const useAppStore = create<AppState>((set) => ({
   setMW: (mw) => set({ mw }),
   setSmilesInput: (smiles) => set({ smilesInput: smiles }),
   setRetrievalMwRange: (min, max) => set({ retrievalMwMin: min, retrievalMwMax: max }),
+
+  setHighlightEnabled: (enabled) => {
+    writeStoredHighlight(enabled)
+    set({ highlightEnabled: enabled })
+  },
 
   setPredictResults: (results, predictedFp) =>
     set({ results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [] }),

@@ -94,3 +94,24 @@ describe('custom results', () => {
     expect(useAppStore.getState().predictedFp).toBeNull()
   })
 })
+
+describe('highlightEnabled', () => {
+  it('defaults to on', () => {
+    expect(useAppStore.getState().highlightEnabled).toBe(true)
+  })
+
+  it('round-trips through the setter', () => {
+    useAppStore.getState().setHighlightEnabled(false)
+    expect(useAppStore.getState().highlightEnabled).toBe(false)
+    useAppStore.getState().setHighlightEnabled(true)
+    expect(useAppStore.getState().highlightEnabled).toBe(true)
+  })
+
+  it('leaves results untouched — it is a display choice, not a query', () => {
+    useAppStore.getState().setPredictResults([card('A')], [0.1])
+    useAppStore.getState().setHighlightEnabled(false)
+    const s = useAppStore.getState()
+    expect(s.results.map((r) => r.smiles)).toEqual(['A'])
+    expect(s.predictedFp).toEqual([0.1])
+  })
+})

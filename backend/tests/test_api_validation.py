@@ -17,6 +17,13 @@ def test_health_is_reachable_without_a_model(client):
     assert "model_loaded" in r.json()
 
 
+def test_health_reports_whether_highlighting_is_available(client, monkeypatch):
+    """The UI hides its similarity-map toggle on this flag."""
+    import app.config
+    monkeypatch.setattr(app.config, "HIGHLIGHT_ENABLED", False)
+    assert client.get("/api/health").json()["highlight_available"] is False
+
+
 def test_predict_requires_at_least_one_modality(client):
     r = client.post("/api/predict", json={"raw": {}, "k": 5})
     assert r.status_code == 400
