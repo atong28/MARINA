@@ -1,11 +1,14 @@
 import os
 import time
+import glob
+import zipfile
 
 import torch
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from lightning_fabric.plugins.io.torch_io import TorchCheckpointIO
 
 from .marina import MARINA, MARINAArgs, MARINADataModule
 from .spectre import SPECTRE, SPECTREArgs
@@ -15,6 +18,58 @@ from .benchmark_callback import BenchmarkCosineCallback
 from .data.fp_loader import EntropyFPLoader
 
 logger = get_logger(__file__)
+
+
+class AtomicCheckpointIO(TorchCheckpointIO):
+    """Write to a sibling temp file, then rename into place.
+
+    A 2.17 GB save to the CephFS PVC is not atomic. A pod dying mid-write leaves a
+    truncated file, and since resume targets last.ckpt every retry then dies in the zip
+    reader within seconds -- exhausting backoffLimit in minutes and killing the arm. This
+    took out marina-m4-s1 (epoch 580) and marina-drop0668-s0 (epoch 527) on 2026-08-14.
+    os.replace within one directory is atomic, so an interrupted write can only ever leave
+    the .partial file behind.
+    """
+
+    def save_checkpoint(self, checkpoint, path, storage_options=None):
+        tmp = f'{path}.partial'
+        super().save_checkpoint(checkpoint, tmp, storage_options=storage_options)
+        os.replace(tmp, path)
+
+
+def _is_loadable(path: str) -> bool:
+    """Does this checkpoint have an intact zip central directory?
+
+    Torch checkpoints are zips, and truncation is the failure mode here, so opening the
+    archive is enough -- it reads the central directory without inflating 2.17 GB the way
+    torch.load or testzip() would.
+    """
+    try:
+        with zipfile.ZipFile(path):
+            return True
+    except Exception:
+        return False
+
+
+def _resolve_resume_checkpoint(ckpt_dir: str) -> str | None:
+    """Newest intact checkpoint in ckpt_dir, or None to start from scratch.
+
+    Prefers last.ckpt, but falls back to the monitored epoch_*.ckpt when last.ckpt is
+    corrupt: those are written on the improvement schedule rather than the rolling one, so
+    they are rarely the file in flight when a pod dies. Falling back costs at most the
+    epochs since the last metric improvement; crashing costs the whole arm.
+    """
+    candidates = sorted(
+        (p for p in glob.glob(os.path.join(ckpt_dir, '*.ckpt')) if os.path.isfile(p)),
+        key=os.path.getmtime, reverse=True
+    )
+    for path in candidates:
+        if _is_loadable(path):
+            return path
+        logger.error(f'[Main] Ignoring corrupt checkpoint {path} '
+                     f'({os.path.getsize(path)} bytes, unreadable as a zip archive).')
+    return None
+
 
 def train_marina(
     args: MARINAArgs | SPECTREArgs,
@@ -88,7 +143,8 @@ def train_marina(
         # and plain DDP aborts at reducer._rebuild_buckets(). Numerically identical to
         # find_unused_parameters=False; only the reduction-set discovery changes.
         strategy='ddp_find_unused_parameters_true',
-        gradient_clip_val=1.0
+        gradient_clip_val=1.0,
+        plugins=[AtomicCheckpointIO()]
     )
 
     # Lightning restores optimizer, LR schedule, epoch counter and callback state (including
@@ -96,12 +152,12 @@ def train_marina(
     # load_from_checkpoint instead would restore weights alone and restart the schedule.
     resume_ckpt = None
     if args.resume:
-        candidate = os.path.join(ckpt_dir, 'last.ckpt')
-        if os.path.exists(candidate):
-            resume_ckpt = candidate
+        resume_ckpt = _resolve_resume_checkpoint(ckpt_dir)
+        if resume_ckpt:
             logger.info(f'[Main] Resuming from {resume_ckpt}')
         else:
-            logger.info(f'[Main] No {candidate} yet; starting this run from scratch.')
+            logger.info(f'[Main] No intact checkpoint in {ckpt_dir}; '
+                        f'starting this run from scratch.')
 
     logger.info("[Main] Begin Training!")
     fit_start = time.time()
