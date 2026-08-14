@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import datetime
 
 import torch
@@ -54,6 +55,16 @@ def _resume_ckpt_dir(args, final_path: str, logger):
         )
         return None
     os.makedirs(final_path, exist_ok=True)
+    # Lightning saves checkpoints atomically via tempfile.mkstemp() (which honours TMPDIR,
+    # default /tmp) followed by a move onto final_path. On Nautilus final_path is CephFS while
+    # /tmp is the container overlay fs, so that move is a cross-device rename and dies with
+    # EXDEV, killing rank 0 mid-save -- the other ranks then hang on the next collective until
+    # NCCL times out. Point the temp dir at the same filesystem as the checkpoints so the
+    # rename stays within one device.
+    ckpt_tmp = os.path.join(final_path, '_ckpt_tmp')
+    os.makedirs(ckpt_tmp, exist_ok=True)
+    os.environ['TMPDIR'] = ckpt_tmp
+    tempfile.tempdir = ckpt_tmp
     return final_path
 
 
