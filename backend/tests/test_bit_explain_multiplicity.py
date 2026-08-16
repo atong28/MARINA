@@ -86,3 +86,40 @@ def test_cumulative_buckets_share_a_fragment_across_columns(mult_session):
     assert any(len(b) > 1 for b in by_frag.values()), (
         "test molecule should contain a fragment occurring more than once"
     )
+
+
+def test_rows_report_the_occurrence_bucket(mult_session):
+    """Cumulative buckets are the only thing telling two columns of one fragment apart."""
+    n = mult_session.fp_loader.out_dim
+    fp = [0.99] * n
+
+    rows = explain_bits(mult_session, CHAIN, fp, limit=500)["bits"]
+    assert rows
+    assert all(r["multiplicity"] is not None for r in rows), (
+        "every multiplicity row must carry its bucket"
+    )
+
+    by_frag: dict = {}
+    for r in rows:
+        by_frag.setdefault(r["fragment_smiles"], set()).add(r["multiplicity"])
+    shared = {f: b for f, b in by_frag.items() if len(b) > 1}
+    assert shared, "a recurring fragment should appear at several buckets"
+    for frag, buckets in shared.items():
+        assert buckets == set(range(1, max(buckets) + 1)), (
+            f"buckets for {frag!r} should be cumulative from 1, got {sorted(buckets)}"
+        )
+
+
+def test_absent_features_report_an_unknown_radius(mult_session):
+    """
+    A multiplicity feature carries no radius, so one this structure lacks has none to
+    report. -1 is the "unknown" sentinel; the UI must not render it as a real radius.
+    """
+    n = mult_session.fp_loader.out_dim
+    fp = [0.99] * n
+
+    rows = explain_bits(mult_session, ASPIRIN, fp, limit=500)["bits"]
+    absent = [r for r in rows if not r["present"]]
+    assert absent, "predicting every bit should leave some absent from aspirin"
+    assert all(r["radius"] == -1 for r in absent)
+    assert all(r["radius"] >= 0 for r in rows if r["present"])

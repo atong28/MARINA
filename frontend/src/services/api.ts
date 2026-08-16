@@ -151,7 +151,11 @@ export interface BitExplanation {
   index: number
   fragment_smiles: string
   atom_symbol: string
+  /** Environment radius, or -1 when unknown — substructure and multiplicity features
+   *  carry no radius, so it is only known for one located in this structure. */
   radius: number
+  /** Multiplicity vocabulary only: the fragment appears at least this many times. */
+  multiplicity?: number | null
   raw_confidence: number
   confidence: number
   band: string

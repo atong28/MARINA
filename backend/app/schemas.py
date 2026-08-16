@@ -96,7 +96,13 @@ class BitExplanation(BaseModel):
     index:           int
     fragment_smiles: str   = Field(..., description="Substructure SMILES ('' for radius-0 bits)")
     atom_symbol:     str   = Field(..., description="Element at the environment centre")
-    radius:          int
+    radius:          int   = Field(
+        ..., description="Environment radius, or -1 when unknown. Substructure and "
+                         "multiplicity features carry no radius of their own, so it is "
+                         "only known for a feature located in this structure.")
+    multiplicity:    Optional[int] = Field(
+        None, description="Multiplicity vocabulary only: the cumulative occurrence "
+                          "bucket, i.e. the fragment appears at least this many times.")
     raw_confidence:  float = Field(..., ge=0.0, le=1.0, description="Uncalibrated sigmoid output")
     confidence:      float = Field(..., ge=0.0, le=1.0, description="Calibrated presence probability")
     band:            str   = Field(..., description="Very likely / Likely / Possible / Unlikely")

@@ -41,6 +41,36 @@ function bitLabel(bit: BitExplanation): string {
 }
 
 /**
+ * The identifying detail under a row's fragment.
+ *
+ * Radius is omitted rather than shown as "r-1" when it is unknown: substructure and
+ * multiplicity features carry no radius of their own, so it is only known for a feature
+ * actually located in this structure, and every absent bit would otherwise claim r-1.
+ *
+ * Multiplicity buckets are cumulative, so several columns carry the same fragment and
+ * differ only in the bucket. Without it those rows are indistinguishable.
+ */
+export function bitMeta(bit: BitExplanation): string {
+  const parts: string[] = []
+  if (bit.radius >= 0) parts.push(`r${bit.radius}`)
+  if (bit.multiplicity != null) parts.push(`≥${bit.multiplicity}×`)
+  parts.push(`#${bit.index}`)
+  return parts.join('·')
+}
+
+export function bitTitle(bit: BitExplanation): string {
+  const where = bit.present
+    ? 'Show where this sits in the structure'
+    : 'Not present in this structure'
+  const detail = [`bit ${bit.index}`]
+  if (bit.radius >= 0) detail.push(`radius ${bit.radius}`)
+  if (bit.multiplicity != null) {
+    detail.push(`appears at least ${bit.multiplicity}×`)
+  }
+  return `${where} (${detail.join(', ')})`
+}
+
+/**
  * The fitted curve tops out at 0.9984, so nothing in the data supports telling a
  * user a substructure is certainly present. Plain rounding would turn that into
  * "100%", so the top of the range keeps a decimal place instead.
@@ -119,11 +149,7 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
                     onClick={() => toggle(bit)}
                     // A bit this structure lacks has nowhere to be highlighted.
                     disabled={!bit.present}
-                    title={
-                      bit.present
-                        ? `Show where this sits in the structure (bit ${bit.index}, radius ${bit.radius})`
-                        : `Not present in this structure (bit ${bit.index}, radius ${bit.radius})`
-                    }
+                    title={bitTitle(bit)}
                   >
                     {bit.fragment_svg ? (
                       <img
@@ -136,7 +162,7 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
                     )}
                     <span className="bit-panel__labels">
                       <code className="bit-panel__frag">{bitLabel(bit)}</code>
-                      <span className="bit-panel__meta">r{bit.radius}·#{bit.index}</span>
+                      <span className="bit-panel__meta">{bitMeta(bit)}</span>
                     </span>
                     <span className="bit-panel__band">{bit.band}</span>
                     <span className="bit-panel__pct">{formatPct(bit.confidence)}</span>
