@@ -14,14 +14,18 @@ from ..log import get_logger
 from .arrow_store import ArrowFragIdxStore
 
 from .fp_utils import (
-    BitInfo as Feature,            # (bit_id, atom_symbol, frag_smiles, radius)
+    Feature,                       # BitInfo 4-tuple, or fragment SMILES for SUBSTRUCTURE
+    MORGAN,
+    SUBSTRUCTURE,
+    MULTIPLICITY,
+    MULTIPLICITY_UNCAPPED,
     compute_entropy,
     load_smiles_index,
     count_fragments_over_retrieval,
     write_counts,
     build_rankingset_csr,
     build_fragidx_parquets,
-    count_circular_substructures,
+    extract_features,
     canonicalize_smiles,
 )
 
@@ -41,8 +45,16 @@ class EntropyFPLoader(FPLoader):
       • build a CSR rankingset over the retrieval molecules (optional)
 
     Data layout (required):
-        DATASET_ROOT/arrow/<split>/FragIdx.parquet     # per-idx sorted int32 col indices
+        DATASET_ROOT/arrow/<split>/<FRAGIDX_FILENAME>  # per-idx sorted int32 col indices
+
+    Subclasses select a feature vocabulary via FEATURE_KIND. Every on-disk artifact is
+    named from that kind, because column indices and counts are only meaningful against
+    the feature map that produced them.
     """
+
+    FEATURE_KIND: str = MORGAN
+    FRAGIDX_FILENAME: str = "FragIdx.parquet"
+    COUNTS_PREFIX: str = "count_hashes_under_radius"
 
     def __init__(
         self,
@@ -85,11 +97,11 @@ class EntropyFPLoader(FPLoader):
         return self._idx_to_split[int(idx)]  # KeyError → fail fast if missing
 
     def _ensure_fragidx_store_for_split(self, split: str) -> ArrowFragIdxStore:
-        key = f"{split}__FragIdx"
+        key = f"{split}__{self.FRAGIDX_FILENAME}"
         store = self._frag_stores.get(key)
         if store is None:
             arrow_path = os.path.join(
-                self.dataset_root, "arrow", split, "FragIdx.parquet")
+                self.dataset_root, "arrow", split, self.FRAGIDX_FILENAME)
             if not os.path.isfile(arrow_path):
                 raise FileNotFoundError(f"Missing FragIdx shard: {arrow_path}")
             store = ArrowFragIdxStore(arrow_path)
@@ -105,7 +117,7 @@ class EntropyFPLoader(FPLoader):
         return store.get_indices(idx)
 
     def _counts_path(self, radius: int) -> str:
-        return os.path.join(self.dataset_root, f"count_hashes_under_radius_{radius}.pkl")
+        return os.path.join(self.dataset_root, f"{self.COUNTS_PREFIX}_{radius}.pkl")
 
     def _prepare_counts(self, radius: int, num_procs: int = 0):
         if self.retrieval_path is None:
@@ -115,9 +127,17 @@ class EntropyFPLoader(FPLoader):
             with open(counts_path, "rb") as f:
                 return pickle.load(f)
         counter = count_fragments_over_retrieval(
-            self.retrieval_path, radius, num_procs=num_procs)
+            self.retrieval_path, radius, num_procs=num_procs,
+            feature_kind=self.FEATURE_KIND)
         write_counts(counter, counts_path)
         return counter
+
+    def _filter_by_radius(self, counts: Dict[Feature, int]) -> list:
+        """
+        Drop features above max_radius. A Morgan counts file built once at radius 6 is
+        reusable for any smaller max_radius because radius is part of the key.
+        """
+        return [(k, c) for k, c in counts.items() if k[3] <= self.max_radius]
 
     def setup(self, out_dim, max_radius, fp_type: str = "RankingEntropy",
               retrieval_path: Optional[str] = None, num_procs: int = 0):
@@ -146,9 +166,7 @@ class EntropyFPLoader(FPLoader):
         if not hashed_bits_count:
             raise RuntimeError("Failed to load or compute retrieval counts.")
 
-        filtered = [((bit_id, atom_symbol, frag, r), c)
-                    for (bit_id, atom_symbol, frag, r), c in hashed_bits_count.items()
-                    if r <= self.max_radius]
+        filtered = self._filter_by_radius(hashed_bits_count)
         if not filtered:
             raise RuntimeError(
                 "No features <= max_radius found in retrieval counts.")
@@ -181,6 +199,8 @@ class EntropyFPLoader(FPLoader):
             bitinfo_to_col=self.bitinfo_to_fp_index_map,
             radius=self.max_radius,
             num_procs=num_procs,
+            feature_kind=self.FEATURE_KIND,
+            filename=self.FRAGIDX_FILENAME,
         )
         logger.info("Building rankingset...")
         self._build_rankingset(fp_type, num_procs=num_procs)
@@ -198,8 +218,9 @@ class EntropyFPLoader(FPLoader):
         if self.out_dim is None or self.max_radius is None:
             raise RuntimeError("Call setup() first.")
         mfp = np.zeros(self.out_dim, dtype=np.float32)
-        present = count_circular_substructures(
-            smiles, radius=self.max_radius, ignore_atoms=ignore_atoms or [])
+        present = extract_features(
+            smiles, radius=self.max_radius, kind=self.FEATURE_KIND,
+            ignore_atoms=ignore_atoms or [])
         for bitinfo in present.keys():
             col = self.bitinfo_to_fp_index_map.get(bitinfo)
             if col is not None and 0 <= col < self.out_dim:
@@ -228,6 +249,7 @@ class EntropyFPLoader(FPLoader):
             bitinfo_to_col=self.bitinfo_to_fp_index_map,
             radius=self.max_radius,
             num_procs=num_procs,
+            feature_kind=self.FEATURE_KIND,
         )
         out_dir = os.path.join(self.dataset_root, fp_type)
         os.makedirs(out_dir, exist_ok=True)
@@ -245,11 +267,91 @@ class EntropyFPLoader(FPLoader):
         return torch.load(rankingset_path, weights_only=True)
 
 
+class SubstructureEntropyFPLoader(EntropyFPLoader):
+    """
+    Entropy-selected fingerprint over canonical fragment SMILES instead of Morgan hashes.
+
+    Same selection and storage machinery as the parent; only the feature vocabulary
+    changes. Features that describe the same substructure collapse to one bit, which
+    recovers the ~54% of the top-16384 Morgan selection spent on duplicate chemistry.
+    """
+
+    FEATURE_KIND = SUBSTRUCTURE
+    FRAGIDX_FILENAME = "FragIdxSubstructure.parquet"
+    COUNTS_PREFIX = "count_substructures_under_radius"
+
+    def _filter_by_radius(self, counts: Dict[Feature, int]) -> list:
+        """
+        Fragment SMILES carry no radius, so the counts file cannot be sub-filtered the way
+        the Morgan one can. _counts_path is already radius-scoped, so the file for radius R
+        holds exactly the features at radius <= R.
+        """
+        return list(counts.items())
+
+    def build_mfp_from_bitinfo(self, atom_to_bitinfos, ignore_atoms=None):
+        raise NotImplementedError(
+            "build_mfp_from_bitinfo takes Morgan BitInfo keys; the substructure loader "
+            "has fragment-SMILES keys. Use build_mfp_for_smiles instead."
+        )
+
+
+class MultiplicityEntropyFPLoader(SubstructureEntropyFPLoader):
+    """
+    Entropy-selected fingerprint over (fragment SMILES, multiplicity bucket) pairs.
+
+    Extends the substructure vocabulary with how many times each fragment occurs in the
+    molecule, as cumulative buckets >=1, >=2, >=3, >=4, >=5. The feature stays binary -- a
+    fragment occurring n times lights every bucket up to min(n, 5) -- so the model, the loss
+    and the CSR rankingset are untouched. Only the candidate pool entering entropy selection
+    grows.
+
+    Cumulative rather than exact buckets, because retrieval is cosine over these columns:
+    exact buckets would give two molecules differing only in a fragment's multiplicity no
+    shared column for it at all, making a near-miss on count as expensive as wrong chemistry.
+
+    Since (frag, >=1) is exactly the parent's feature, this vocabulary is a strict superset
+    of the substructure one competing for the same output width. Selection spends the budget
+    across both chemistry and multiplicity, so the selected columns are NOT all distinct
+    fragments the way the parent's are -- that trades away the parent's "0% duplicate
+    chemistry" property in exchange for representing repetition at all.
+
+    Inherits _filter_by_radius from the substructure loader: these keys carry no radius
+    either, so the radius-scoped counts file already holds exactly the right features.
+    """
+
+    FEATURE_KIND = MULTIPLICITY
+    FRAGIDX_FILENAME = "FragIdxMultiplicity.parquet"
+    COUNTS_PREFIX = "count_multiplicity_under_radius"
+
+
+class MultiplicityUncappedEntropyFPLoader(MultiplicityEntropyFPLoader):
+    """Multiplicity vocabulary with no bucket ceiling (see MULTIPLICITY_CAP).
+
+    Identical to the parent except a fragment occurring n times lights all n cumulative
+    buckets rather than saturating at 5. This lets radius-0 atom environments count carbons,
+    hydrogens etc. outright -- an implicit molecular-formula signal the capped variant throws
+    away. Artifacts are namespaced separately so both vocabularies coexist on disk.
+    """
+
+    FEATURE_KIND = MULTIPLICITY_UNCAPPED
+    FRAGIDX_FILENAME = "FragIdxMultiplicityUncapped.parquet"
+    COUNTS_PREFIX = "count_multiplicity_uncapped_under_radius"
+
+
+FP_LOADERS = {
+    "RankingEntropy": EntropyFPLoader,
+    "RankingEntropySubstructure": SubstructureEntropyFPLoader,
+    "RankingEntropyMultiplicity": MultiplicityEntropyFPLoader,
+    "RankingEntropyMultiplicityUncapped": MultiplicityUncappedEntropyFPLoader,
+}
+
+
 def make_fp_loader(fp_type: str, entropy_out_dim=16384, max_radius=6, retrieval_path: Optional[str] = None):
-    if fp_type == "RankingEntropy":
-        fp_loader = EntropyFPLoader(retrieval_path=retrieval_path)
-        fp_loader.setup(entropy_out_dim, max_radius, fp_type=fp_type,
-                        retrieval_path=retrieval_path)
-        return fp_loader
-    raise NotImplementedError(f"FP type {fp_type} not implemented")
+    loader_class = FP_LOADERS.get(fp_type)
+    if loader_class is None:
+        raise NotImplementedError(f"FP type {fp_type} not implemented")
+    fp_loader = loader_class(retrieval_path=retrieval_path)
+    fp_loader.setup(entropy_out_dim, max_radius, fp_type=fp_type,
+                    retrieval_path=retrieval_path)
+    return fp_loader
 

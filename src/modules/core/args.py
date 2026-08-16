@@ -57,6 +57,12 @@ class SMARTArgs:
     use_jaccard: bool = False
     warmup: bool = False
     accumulate_grad_batches_num: int = 4
+    # Trainer precision. bf16-mixed is the default every run to date has used, but bf16 has
+    # no hardware support below sm_80 -- on SDSC's V100s (sm_70) it runs without tensor-core
+    # acceleration, while 16-mixed does engage them. fp16 has a much narrower dynamic range,
+    # so Lightning applies automatic loss scaling for it; switching changes numerics and
+    # makes runs non-comparable with existing bf16 ones.
+    precision: Literal['bf16-mixed', '16-mixed', '32-true'] = 'bf16-mixed'
     dropout: float = 0.1
     
     # jittering default value to wobble the spectra
@@ -79,7 +85,9 @@ class SMARTArgs:
     # fp type for prediction and evaluation. fingerprint details should be stored in 
     #   DATASET_ROOT/RankingEntropy/
     # with the proper formatting.
-    fp_type: Literal['RankingEntropy'] = 'RankingEntropy'
+    fp_type: Literal['RankingEntropy', 'RankingEntropySubstructure',
+                     'RankingEntropyMultiplicity',
+                     'RankingEntropyMultiplicityUncapped'] = 'RankingEntropy'
     
     # additional test types to be used for testing, always will test on all inputs
     additional_test_types: list[list[str]] = field(default_factory=lambda: [

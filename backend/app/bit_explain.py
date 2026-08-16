@@ -44,34 +44,38 @@ def band(p: float) -> str:
     return "Unlikely"
 
 
-def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict
-               ) -> Optional[Dict[int, Tuple[List[int], List[int]]]]:
+def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
+               feature_kind: str = "morgan"
+               ) -> Optional[Dict[int, Tuple[List[int], List[int], int]]]:
     """
-    Map fingerprint column -> (atom indices, bond indices) in this molecule.
+    Map fingerprint column -> (atom indices, bond indices, radius) in this molecule.
 
     A bit may fire at several centres (aspirin's C=O bit hits both carbonyls),
     so the footprints of all occurrences are unioned.
+
+    The radius is carried out because a substructure feature is keyed on the fragment
+    SMILES alone and has no radius in its key, unlike a Morgan BitInfo tuple.
     """
     from app.marina_import import ensure_marina_importable
     ensure_marina_importable()
-    from src.modules.data.fp_utils import get_bitinfos
+    from src.modules.data.fp_utils import get_feature_locations
     from rdkit import Chem
 
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
-    atom_to_bits, _ = get_bitinfos(smiles, max_radius)
-    if not atom_to_bits:
+    atom_to_feats = get_feature_locations(smiles, max_radius, kind=feature_kind)
+    if not atom_to_feats:
         return None
 
-    out: Dict[int, Tuple[set, set]] = {}
-    for atom_idx, bitinfos in atom_to_bits.items():
-        for bi in bitinfos:
-            col = bitinfo_to_col.get(bi)
+    out: Dict[int, Tuple[set, set, int]] = {}
+    for atom_idx, feats in atom_to_feats.items():
+        for feat, radius in feats:
+            col = bitinfo_to_col.get(feat)
             if col is None:
                 continue
-            atoms, bonds = out.setdefault(col, (set(), set()))
-            env = Chem.FindAtomEnvironmentOfRadiusN(mol, bi[3], atom_idx)
+            atoms, bonds, seen_r = out.setdefault(col, (set(), set(), radius))
+            env = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, atom_idx)
             for bond_idx in env:
                 bond = mol.GetBondWithIdx(bond_idx)
                 bonds.add(bond_idx)
@@ -80,7 +84,10 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict
             if not env:
                 # Radius-0 bit: the centre atom itself, no bonds.
                 atoms.add(atom_idx)
-    return {c: (sorted(a), sorted(b)) for c, (a, b) in out.items()}
+            # Keep the smallest radius that produced this feature: the substructure
+            # enumeration re-emits a saturated environment at every larger radius.
+            out[col] = (atoms, bonds, min(seen_r, radius))
+    return {c: (sorted(a), sorted(b), r) for c, (a, b, r) in out.items()}
 
 
 def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
@@ -99,8 +106,9 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
     index_to_bitinfo = getattr(fp_loader, "fp_index_to_bitinfo_map", {})
     bitinfo_to_col = getattr(fp_loader, "bitinfo_to_fp_index_map", {})
     max_radius = getattr(fp_loader, "max_radius", 6) or 6
+    feature_kind = getattr(fp_loader, "FEATURE_KIND", "morgan")
 
-    locs = _locations(smiles, max_radius, bitinfo_to_col) or {}
+    locs = _locations(smiles, max_radius, bitinfo_to_col, feature_kind) or {}
     present = set(locs)
 
     # Candidate bits always get a row; predicted bits only above the floor.
@@ -118,11 +126,16 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
         else:
             group = GROUP_UNEXPECTED if in_mol else GROUP_UNCERTAIN
 
+        atoms, bonds, found_radius = locs.get(col, ([], [], -1))
         info = index_to_bitinfo.get(col)
-        bit_id, atom_symbol, frag_smiles, radius = (
-            info if info else (None, None, None, None)
-        )
-        atoms, bonds = locs.get(col, ([], []))
+        if isinstance(info, str):
+            # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
+            # centre-atom symbol, and the radius is only known from where it was found.
+            frag_smiles, atom_symbol, radius = info, "", found_radius
+        elif info:
+            _bit_id, atom_symbol, frag_smiles, radius = info
+        else:
+            frag_smiles, atom_symbol, radius = None, None, None
         rows.append({
             "index": col,
             "fragment_smiles": frag_smiles or "",

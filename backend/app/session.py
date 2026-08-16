@@ -72,9 +72,21 @@ def _import_spectre_args():
     return SPECTREArgs
 
 
-def _import_fp_loader():
-    from src.modules.data.fp_loader import EntropyFPLoader
-    return EntropyFPLoader
+def _import_fp_loader(fp_type: str = "RankingEntropy"):
+    """
+    Resolve the loader class for a model's fp_type.
+
+    A substructure model keys its feature map on fragment SMILES rather than Morgan
+    BitInfo tuples, so serving it with the Morgan loader would look up every column
+    against the wrong key type and silently return an all-zero fingerprint.
+    """
+    from src.modules.data.fp_loader import FP_LOADERS
+    loader_class = FP_LOADERS.get(fp_type)
+    if loader_class is None:
+        raise RuntimeError(
+            f"Unknown fp_type {fp_type!r}; known types: {sorted(FP_LOADERS)}"
+        )
+    return loader_class
 
 
 # ── Helper: load metadata ────────────────────────────────────────────────────
@@ -386,8 +398,8 @@ class ModelSession:
 
         fp_type = getattr(args, "fp_type", "RankingEntropy")
 
-        EntropyFPLoader = _import_fp_loader()
-        fp_loader = EntropyFPLoader(dataset_root=model_root, retrieval_path=retrieval_path)
+        FPLoaderClass = _import_fp_loader(fp_type)
+        fp_loader = FPLoaderClass(dataset_root=model_root, retrieval_path=retrieval_path)
         fp_loader.setup(args.out_dim, MAX_RADIUS, fp_type=fp_type,
                         retrieval_path=retrieval_path)
 
@@ -652,9 +664,11 @@ class ModelSession:
 
     def fp_indices_for_smiles(self, smiles: str) -> Optional[List[int]]:
         """Return sorted list of active fingerprint bit indices for a SMILES string."""
-        from src.modules.data.fp_utils import count_circular_substructures
+        from src.modules.data.fp_utils import extract_features, MORGAN
         try:
-            present = count_circular_substructures(smiles, self.fp_loader.max_radius)
+            present = extract_features(
+                smiles, self.fp_loader.max_radius,
+                kind=getattr(self.fp_loader, "FEATURE_KIND", MORGAN))
             indices = sorted(
                 col
                 for b, col in (

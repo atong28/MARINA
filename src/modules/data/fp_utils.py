@@ -22,9 +22,37 @@ from tqdm import tqdm
 # Types
 # ---------------------------
 BitInfo = Tuple[int, str, str, int]  # (bit_id, atom_symbol, fragment_smiles, radius)
+Substructure = str                   # canonical fragment SMILES
+Multiplicity = Tuple[str, int]       # (canonical fragment SMILES, multiplicity bucket)
+Feature = Any                        # BitInfo, Substructure or Multiplicity, per feature_kind
+
+MORGAN = "morgan"
+SUBSTRUCTURE = "substructure"
+MULTIPLICITY = "multiplicity"
+MULTIPLICITY_UNCAPPED = "multiplicity_uncapped"
+
+# Buckets for the multiplicity vocabulary: a fragment occurring n times lands in
+# min(n, MULTIPLICITY_CAP), so the top bucket means "n or more". 5 is where the measured
+# distribution flattens -- over a 2,000-molecule MARINA1 sample, counts 1-5 cover 92.2% of
+# (molecule, fragment) pairs, and the cap only bounds how far the candidate pool is
+# enumerated. Selection prunes buckets that are too rare to be worth a bit anyway.
+MULTIPLICITY_CAP = 5
+
+
+def _multiplicity_cap(kind: str) -> int:
+    """Bucket ceiling for a multiplicity vocabulary. The capped variant saturates at
+    MULTIPLICITY_CAP; the uncapped variant applies no ceiling, so a fragment occurring n
+    times lights all n cumulative buckets -- radius-0 atom environments then count carbons,
+    hydrogens etc. outright, letting the vocabulary encode molecular-formula constraints."""
+    if kind == MULTIPLICITY:
+        return MULTIPLICITY_CAP
+    if kind == MULTIPLICITY_UNCAPPED:
+        return 1 << 30  # effectively unbounded; keeps min(n, cap) integer
+    raise ValueError(f"Not a multiplicity kind: {kind}")
 
 G_RADIUS = None
 G_MAPPING = None  # for CSR bitinfo_to_col
+G_KIND = MORGAN
 
 def canonicalize_smiles(smiles: str, keep_stereo: bool = False):
     if smiles is None or smiles == '':
@@ -36,23 +64,25 @@ def canonicalize_smiles(smiles: str, keep_stereo: bool = False):
         raise ValueError(f"Invalid SMILES: {smiles}")
     return Chem.MolToSmiles(mol, isomericSmiles=keep_stereo, canonical=True)
 
-def _init_count(radius: int):
-    global G_RADIUS
+def _init_count(radius: int, kind: str = MORGAN):
+    global G_RADIUS, G_KIND
     G_RADIUS = radius
+    G_KIND = kind
 
 def _worker_count_one(smi: str):
-    # uses G_RADIUS set by _init_count
-    return count_circular_substructures(smi, G_RADIUS)
+    # uses G_RADIUS / G_KIND set by _init_count
+    return extract_features(smi, G_RADIUS, kind=G_KIND)
 
-def _init_csr(radius: int, mapping: Dict[BitInfo, int]):
-    global G_RADIUS, G_MAPPING
+def _init_csr(radius: int, mapping: Dict[Feature, int], kind: str = MORGAN):
+    global G_RADIUS, G_MAPPING, G_KIND
     G_RADIUS = radius
     G_MAPPING = mapping
+    G_KIND = kind
 
 def _worker_row_nonzeros(args):
     # args: (row_idx, smi)
     row_idx, smi = args
-    present = count_circular_substructures(smi, G_RADIUS)
+    present = extract_features(smi, G_RADIUS, kind=G_KIND)
     cols = []
     get = G_MAPPING.get
     for b in present.keys():
@@ -180,6 +210,181 @@ def count_circular_substructures(
     return bit_info_counter
 
 
+# ---------------------------
+# Substructures
+# ---------------------------
+def _substructure_occurrences(mol, radius: int, ignore_atoms: Iterable[int] = ()):
+    """
+    Yield (atom_idx, fragment_smiles, env_radius) for every atom environment.
+
+    isomericSmiles=False so a stereo-bearing input still produces fragment strings that
+    match the vocabulary, which is built from SMILES already stripped of stereo by
+    canonicalize_smiles. Without it, the backend would silently miss every bit on any
+    candidate drawn with stereochemistry.
+    """
+    ignore = set(ignore_atoms or ())
+    for atom_idx in range(mol.GetNumAtoms()):
+        if atom_idx in ignore:
+            continue
+        for r in range(radius + 1):
+            env = Chem.FindAtomEnvironmentOfRadiusN(mol, r, atom_idx)
+            if r > 0 and len(env) == 0:
+                break  # atom has no environment this large; neither will larger radii
+            atoms = {atom_idx}
+            for bond_idx in env:
+                bond = mol.GetBondWithIdx(bond_idx)
+                atoms.add(bond.GetBeginAtomIdx())
+                atoms.add(bond.GetEndAtomIdx())
+            frag = Chem.MolFragmentToSmiles(
+                mol, atomsToUse=sorted(atoms), bondsToUse=list(env),
+                canonical=True, isomericSmiles=False)
+            yield atom_idx, frag, r
+
+
+def get_feature_locations(
+    smiles: str, radius: int, kind: str = MORGAN,
+    ignore_atoms: Optional[Iterable[int]] = None,
+) -> Optional[Dict[int, List[Tuple[Feature, int]]]]:
+    """
+    Map atom index -> [(feature key, environment radius), ...] for either vocabulary.
+
+    The backend needs both halves: the feature key to look up a fingerprint column, and
+    the radius to reconstruct that bit's atom/bond footprint for highlighting.
+
+    The SMILES is used as given, NOT canonicalized -- atom indices have to line up with
+    the molecule the renderer draws, and canonicalizing would renumber them.
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+
+    if kind == MORGAN:
+        atom_to_bits, _ = get_bitinfos(smiles, radius, ignore_atoms or ())
+        if not atom_to_bits:
+            return None
+        return {a: [(b, b[3]) for b in bits] for a, bits in atom_to_bits.items()}
+
+    if kind == SUBSTRUCTURE:
+        out: Dict[int, List[Tuple[Feature, int]]] = defaultdict(list)
+        for atom_idx, frag, r in _substructure_occurrences(mol, radius, ignore_atoms or ()):
+            out[atom_idx].append((frag, r))
+        return dict(out) or None
+
+    if kind in (MULTIPLICITY, MULTIPLICITY_UNCAPPED):
+        # The bucket is a property of the whole molecule, not of one occurrence, so the
+        # occurrences have to be counted before any atom can be assigned its feature keys.
+        # Buckets are cumulative, so an atom in a fragment occurring 3 times belongs to the
+        # >=1, >=2 and >=3 columns alike -- the backend highlights the same atoms for each.
+        cap = _multiplicity_cap(kind)
+        occurrences = list(_substructure_occurrences(mol, radius, ignore_atoms or ()))
+        counts = Counter(frag for _, frag, _ in occurrences)
+        out = defaultdict(list)
+        for atom_idx, frag, r in occurrences:
+            for k in range(1, min(counts[frag], cap) + 1):
+                out[atom_idx].append(((frag, k), r))
+        return dict(out) or None
+
+    raise ValueError(f"Unknown feature kind: {kind}")
+
+
+def get_substructure_smiles(
+    smiles: str, radius: int, ignore_atoms: Optional[Iterable[int]] = None
+) -> Set[Substructure]:
+    """
+    Enumerate the atom environments of radius 0..radius as canonical fragment SMILES.
+
+    This is the substructure analogue of get_bitinfos. Two environments that describe the
+    same fragment collapse to one feature here, whereas Morgan hashing keeps them apart by
+    bit_id: in the top-16384 entropy selection, 54% of the bits are duplicate chemistry
+    (isopropyl alone occupies 124 of them).
+
+    Fragments are written with MolFragmentToSmiles rather than PathToSubmol so that the
+    center atom survives at radius 0 -- PathToSubmol on an empty bond environment returns an
+    empty molecule, which would collapse every radius-0 feature into "".  Writing from the
+    parent also keeps its aromaticity perception, so 'ccc' (benzene) stays distinct from
+    'CCC' (cyclohexane).
+    """
+    mol = Chem.MolFromSmiles(canonicalize_smiles(smiles))
+    if mol is None:
+        return set()
+
+    frags: Set[Substructure] = {
+        frag for _, frag, _ in
+        _substructure_occurrences(mol, radius, ignore_atoms or ())
+    }
+
+    return frags
+
+
+def count_substructures(
+    smiles: str, radius: int, ignore_atoms: Optional[Iterable[int]] = None
+) -> Dict[Substructure, int]:
+    """Return presence map Substructure -> 1 for a SMILES at given radius."""
+    return {frag: 1 for frag in get_substructure_smiles(smiles, radius, ignore_atoms)}
+
+
+def count_substructure_multiplicities(
+    smiles: str, radius: int, ignore_atoms: Optional[Iterable[int]] = None,
+    cap: int = MULTIPLICITY_CAP,
+) -> Dict[Multiplicity, int]:
+    """
+    Presence map keyed on (fragment SMILES, multiplicity bucket).
+
+    A fragment occurring n times in one molecule lights cumulative buckets 1..min(n, cap) --
+    so "appears twice" is a different feature from "appears once", and the top bucket
+    saturates at `cap` (5 for the capped variant, effectively unbounded for the uncapped one).
+
+    The values are 1, not n. This is deliberately still a *presence* map, just over a
+    larger vocabulary, which is what lets entropy selection, the FragIdx parquets, the CSR
+    rankingset and the binary BCE/cosine loss all work unchanged: only the feature identity
+    differs, exactly as it does for the substructure vocabulary.
+
+    Entropy selection then decides how many buckets each fragment earns. A motif that is
+    commonly doubled wins a bit for its doubled form; a rare one wins none. So the selected
+    top-K are no longer K *distinct* fragments -- a fragment may hold several columns that
+    denote different multiplicities of the same chemistry.
+
+    The buckets are cumulative (thermometer), not exact: a fragment appearing 3 times lights
+    (frag, 1), (frag, 2) AND (frag, 3). This is what keeps cosine similarity well behaved.
+    Under exact buckets, a molecule with 3 copies and one with 4 would share no column at all
+    for that fragment, so a near-miss on multiplicity would cost exactly as much as wrong
+    chemistry; cumulatively they share 3 of 4 and the penalty degrades smoothly.
+
+    A consequence worth naming: (frag, 1) is precisely the binary substructure feature, so
+    this vocabulary is a strict superset of the substructure one competing for the same
+    budget. It also means (frag, k+1) deterministically implies (frag, k), which will make
+    the fingerprint look more redundant on any joint-entropy measure -- by construction, not
+    as a defect. Judge this vocabulary on retrieval, not on bits-of-joint-entropy.
+    """
+    mol = Chem.MolFromSmiles(canonicalize_smiles(smiles))
+    if mol is None:
+        return {}
+    occurrences = Counter(
+        frag for _, frag, _ in _substructure_occurrences(mol, radius, ignore_atoms or ())
+    )
+    return {
+        (frag, k): 1
+        for frag, n in occurrences.items()
+        for k in range(1, min(n, cap) + 1)
+    }
+
+
+def extract_features(
+    smiles: str, radius: int, kind: str = MORGAN,
+    ignore_atoms: Optional[Iterable[int]] = None,
+) -> Dict[Feature, int]:
+    """Presence map for a feature vocabulary. Keys are BitInfo, fragment SMILES, or
+    (fragment SMILES, multiplicity bucket)."""
+    if kind == MORGAN:
+        return count_circular_substructures(smiles, radius, ignore_atoms)
+    if kind == SUBSTRUCTURE:
+        return count_substructures(smiles, radius, ignore_atoms)
+    if kind in (MULTIPLICITY, MULTIPLICITY_UNCAPPED):
+        return count_substructure_multiplicities(
+            smiles, radius, ignore_atoms, cap=_multiplicity_cap(kind))
+    raise ValueError(f"Unknown feature kind: {kind}")
+
+
 def merge_counts(counts_list: Iterable[Dict[BitInfo, int]]) -> Counter:
     total_count = Counter()
     for count in counts_list:
@@ -206,28 +411,36 @@ def count_fragments_over_retrieval(
     retrieval_path: str,
     radius: int,
     num_procs: int = 0,
+    feature_kind: str = MORGAN,
 ) -> Counter:
     """
-    Return Counter[BitInfo] over the retrieval set (presence in #molecules).
+    Return Counter[Feature] over the retrieval set (presence in #molecules).
+
+    Note this must be a true recount per feature_kind -- substructure counts cannot be
+    derived by summing the Morgan counts, since a molecule reaching one fragment via two
+    different bit_ids would be counted twice.
     """
     smiles_map = load_smiles_index(retrieval_path)
     smiles_list = list(smiles_map.values())
     procs = (mp.cpu_count() if not num_procs else max(1, int(num_procs)))
 
-    counts: List[Dict[BitInfo, int]] = []
+    # Merge as results arrive rather than collecting every per-molecule dict first: the
+    # retrieval set yields ~100 features per molecule, so buffering all of them costs tens
+    # of GB, while the merged Counter is bounded by the number of distinct features.
+    total = Counter()
     if procs == 1:
         # serial fallback (useful for debugging)
         for smi in tqdm(smiles_list, total=len(smiles_list), desc="Counting retrieval fragments"):
-            counts.append(count_circular_substructures(smi, radius))
+            total.update(extract_features(smi, radius, kind=feature_kind))
     else:
-        with mp.Pool(processes=procs, initializer=_init_count, initargs=(radius,)) as pool:
+        with mp.Pool(processes=procs, initializer=_init_count, initargs=(radius, feature_kind)) as pool:
             for c in tqdm(
                 pool.imap_unordered(_worker_count_one, smiles_list, chunksize=64),
                 total=len(smiles_list),
                 desc="Counting retrieval fragments",
             ):
-                counts.append(c)
-    return merge_counts(counts)
+                total.update(c)
+    return total
 
 
 def write_counts(counter: Counter, out_path: str) -> None:
@@ -241,9 +454,10 @@ def write_counts(counter: Counter, out_path: str) -> None:
 # ---------------------------
 def build_rankingset_csr(
     retrieval_path: str,
-    bitinfo_to_col: Dict[BitInfo, int],
+    bitinfo_to_col: Dict[Feature, int],
     radius: int,
     num_procs: int = 0,
+    feature_kind: str = MORGAN,
 ) -> torch.Tensor:
     """
     Build a torch.sparse_csr_tensor with shape (num_retrieval, num_features)
@@ -260,6 +474,7 @@ def build_rankingset_csr(
     rows_cols: List[Tuple[int, List[int]]] = []
 
     if procs == 1:
+        _init_csr(radius, bitinfo_to_col, feature_kind)  # workers read these as globals
         for res in tqdm(
             ((i, smi) for i, (_, smi) in enumerate(ordered)),
             total=num_rows,
@@ -270,7 +485,7 @@ def build_rankingset_csr(
         with mp.Pool(
             processes=procs,
             initializer=_init_csr,
-            initargs=(radius, bitinfo_to_col),
+            initargs=(radius, bitinfo_to_col, feature_kind),
         ) as pool:
             for res in tqdm(
                 pool.imap_unordered(
@@ -314,15 +529,21 @@ def build_rankingset_csr(
 def build_fragidx_parquets(
     index_path: str,
     out_dir: str,
-    bitinfo_to_col: Dict[BitInfo, int],
+    bitinfo_to_col: Dict[Feature, int],
     radius: int,
     num_procs: int = 0,
+    feature_kind: str = MORGAN,
+    filename: str = "FragIdx.parquet",
 ) -> None:
     """
-    Build DATASET_ROOT/arrow/<split>/FragIdx.parquet for every split found in index.pkl.
+    Build DATASET_ROOT/arrow/<split>/<filename> for every split found in index.pkl.
 
     Schema: (idx: int64, cols: list<int32>) where cols are sorted feature column indices
     mapped through bitinfo_to_col.
+
+    filename is parameterized because the column indices are only meaningful against the
+    feature map that produced them -- a substructure fingerprint writing to the default
+    FragIdx.parquet would silently corrupt the Morgan one.
     """
     data = _load_as_dict(index_path)
 
@@ -345,13 +566,14 @@ def build_fragidx_parquets(
     for split, items in split_items.items():
         results: List[Tuple[int, List[int]]] = []
         if procs == 1:
+            _init_csr(radius, bitinfo_to_col, feature_kind)  # workers read these as globals
             for item in tqdm(items, desc=f"Building FragIdx [{split}]"):
                 results.append(_worker_row_nonzeros(item))
         else:
             with mp.Pool(
                 processes=procs,
                 initializer=_init_csr,
-                initargs=(radius, bitinfo_to_col),
+                initargs=(radius, bitinfo_to_col, feature_kind),
             ) as pool:
                 for res in tqdm(
                     pool.imap_unordered(_worker_row_nonzeros, items, chunksize=64),
@@ -360,7 +582,7 @@ def build_fragidx_parquets(
                 ):
                     results.append(res)
 
-        out_path = os.path.join(out_dir, "arrow", split, "FragIdx.parquet")
+        out_path = os.path.join(out_dir, "arrow", split, filename)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         table = pa.table({
             "idx": pa.array([r[0] for r in results], type=pa.int64()),

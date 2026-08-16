@@ -307,16 +307,19 @@ def _atom_weights(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: objec
     try:
         from app.marina_import import ensure_marina_importable
         ensure_marina_importable()
-        from src.modules.data.fp_utils import get_bitinfos
+        from src.modules.data.fp_utils import get_feature_locations
 
         max_radius = getattr(fp_loader, "max_radius", 6) or 6
         bitinfo_map = getattr(fp_loader, "bitinfo_to_fp_index_map", {})
         if not bitinfo_map:
             return None
 
-        atom_to_bits, _ = get_bitinfos(smiles, max_radius)
-        if not atom_to_bits:
+        feature_kind = getattr(fp_loader, "FEATURE_KIND", "morgan")
+        located = get_feature_locations(smiles, max_radius, kind=feature_kind)
+        if not located:
             return None
+        # The ablation only needs which features each atom carries, not where they sit.
+        atom_to_bits = {a: [f for f, _ in feats] for a, feats in located.items()}
 
         pred = predicted_fp.detach().float().cpu().flatten()
         out_dim = pred.numel()
