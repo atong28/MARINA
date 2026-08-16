@@ -132,6 +132,13 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
             # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
             # centre-atom symbol, and the radius is only known from where it was found.
             frag_smiles, atom_symbol, radius = info, "", found_radius
+        elif isinstance(info, tuple) and len(info) == 2:
+            # Multiplicity vocabulary: (fragment SMILES, cumulative occurrence bucket).
+            # Same shape as substructure plus the bucket, so no centre atom and the radius
+            # again comes from where it was found. Buckets are cumulative, so several
+            # columns share one fragment and differ only in `index`.
+            frag_smiles, _bucket = info
+            atom_symbol, radius = "", found_radius
         elif info:
             _bit_id, atom_symbol, frag_smiles, radius = info
         else:
