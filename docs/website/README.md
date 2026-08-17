@@ -62,35 +62,67 @@ Needs `gdown`. If you have the pixi environment installed (`pixi i`), run it
 inside `pixi shell`; otherwise `pip install gdown`. Run it from the repository
 root — it writes to a relative `checkpoints/` path.
 
+Before running, set the two gdown file ids at the top of the script
+(`MULTIPLICITY_ID`, `MORGAN_ID`). Each points at a self-contained zip whose
+entries sit at the model-directory root, so it unpacks straight into
+`checkpoints/<root>/`. An id left empty skips that model.
+
 ```bash
 bash scripts/website/download_model.sh
 ```
 
-This downloads and unpacks `checkpoints/marina_best/` and writes
+This downloads and unpacks both model directories and writes
 `checkpoints/models.json`:
 
 ```json
 {
     "models": [
         {
+            "id": "marina_multiplicity",
+            "root": "marina_multiplicity",
+            "type": "marina",
+            "default": true,
+            "display_name": "MARINA (multiplicity FP)"
+        },
+        {
             "id": "marina_best",
             "root": "marina_best",
             "type": "marina",
-            "default": true,
-            "display_name": "MARINA"
+            "default": false,
+            "display_name": "MARINA (Morgan FP)"
         }
     ]
 }
 ```
+
+`marina_multiplicity` is the served default; `marina_best` (Morgan) is kept
+selectable. The two vocabularies are **not** interchangeable — each directory
+carries its own `calibration.json` (a bit-confidence curve is only valid for the
+checkpoint it was fitted on) and its own count table and `RankingEntropy*`
+vocabulary. Copying either across models would silently serve wrong confidences
+or rank in the wrong space.
 
 Expected layout afterwards:
 
 ```
 checkpoints/
 ├── models.json
+├── marina_multiplicity/
+│   ├── params.json
+│   ├── best.ckpt
+│   ├── calibration.json
+│   ├── count_multiplicity_under_radius_6.pkl
+│   ├── retrieval.pkl
+│   ├── metadata.json
+│   ├── mw_index.json        (optional; see below)
+│   └── RankingEntropyMultiplicity/
+│       ├── rankingset.pt
+│       └── bitinfo_to_idx.pkl
 └── marina_best/
     ├── params.json
     ├── best.ckpt
+    ├── calibration.json
+    ├── count_hashes_under_radius_6.pkl
     ├── retrieval.pkl
     ├── metadata.json
     ├── mw_index.json        (optional; see below)
@@ -113,12 +145,15 @@ at roughly 2k structures/s — minutes for a full database — and happens on th
 first MW-filtered request unless it is precomputed:
 
 ```bash
+python scripts/website/build_mw_index.py checkpoints/marina_multiplicity
 python scripts/website/build_mw_index.py checkpoints/marina_best
 ```
 
-Precompute it whenever a model directory is first deployed. If the mount is
-read-only the index is rebuilt on every start, which is correct but slow; run
-the script and ship the file instead.
+Precompute it whenever a model directory is first deployed. The download bundles
+already ship `mw_index.json`, so this is only needed for a directory assembled
+without one. If the mount is read-only the index is rebuilt on every start,
+which is correct but slow; run the script and ship the file instead. Both models
+draw on the same MARINA1 retrieval set, so their indices are identical.
 
 Hosting more than one model, or a SPECTRE checkpoint, is documented in
 [`backend/README.md`](../../backend/README.md#data-layout).
