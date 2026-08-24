@@ -29,6 +29,11 @@ from .fp_utils import (
     canonicalize_smiles,
 )
 
+# Deployed Morgan radius. Shared source with scripts/marina_db/config.FP_RADIUS (same env var)
+# so the vocab build and the train/eval query encoding never disagree. Default 10 (see
+# wiki/experiments/fp-quality.md radius-10 sweep). Override both sides with FP_RADIUS=<n>.
+DEFAULT_FP_RADIUS = int(os.environ.get("FP_RADIUS", "10"))
+
 
 class FPLoader:
     def build_mfp(self, idx: int) -> torch.Tensor:
@@ -346,7 +351,7 @@ FP_LOADERS = {
 }
 
 
-def make_fp_loader(fp_type: str, entropy_out_dim=16384, max_radius=6, retrieval_path: Optional[str] = None):
+def make_fp_loader(fp_type: str, entropy_out_dim=16384, max_radius=DEFAULT_FP_RADIUS, retrieval_path: Optional[str] = None):
     loader_class = FP_LOADERS.get(fp_type)
     if loader_class is None:
         raise NotImplementedError(f"FP type {fp_type} not implemented")

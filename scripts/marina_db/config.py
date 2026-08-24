@@ -67,7 +67,7 @@ SOURCE_PRIORITY = {
 # ---- fingerprint / dataset build knobs (decisions D6-D9) ----
 FP_TYPE = os.environ.get("FP_TYPE", "RankingEntropyMultiplicityUncapped")  # D8
 FP_OUT_DIM = int(os.environ.get("FP_OUT_DIM", "16384"))
-FP_RADIUS = int(os.environ.get("FP_RADIUS", "6"))
+FP_RADIUS = int(os.environ.get("FP_RADIUS", "10"))  # D10: r10 wins both intrinsic axes (wiki/experiments/fp-quality.md)
 MW_MAX_EXACT = 1000.0     # D-filters: exact (monoisotopic) mass ceiling
 MIN_HEAVY_ATOMS = 3
 SPLIT_WEIGHTS = (0.90, 0.05, 0.05)   # D9: balanced against GLOBAL totals
