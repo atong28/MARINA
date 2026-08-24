@@ -18,6 +18,8 @@ from rdkit.Chem import rdFingerprintGenerator
 
 from tqdm import tqdm
 
+from .smiles import canonicalize_smiles as _canonicalize_fixed_point
+
 # ---------------------------
 # Types
 # ---------------------------
@@ -55,14 +57,16 @@ G_MAPPING = None  # for CSR bitinfo_to_col
 G_KIND = MORGAN
 
 def canonicalize_smiles(smiles: str, keep_stereo: bool = False):
+    """Fixed-point canonical SMILES for fingerprint-identity keys. Delegates to the single
+    source of truth in smiles.py (largest fragment + fixed point) so FP keys and the serving
+    path agree with the index/retrieval/benchmark canonicalization; raises on invalid to
+    preserve this module's contract with its CSR/enumeration workers (which cannot take None)."""
     if smiles is None or smiles == '':
-        raise ValueError(f"Invalid empty SMILES")
-    if '.' in smiles:
-        smiles = max(smiles.split('.'), key=len)
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
+        raise ValueError("Invalid empty SMILES")
+    out = _canonicalize_fixed_point(smiles, keep_stereo=keep_stereo, largest_fragment=True)
+    if out is None:
         raise ValueError(f"Invalid SMILES: {smiles}")
-    return Chem.MolToSmiles(mol, isomericSmiles=keep_stereo, canonical=True)
+    return out
 
 def _init_count(radius: int, kind: str = MORGAN):
     global G_RADIUS, G_KIND
@@ -369,6 +373,29 @@ def count_substructure_multiplicities(
     }
 
 
+def count_fragment_occurrences(
+    smiles: str, radius: int, ignore_atoms: Optional[Iterable[int]] = None,
+) -> Counter:
+    """Return Counter[fragment SMILES -> occurrence count] for a SMILES.
+
+    Unlike count_substructure_multiplicities (which returns a *presence* map over
+    (frag, bucket) keys), this returns the raw multiplicity: how many radius-0..radius
+    atom environments produce each fragment. It is the un-bucketed intermediate the
+    thermometer vocabulary is built from -- 60_fp_vocab.py needs the raw per-molecule
+    counts to histogram them across the corpus and enumerate the uncapped rung ladder.
+
+    Fragments come from the same _substructure_occurrences generator as every other
+    fragment vocabulary here (MolFragmentToSmiles, isomericSmiles=False, over a
+    stereo-stripped canonical SMILES), so the keys match those the multiplicity loader
+    selects and stores."""
+    mol = Chem.MolFromSmiles(canonicalize_smiles(smiles))
+    if mol is None:
+        return Counter()
+    return Counter(
+        frag for _, frag, _ in _substructure_occurrences(mol, radius, ignore_atoms or ())
+    )
+
+
 def extract_features(
     smiles: str, radius: int, kind: str = MORGAN,
     ignore_atoms: Optional[Iterable[int]] = None,
@@ -402,6 +429,20 @@ def compute_entropy(counts: np.ndarray, total_dataset_size: int) -> np.ndarray:
     """
     p = np.clip(counts / float(total_dataset_size), 1e-12, 1 - 1e-12)
     return -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
+
+
+def select_topk_by_entropy(entropies: np.ndarray, candidates, k: int) -> List[int]:
+    """Select the top-`k` feature indices by entropy (descending), breaking ties by
+    the candidate value ascending, returning the indices in that order.
+
+    This is the dedup/selection core: EntropyFPLoader.setup and the vocab-build script
+    (scripts/marina_db/build/60_fp_vocab.py) both need argpartition(-ent, kth=min(k, len-1))[:k]
+    then sorted(key=lambda i: (-ent[i], candidates[i])). `candidates` is any sequence
+    indexable by the selected indices whose elements sort as the tiebreak (a 4-tuple
+    BitInfo, a fragment SMILES, or a (frag, k) tuple). The caller computes `k` itself
+    (the "inf" -> len(candidates) logic lives at the call site)."""
+    topk_idx = np.argpartition(-entropies, kth=min(k, len(entropies) - 1))[:k]
+    return sorted(topk_idx, key=lambda i: (-entropies[i], candidates[i]))
 
 
 # ---------------------------

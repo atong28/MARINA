@@ -259,15 +259,14 @@ analysis/**/*.tsv
 analysis/**/*.smi
 analysis/domain-compare/smiles/*.txt
 
-# np-classifier: the raw fetch log and the interned backend artifact. Both are
-# rebuildable from the API, and the small results (coverage, summary) are tracked.
-analysis/np-classifier/results/npclassifier.jsonl
-analysis/np-classifier/results/npclassifier.json
-analysis/np-classifier/results/fetch.log
-
 # spectre-ds-compare scratch extractions (a 384 MB tensor, 9,775 loose .pt
 # files, and two index-only unzips of the SPECTRE release)
 analysis/spectre-ds-compare/extract/
 analysis/spectre-ds-compare/extract_full/
 analysis/spectre-ds-compare/full_1d/
 analysis/spectre-ds-compare/sample*/
+
+# The MARINA-DB build pipeline dirs collide with the Python-packaging build/ and lib/
+# ignores above (lines 11, 17). Keep these two specific paths tracked.
+!/scripts/marina_db/build/
+!/scripts/marina_db/lib/
