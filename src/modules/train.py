@@ -130,35 +130,6 @@ def train_marina(
             save_top_k=1,
             every_n_epochs=args.checkpoint_every_n_epochs,
         ))
-    early_stopping = EarlyStopping(
-        monitor=metric,
-        mode='max',
-        patience=args.patience
-    )
-    lr_monitor = cb.LearningRateMonitor(logging_interval="step")
-    error_callback = ErrorLoggingCallback()
-    benchmark_cos = BenchmarkCosineCallback(args, fp_loader)
-    # Lightning >=2.6 defaults to RichProgressBar whenever `rich` is importable
-    # (it is, via tyro). Rich renders nothing to a non-TTY, so pod logs show no
-    # epoch output at all. Pin tqdm, which still writes progress when piped.
-    progress_bar = cb.TQDMProgressBar()
-
-    callbacks = [early_stopping, lr_monitor, ckpt_callback, error_callback,
-                 benchmark_cos, progress_bar]
-
-    if args.resume:
-        # A rolling checkpoint on its own schedule. save_last=True on the monitored
-        # callback would NOT do this: it only fires when the metric improves, so once
-        # val/mean_cos plateaus the "last" checkpoint goes stale for hundreds of epochs
-        # and resuming from it silently redoes all of them.
-        # monitor=None + save_top_k=1 overwrites one file every_n_epochs, so the write
-        # cost is bounded regardless of run length.
-        callbacks.append(cb.ModelCheckpoint(
-            dirpath=ckpt_dir,
-            filename='last',
-            save_top_k=1,
-            every_n_epochs=args.checkpoint_every_n_epochs,
-        ))
 
     trainer = pl.Trainer(
         max_epochs=args.epochs,
