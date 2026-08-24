@@ -277,8 +277,13 @@ class MARINA(pl.LightningModule):
             mm.reset()
 
     def configure_optimizers(self):
-        if not self.scheduler:
-            return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        # 'none' is a truthy string, so it used to miss both branches and fall off the end
+        # returning None. Lightning accepts that as "this module has no optimizer" and runs
+        # fit() to completion without ever updating a weight -- days of GPU time, no error.
+        # Betas match the cosine branch so a constant-LR arm differs only in the schedule.
+        if not self.scheduler or self.scheduler == "none":
+            return torch.optim.AdamW(self.parameters(), lr=self.lr,
+                                     weight_decay=self.weight_decay, betas=(0.9, 0.95))
         elif self.scheduler == "cosine":
             opt = torch.optim.AdamW(self.parameters(), lr=self.lr,
                                     weight_decay=self.weight_decay, betas=(0.9, 0.95))

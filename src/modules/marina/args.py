@@ -21,7 +21,10 @@ class MARINAArgs(SMARTArgs):
     mw_dim_coords: List[int] = field(default_factory=lambda: [784])
     mw_is_sign_encoding: List[bool] = field(default_factory=lambda: [False])
     heads: int = 8
-    layers: int = 16
+    # Depth of the shared cross-attention stack. Was 16; the layers sweep found 8 matches it
+    # at 3/3 seeds (rank@1 0.7565 +/- 0.0015 vs 0.7546 +/- 0.0011) for ~33% fewer FLOPs, which
+    # is consistent with the attribution result that blocks 0-9 read nothing reaching the output.
+    layers: int = 8
     self_attn_layers: Dict[str, int] = field(default_factory=
         lambda: {'hsqc': 2, 'h_nmr': 1, 'c_nmr': 2, 'mass_spec': 1, 'mw': 1}
     )
