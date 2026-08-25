@@ -10,6 +10,25 @@ from ..core.const import INPUT_TYPES
 from .fp_loader import FPLoader
 from .arrow_store import ArrowTensorStore
 
+
+def normalize_mass_spec(mass_spec: torch.Tensor, floor: float = 0.01, top_k: int = 100) -> torch.Tensor:
+    """Base-peak normalize an MS/MS spectrum so every input reaches the model on
+    the same [0, 1] intensity scale regardless of its source. Matches
+    analysis/finetune-exp/scripts/parse_iceberg.py: intensity /= max(intensity),
+    drop below 1% of the base peak, keep the top-100, sort by m/z. `mass_spec`
+    is (N, >=2) with column 1 the intensity; the column width is preserved."""
+    if mass_spec.ndim != 2 or mass_spec.shape[0] == 0:
+        return mass_spec
+    top = mass_spec[:, 1].max()
+    if top <= 0:
+        return mass_spec
+    mass_spec = mass_spec.clone()
+    mass_spec[:, 1] = mass_spec[:, 1] / top
+    mass_spec = mass_spec[mass_spec[:, 1] >= floor]
+    if mass_spec.shape[0] > top_k:
+        mass_spec = mass_spec[torch.topk(mass_spec[:, 1], top_k).indices]
+    return mass_spec[torch.argsort(mass_spec[:, 0])]
+
 class SpectralInputLoader:
     '''
     Represents the MARINA input data types.
@@ -98,6 +117,7 @@ class MARINAInputLoader(SpectralInputLoader):
 
     def _load_mass_spec(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         mass_spec = self._get_tensor(idx, 'MassSpec')
+        mass_spec = normalize_mass_spec(mass_spec)
         if jittering > 0:
             noise = torch.zeros_like(mass_spec)
             noise[:, 0].copy_(torch.randn_like(mass_spec[:, 0]) * mass_spec[:, 0] / 100_000)
@@ -125,6 +145,7 @@ class SPECTREInputLoader(SpectralInputLoader):
 
     def _load_mass_spec(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         mass_spec = self._get_tensor(idx, 'MassSpec')
+        mass_spec = normalize_mass_spec(mass_spec)
         mass_spec = F.pad(mass_spec, (0,1), "constant", 0)
         if jittering > 0:
             noise = torch.zeros_like(mass_spec)

@@ -53,6 +53,10 @@ def preprocess_inputs(raw: Dict[str, Any]) -> Dict[str, torch.Tensor]:
             if t.numel() % 2 != 0:
                 raise ValueError(f"mass_spec length {t.numel()} is not divisible by 2")
             t = t.view(-1, 2)
+            # Match the model's input convention: base-peak normalize the
+            # user-supplied spectrum to [0,1], drop < 1% of base, keep top-100.
+            from src.modules.data.inputs import normalize_mass_spec
+            t = normalize_mass_spec(t)
         out[mod] = t
     return out
 
