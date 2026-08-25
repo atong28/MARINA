@@ -1,0 +1,13 @@
+[workspace]
+name = "fp-metric"
+version = "0.1.0"
+description = "Isolated analysis: decompose MARINA1 fingerprint error into within-group (same substructure, wrong Morgan context) and between-group (wrong chemistry) parts, and evaluate off-diagonal similarity metrics. Torch-free; consumes exports produced with MARINA's own env."
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+numpy = "*"
+scipy = "*"
+pandas = "*"
+matplotlib = "*"

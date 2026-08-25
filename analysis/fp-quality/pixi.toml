@@ -1,0 +1,15 @@
+[workspace]
+name = "fp-quality"
+version = "0.1.0"
+description = "Isolated analysis: intrinsic quality of the MARINA fingerprints (sherlock, multiplicity uncapped, multiplicity capped k=5, ecfp4, substructure). Exp2 = mass-stratified specificity (Count-your-bits Fig 2); Exp1 = MCES similarity-structure agreement (RascalMCES reference). Torch-free: consumes CSR->colset exports and MCES pair parquets produced on the cluster / in MARINA's env."
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+numpy = "*"
+scipy = "*"
+pandas = "*"
+pyarrow = "*"
+matplotlib = "*"
+rdkit = ">=2023.09"

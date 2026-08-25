@@ -1,0 +1,59 @@
+{
+  "n_molecules": 3000,
+  "n_bits": 16384,
+  "ckpt": "/home/user/atong/Checkpoints/MARINA/final1",
+  "mean_true_on_bits": 58.260333333333335,
+  "radius0_share_of_abs_error": 0.0565921925008297,
+  "variants": {
+    "strict": {
+      "n_groups": 7530,
+      "within_frac_of_L1": 0.220341295003891,
+      "within_frac_per_molecule_mean": 0.15103618800640106,
+      "within_frac_per_molecule_p10_p50_p90": [
+        0.00441556265577674,
+        0.08152584359049797,
+        0.4163509041070938
+      ],
+      "mean_total_L1": 4.256025314331055,
+      "mean_between_L1": 3.3182473182678223,
+      "mean_within_L1": 0.9377781748771667,
+      "cos_bit_level": 0.9598439335823059,
+      "cos_group_level": 0.9768723845481873,
+      "counts": {
+        "A1": 3077,
+        "A2": 374,
+        "B": 2240,
+        "fn_slot": 2300,
+        "fn_missed": 3391,
+        "fp": 5691,
+        "fn": 5691,
+        "sib_not_present": 0
+      }
+    },
+    "atom": {
+      "n_groups": 7488,
+      "within_frac_of_L1": 0.2365332692861557,
+      "within_frac_per_molecule_mean": 0.16010093688964844,
+      "within_frac_per_molecule_p10_p50_p90": [
+        0.0068093776702880865,
+        0.09289554506540298,
+        0.42640578150749203
+      ],
+      "mean_total_L1": 4.256025314331055,
+      "mean_between_L1": 3.2493340969085693,
+      "mean_within_L1": 1.006691575050354,
+      "cos_bit_level": 0.9598439335823059,
+      "cos_group_level": 0.9858401417732239,
+      "counts": {
+        "A1": 3446,
+        "A2": 374,
+        "B": 1871,
+        "fn_slot": 2531,
+        "fn_missed": 3160,
+        "fp": 5691,
+        "fn": 5691,
+        "sib_not_present": 0
+      }
+    }
+  }
+}
