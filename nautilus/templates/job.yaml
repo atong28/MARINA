@@ -1,0 +1,72 @@
+# MARINA training Job — clean canonical template.
+#
+# Fill every <PLACEHOLDER>. For an experiment, first freeze the code:
+#     git branch exp/<NAME> origin/main && git push origin exp/<NAME>
+# set BRANCH=exp/<NAME> below, and commit the filled copy on the exp/<NAME>
+# branch (NOT main) so main stays clean and the spec travels with its code.
+#
+# startup.sh is env-configured (see nautilus/startup.sh): REPO / BRANCH / COMMIT /
+# DATASETS / CODE_DIR / WORKSPACE / PIXI_INSTALL. Only BRANCH and DATASETS usually change.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-marina-<NAME>-seed-<SEED>
+  labels:
+    owner: atong
+spec:
+  backoffLimit: 0                 # a dead arm leaves no trace — count arms with job_sweep --expect
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:                     # 24GB-class cards that fit 4-GPU MARINA
+                      - NVIDIA-TITAN-RTX
+                      - NVIDIA-A40
+                      - NVIDIA-GeForce-RTX-3090
+                      - NVIDIA-RTX-A6000
+                      - NVIDIA-RTX-A5000
+                      - NVIDIA-A10
+                      - NVIDIA-GeForce-RTX-4090
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:                     # startup.sh hangs here (network), 2026-07-05
+                      - gpu-13.nrp.mghpcc.org
+                      - gpu-02.nrp.mghpcc.org
+      containers:
+        - name: marina
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: BRANCH,   value: "exp/<NAME>" }   # frozen experiment branch (or a tag)
+            - { name: DATASETS, value: "MARINA1.zip" }  # space-separated for multiple zips
+          command: ["/bin/bash", "-c"]
+          args:
+            - >-
+              set -euxo pipefail &&
+              bash /root/gurusmart/startup.sh &&
+              cd /code &&
+              pixi run torchrun --nproc_per_node 4 --module src.main marina
+              --experiment_name <NAME>-seed-<SEED>
+              --seed <SEED>
+              --input_types hsqc c_nmr h_nmr mw mass_spec
+          resources:                            # 4-GPU profile
+            requests: { cpu: "8", memory: 180Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            limits:   { cpu: "8", memory: 180Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+          volumeMounts:
+            - { name: atong-spectre,  mountPath: /root/gurusmart }   # code, ckpts, startup.sh, ssh
+            - { name: smart-datasets, mountPath: /root/datasets }    # dataset zips (read-only)
+            - { name: dshm,           mountPath: /dev/shm }
+            - { name: data-unzip,     mountPath: /workspace }        # dataset unzips here
+            - { name: code-workdir,   mountPath: /code }             # repo clones here
+      volumes:
+        - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm,           emptyDir: { medium: Memory } }
+        - { name: data-unzip,     emptyDir: {} }
+        - { name: code-workdir,   emptyDir: {} }

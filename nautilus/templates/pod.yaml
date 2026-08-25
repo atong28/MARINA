@@ -1,0 +1,31 @@
+# MARINA utility Pod — clean canonical template (CPU, no GPU).
+#
+# A long-lived shell that mounts the PVCs for staging, inspection, unzip, and
+# PVC record-keeping. CPU + no GPU, so `sleep`/`tail -f` here is fine — unlike a
+# GPU pod, which must run a real command and exit (idle GPU pods get banned).
+#
+# For an interactive GPU dev pod, use nautilus/pods/devel.yaml + the nautilus-dev skill.
+# Delete this pod when done: kubectl delete pod atong-util
+apiVersion: v1
+kind: Pod
+metadata:
+  name: atong-util
+  labels:
+    owner: atong
+spec:
+  restartPolicy: Never
+  containers:
+    - name: shell
+      image: ubuntu:22.04
+      command: ["/bin/bash", "-c", "apt-get update && apt-get install -y python3 unzip rsync && tail -f /dev/null"]
+      resources:
+        requests: { cpu: "500m", memory: 2Gi, ephemeral-storage: 100Gi }
+        limits:   { cpu: "500m", memory: 2Gi, ephemeral-storage: 100Gi }
+      volumeMounts:
+        - { name: atong-spectre,  mountPath: /root/gurusmart }   # code, ckpts, startup.sh, ssh
+        - { name: smart-datasets, mountPath: /root/datasets }    # dataset zips (read-only)
+        - { name: workspace,      mountPath: /workspace }        # scratch
+  volumes:
+    - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+    - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+    - { name: workspace,      emptyDir: {} }
