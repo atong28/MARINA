@@ -1,6 +1,8 @@
 # name|params.json|checkpoint   -- paths as mounted on Nautilus (PVC at /root/gurusmart)
-# Roster fixed 2026-08-23: substructure dropped (known bad), multuncap-s0 excluded
-# (still training), deployed fp-multiplicity-s0 excluded (Expanse, not a Nautilus seed).
+# Roster fixed 2026-08-23: substructure dropped (known bad), deployed fp-multiplicity-s0
+# excluded (Expanse, not a Nautilus seed).
+# 2026-08-23 later: multuncap-s0 finished (full 750, no ES, best 745) and is now included,
+# completing the uncapped seed set at n=3.
 final-run-s0|/root/gurusmart/Moonshot/results/marina-final-run-seed-0/2026-05-07_23-56-46/params.json|/root/gurusmart/Moonshot/results/marina-final-run-seed-0/2026-05-07_23-56-46/epoch_epoch=738.ckpt
 final-run-s1|/root/gurusmart/Moonshot/results/marina-final-run-seed-1/2026-05-07_23-56-57/params.json|/root/gurusmart/Moonshot/results/marina-final-run-seed-1/2026-05-07_23-56-57/epoch_epoch=615.ckpt
 final-run-s2|/root/gurusmart/Moonshot/results/marina-final-run-seed-2/2026-05-07_23-58-54/params.json|/root/gurusmart/Moonshot/results/marina-final-run-seed-2/2026-05-07_23-58-54/epoch_epoch=689.ckpt
@@ -9,3 +11,4 @@ mult-s1|/root/gurusmart/Moonshot/results/marina-mult-s1/mult-s1/params.json|/roo
 mult-s2|/root/gurusmart/Moonshot/results/marina-mult-s2/mult-s2/params.json|/root/gurusmart/Moonshot/results/marina-mult-s2/mult-s2/epoch_epoch=659.ckpt
 multuncap-s1|/root/gurusmart/Moonshot/results/marina-multuncap-s1/multuncap-s1/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s1/multuncap-s1/epoch_epoch=700.ckpt
 multuncap-s2|/root/gurusmart/Moonshot/results/marina-multuncap-s2/multuncap-s2/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s2/multuncap-s2/epoch_epoch=665.ckpt
+multuncap-s0|/root/gurusmart/Moonshot/results/marina-multuncap-s0/multuncap-s0/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s0/multuncap-s0/epoch_epoch=745.ckpt
