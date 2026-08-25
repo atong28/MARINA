@@ -50,12 +50,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA2.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA2.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --experiment_name marina-m2-s0
           volumeMounts:
@@ -136,12 +141,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA4.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA4.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --experiment_name marina-m4-s0
           volumeMounts:

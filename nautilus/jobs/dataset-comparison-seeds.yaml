@@ -33,12 +33,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA2.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA2.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-m2-s1
           volumeMounts:
@@ -119,12 +124,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA4.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA4.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-m4-s1
           volumeMounts:
@@ -205,12 +215,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA1.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA1.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               git fetch origin &&
               git checkout exp/marina234 &&
@@ -293,12 +308,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA2.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA2.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --experiment_name marina-m2-s2
           volumeMounts:
@@ -379,12 +399,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA4.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA4.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --experiment_name marina-m4-s2
           volumeMounts:
@@ -465,12 +490,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA1.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA1.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               git fetch origin &&
               git checkout exp/marina234 &&
@@ -553,12 +583,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA3.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA3.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               git fetch origin &&
               git checkout exp/marina234 &&
@@ -641,12 +676,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA3.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA3.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               git fetch origin &&
               git checkout exp/marina234 &&
@@ -729,12 +769,17 @@ spec:
       containers:
         - name: demo
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - name: DATASETS
+              value: "MARINA3.zip"
+            - name: BRANCH
+              value: "main"
           command: ["/bin/bash"]
           args:
             - "-c"
             - >-
               set -euxo pipefail &&
-              bash /root/gurusmart/startup.sh MARINA3.zip &&
+              bash /root/gurusmart/startup.sh &&
               cd /code &&
               git fetch origin &&
               git checkout exp/marina234 &&

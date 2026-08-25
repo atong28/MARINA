@@ -45,11 +45,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --experiment_name marina-aug-baseline-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --experiment_name marina-aug-baseline-s0
         resources:
           limits:
             cpu: "12"
@@ -134,11 +139,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-aug-baseline-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --experiment_name marina-aug-baseline-s1
         resources:
           limits:
             cpu: "12"
@@ -223,11 +233,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --experiment_name marina-aug-baseline-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --experiment_name marina-aug-baseline-s2
         resources:
           limits:
             cpu: "12"
@@ -312,11 +327,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s0
         resources:
           limits:
             cpu: "12"
@@ -401,11 +421,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s1
         resources:
           limits:
             cpu: "12"
@@ -490,11 +515,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_add_prob 0.5 --aug_alpha_add 0.1 --experiment_name marina-aug-inject-s2
         resources:
           limits:
             cpu: "12"
@@ -579,11 +609,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s0
         resources:
           limits:
             cpu: "12"
@@ -668,11 +703,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s1
         resources:
           limits:
             cpu: "12"
@@ -757,11 +797,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-dropout-s2
         resources:
           limits:
             cpu: "12"
@@ -846,11 +891,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s0
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 0 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s0
         resources:
           limits:
             cpu: "12"
@@ -935,11 +985,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s1
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 1 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s1
         resources:
           limits:
             cpu: "12"
@@ -1024,11 +1079,16 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
-        - set -euxo pipefail && bash /root/gurusmart/startup.sh MARINA1.zip && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s2
+        - set -euxo pipefail && bash /root/gurusmart/startup.sh && cd /code && pixi run torchrun --nproc_per_node 4 --module src.main marina --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec} --seed 2 --aug_add_prob 0.5 --aug_alpha_add 0.1 --aug_remove_prob 0.5 --aug_alpha_remove 0.1 --experiment_name marina-aug-both-s2
         resources:
           limits:
             cpu: "12"

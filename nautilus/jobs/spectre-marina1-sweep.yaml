@@ -45,13 +45,18 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
         - >-
           set -euxo pipefail &&
-          bash /root/gurusmart/startup.sh MARINA1.zip &&
+          bash /root/gurusmart/startup.sh &&
           cd /code &&
           pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
@@ -142,13 +147,18 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
         - >-
           set -euxo pipefail &&
-          bash /root/gurusmart/startup.sh MARINA1.zip &&
+          bash /root/gurusmart/startup.sh &&
           cd /code &&
           pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
@@ -239,13 +249,18 @@ spec:
       containers:
       - name: demo
         image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+        env:
+          - name: DATASETS
+            value: "MARINA1.zip"
+          - name: BRANCH
+            value: "main"
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash"]
         args:
         - -c
         - >-
           set -euxo pipefail &&
-          bash /root/gurusmart/startup.sh MARINA1.zip &&
+          bash /root/gurusmart/startup.sh &&
           cd /code &&
           pixi run torchrun --nproc_per_node 4 --module src.main spectre
           --input_types {hsqc,c_nmr,h_nmr,mw,mass_spec}
