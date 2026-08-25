@@ -1,7 +1,0 @@
-{
-  "source": "mmsd",
-  "rows_read": 64768,
-  "unique_raw_strings": 64768,
-  "failed_canonicalization": 0,
-  "unique_canonical": 64654
-}

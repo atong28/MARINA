@@ -1,7 +1,0 @@
-{
-  "source": "massspecgym",
-  "rows_read": 231104,
-  "unique_raw_strings": 31602,
-  "failed_canonicalization": 0,
-  "unique_canonical": 28936
-}
