@@ -1,0 +1,235 @@
+{
+  "fingerprints": {
+    "ECFP4_2048": {
+      "N": 531087,
+      "all_zero": 0,
+      "distinct": 478723,
+      "tie_groups": 8522,
+      "n_in_tie": 60886,
+      "collision_pct": 11.46441166889794,
+      "ceiling_pct": 88.53558833110206,
+      "largest_group": 5694,
+      "bad_collision_pct": 6.555799708898919,
+      "median_group_span_Da": 28.031300127999998,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        3997,
+        243,
+        7485,
+        5118,
+        9226,
+        8593,
+        6869,
+        19355
+      ],
+      "D": 2048
+    },
+    "ECFP4_16384": {
+      "N": 531087,
+      "all_zero": 0,
+      "distinct": 478783,
+      "tie_groups": 8468,
+      "n_in_tie": 60772,
+      "collision_pct": 11.442946259275788,
+      "ceiling_pct": 88.55705374072421,
+      "largest_group": 5694,
+      "bad_collision_pct": 6.55410507129717,
+      "median_group_span_Da": 28.031300127999998,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        3992,
+        241,
+        7408,
+        5102,
+        9221,
+        8593,
+        6860,
+        19355
+      ],
+      "D": 16384
+    },
+    "AtomPair_2048": {
+      "N": 531087,
+      "all_zero": 143,
+      "distinct": 523109,
+      "tie_groups": 6968,
+      "n_in_tie": 14946,
+      "collision_pct": 2.8142281773042837,
+      "ceiling_pct": 97.18577182269571,
+      "largest_group": 143,
+      "bad_collision_pct": 0.03426933816869929,
+      "median_group_span_Da": 1.007276452090025,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        2827,
+        11866,
+        38,
+        20,
+        13,
+        160,
+        2,
+        20
+      ],
+      "D": 2048
+    },
+    "AtomPair_16384": {
+      "N": 531087,
+      "all_zero": 143,
+      "distinct": 523170,
+      "tie_groups": 6911,
+      "n_in_tie": 14828,
+      "collision_pct": 2.792009595414687,
+      "ceiling_pct": 97.20799040458532,
+      "largest_group": 143,
+      "bad_collision_pct": 0.03370445896811634,
+      "median_group_span_Da": 1.007276452090025,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        2727,
+        11866,
+        30,
+        17,
+        9,
+        158,
+        2,
+        19
+      ],
+      "D": 16384
+    },
+    "MAP4_2048": {
+      "N": 531087,
+      "all_zero": 143,
+      "distinct": 530536,
+      "tie_groups": 95,
+      "n_in_tie": 646,
+      "collision_pct": 0.12163732119219638,
+      "ceiling_pct": 99.8783626788078,
+      "largest_group": 302,
+      "bad_collision_pct": 0.08812115529094103,
+      "median_group_span_Da": 14.015650063999999,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        16,
+        2,
+        136,
+        12,
+        12,
+        143,
+        21,
+        304
+      ],
+      "D": 2048
+    },
+    "MAP4_16384": {
+      "N": 531087,
+      "all_zero": 143,
+      "distinct": 530918,
+      "tie_groups": 28,
+      "n_in_tie": 197,
+      "collision_pct": 0.037093734171614066,
+      "ceiling_pct": 99.96290626582838,
+      "largest_group": 143,
+      "bad_collision_pct": 0.02692590856112087,
+      "median_group_span_Da": 14.015650063999999,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        8,
+        0,
+        46,
+        0,
+        0,
+        143,
+        0,
+        0
+      ],
+      "D": 16384
+    },
+    "Biosynfoni": {
+      "N": 531087,
+      "all_zero": 230,
+      "distinct": 18642,
+      "tie_groups": 12443,
+      "n_in_tie": 524888,
+      "collision_pct": 98.83277127852875,
+      "ceiling_pct": 1.1672287214712467,
+      "largest_group": 18606,
+      "bad_collision_pct": 91.14909609913254,
+      "median_group_span_Da": 144.03236274800003,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        1563,
+        987,
+        6759,
+        8973,
+        22525,
+        32516,
+        40861,
+        410704
+      ],
+      "D": 39
+    }
+  }
+}

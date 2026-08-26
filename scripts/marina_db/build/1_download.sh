@@ -25,7 +25,7 @@ STRUCTURE_DUMPS_ID="${STRUCTURE_DUMPS_ID:-1lkHAp47usjvwtnNkUyD__4wlmMTKW5_k}"   
 SPECTRE_DATA_ID="${SPECTRE_DATA_ID:-1artiYvqQLGCcP_vg5gpkOU3TBbd0d3uh}"             # verified 2026-08-25 (byte-identical to local); supersedes re-zipped data.zip 1FzjNuhQCNmVWzgsotrpZF2s4ZOn6UMQW
 SPECTRE_RETRIEVAL_ID="${SPECTRE_RETRIEVAL_ID:-}"                                    # TODO: spectre_retrieval.pkl (526,316 SMILES; extracted from SPECTRE inference metadata inference_metadata_name_updated.pkl)
 MNOVA_PREDICTIONS_ID="${MNOVA_PREDICTIONS_ID:-1XyiHjrWBugBl9OOEQOYkQdmEt6e4V6Mx}"   # 489-shard, verified 2026-08-25; supersedes 488-shard 1a6IkkpYVx5mO2HWffi5PO0gUVgXvOkAR
-MS_PREDICTIONS_POSITIVE_ID="${MS_PREDICTIONS_POSITIVE_ID:-}"                        # TODO: re-predicted positive MS/MS; supersedes 1MiMcAI5j08ti-npKvc-ynkff17Mns1wC
+MS_PREDICTIONS_POSITIVE_ID="${MS_PREDICTIONS_POSITIVE_ID:-1FHldU1aHLw3ju1UiIcCp_J6JGzDpnIEC}"  # re-predicted positive MS/MS; supersedes 1MiMcAI5j08ti-npKvc-ynkff17Mns1wC
 MS_PREDICTIONS_NEGATIVE_ID="${MS_PREDICTIONS_NEGATIVE_ID:-1oRUUkb2NAtimGlp2H4h5GfGdGJEUi5vM}"  # negative MS/MS, verified 2026-08-25 (not yet consumed by the build -- see below)
 
 # ---- structure dumps: NP-MRD / COCONUT / LOTUS ----

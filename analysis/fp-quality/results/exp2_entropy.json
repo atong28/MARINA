@@ -1,0 +1,136 @@
+{
+  "fingerprints": {
+    "uncapped": {
+      "N": 531087,
+      "all_zero": 178,
+      "distinct": 525784,
+      "tie_groups": 4555,
+      "n_in_tie": 9858,
+      "collision_pct": 1.8561930531155912,
+      "ceiling_pct": 98.14380694688441,
+      "largest_group": 178,
+      "bad_collision_pct": 0.037846906439058005,
+      "median_group_span_Da": 0.0,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        9277,
+        74,
+        118,
+        131,
+        57,
+        7,
+        3,
+        191
+      ],
+      "D": 16384
+    },
+    "sherlock": {
+      "N": 531087,
+      "all_zero": 148,
+      "distinct": 523730,
+      "tie_groups": 5218,
+      "n_in_tie": 12575,
+      "collision_pct": 2.3677853157768878,
+      "ceiling_pct": 97.63221468422311,
+      "largest_group": 148,
+      "bad_collision_pct": 0.41273840255927935,
+      "median_group_span_Da": 2.015650063999999,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        5013,
+        343,
+        2442,
+        1320,
+        1265,
+        1013,
+        400,
+        779
+      ],
+      "D": 16384
+    },
+    "cap5": {
+      "N": 531087,
+      "all_zero": 177,
+      "distinct": 524443,
+      "tie_groups": 5081,
+      "n_in_tie": 11725,
+      "collision_pct": 2.2077362089450503,
+      "ceiling_pct": 97.79226379105495,
+      "largest_group": 177,
+      "bad_collision_pct": 0.17247644924466235,
+      "median_group_span_Da": 0.0,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        8366,
+        86,
+        1365,
+        578,
+        414,
+        313,
+        69,
+        534
+      ],
+      "D": 16384
+    },
+    "substructure": {
+      "N": 531087,
+      "all_zero": 177,
+      "distinct": 517768,
+      "tie_groups": 9035,
+      "n_in_tie": 22354,
+      "collision_pct": 4.209103216610461,
+      "ceiling_pct": 95.79089678338954,
+      "largest_group": 177,
+      "bad_collision_pct": 0.47374535622223857,
+      "median_group_span_Da": 15.994914620000031,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        5024,
+        197,
+        10632,
+        2403,
+        1582,
+        968,
+        442,
+        1106
+      ],
+      "D": 16384
+    }
+  }
+}
