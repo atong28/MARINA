@@ -6,8 +6,8 @@ from ..log import get_logger
 
 logger = get_logger(__file__)
 
-INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mw']
-INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']
+INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
+INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
 
 DEBUG_LEN: int = 3000
 
@@ -16,11 +16,12 @@ DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
     'h_nmr': 0.5,
     'c_nmr': 0.5,
     'mass_spec': 0.5,
+    'mass_spec_neg': 0.5,
     'mw': 0.5
 }
 
 NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw'}
-SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw'}
+SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw'}
 
 
 if 'src/marina/src/modules' in __file__:
@@ -89,11 +90,13 @@ C_NMR_TYPE = 1
 H_NMR_TYPE = 2
 MW_TYPE = 3
 MS_TYPE = 4
+MS_NEG_TYPE = 5
 
 INPUT_MAP = {
     'hsqc': HSQC_TYPE,
     'c_nmr': C_NMR_TYPE,
     'h_nmr': H_NMR_TYPE,
     'mw': MW_TYPE,
-    'mass_spec': MS_TYPE
+    'mass_spec': MS_TYPE,
+    'mass_spec_neg': MS_NEG_TYPE
 }

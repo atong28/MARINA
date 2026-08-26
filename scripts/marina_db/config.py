@@ -68,6 +68,7 @@ SOURCE_PRIORITY = {
     "c_nmr": ["mnova", "spectre"],
     "h_nmr": ["mnova", "spectre"],
     "mass_spec": ["spectre", "ms"],
+    "mass_spec_neg": ["ms_neg"],   # negative-mode ICEBERG only (no SPECTRE negative source)
 }
 
 # ---- fingerprint / dataset build knobs (decisions D6-D9) ----

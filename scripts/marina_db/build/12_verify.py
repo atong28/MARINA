@@ -33,9 +33,9 @@ from config import DATA_DATASET, BENCH_JOURNAL, SPLIT_WEIGHTS
 from src.modules.data.smiles import canonicalize_smiles
 
 SPLITS = ("train", "val", "test")
-MODALITIES = ("HSQC_NMR", "C_NMR", "H_NMR", "MassSpec", "FragIdx")
+MODALITIES = ("HSQC_NMR", "C_NMR", "H_NMR", "MassSpec", "MassSpecNeg", "FragIdx")
 HAS_FLAG = {"HSQC_NMR": "has_hsqc", "C_NMR": "has_c_nmr", "H_NMR": "has_h_nmr",
-            "MassSpec": "has_mass_spec"}
+            "MassSpec": "has_mass_spec", "MassSpecNeg": "has_mass_spec_neg"}
 
 failures = []
 

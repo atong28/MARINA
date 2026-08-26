@@ -101,6 +101,13 @@ class MARINA(pl.LightningModule):
             [args.mz_wavelength_bounds, args.intensity_wavelength_bounds],
             args.ms_is_sign_encoding
         )
+        # negative-mode MS/MS: same spectral style (m/z + intensity) as positive, own encoder
+        self.enc_ms_neg = build_encoder(
+            args.dim_model,
+            args.ms_dim_coords,
+            [args.mz_wavelength_bounds, args.intensity_wavelength_bounds],
+            args.ms_is_sign_encoding
+        )
         self.enc_mw = build_encoder(
             args.dim_model,
             args.mw_dim_coords,
@@ -112,6 +119,7 @@ class MARINA(pl.LightningModule):
             "h_nmr": self.enc_h_nmr,
             "c_nmr": self.enc_c_nmr,
             "mass_spec": self.enc_ms,
+            "mass_spec_neg": self.enc_ms_neg,
             "mw": self.enc_mw
         }
         self.encoders = nn.ModuleDict(

@@ -38,6 +38,7 @@ MOD_DIRS = {
     "h_nmr": "H_NMR",
     "c_nmr": "C_NMR",
     "mass_spec": "MassSpec",
+    "mass_spec_neg": "MassSpecNeg",
 }
 
 REGULAR_FILES = [
@@ -185,6 +186,7 @@ def convert_to_arrow(input_dir: str, output_dir: str) -> None:
             "h_nmr": [],
             "c_nmr": [],
             "mass_spec": [],
+            "mass_spec_neg": [],
         }
 
         with open(jsonl_path, "r", encoding="utf-8") as f:

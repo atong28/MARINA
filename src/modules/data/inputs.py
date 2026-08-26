@@ -58,7 +58,7 @@ class SpectralInputLoader:
         arrow_split_dir = os.path.join(arrow_base, self.split)
         if not os.path.isdir(arrow_split_dir):
             raise FileNotFoundError(f"Arrow split directory not found: {arrow_split_dir}")
-        for mod in ("HSQC_NMR", "H_NMR", "C_NMR", "MassSpec"):
+        for mod in ("HSQC_NMR", "H_NMR", "C_NMR", "MassSpec", "MassSpecNeg"):
             path = os.path.join(arrow_split_dir, f"{mod}.parquet")
             if os.path.isfile(path):
                 self._arrow[mod] = ArrowTensorStore(path)
@@ -106,6 +106,9 @@ class SpectralInputLoader:
     def _load_mass_spec(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         raise NotImplementedError()
 
+    def _load_mass_spec_neg(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
+        raise NotImplementedError()
+
     def _load_mw(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         raise NotImplementedError()
 
@@ -124,6 +127,16 @@ class MARINAInputLoader(SpectralInputLoader):
             noise[:, 1].copy_(torch.randn_like(mass_spec[:, 1]) * mass_spec[:, 1] / 10)
             mass_spec = mass_spec + noise
         return {'mass_spec': mass_spec}
+
+    def _load_mass_spec_neg(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
+        mass_spec = self._get_tensor(idx, 'MassSpecNeg')
+        mass_spec = normalize_mass_spec(mass_spec)
+        if jittering > 0:
+            noise = torch.zeros_like(mass_spec)
+            noise[:, 0].copy_(torch.randn_like(mass_spec[:, 0]) * mass_spec[:, 0] / 100_000)
+            noise[:, 1].copy_(torch.randn_like(mass_spec[:, 1]) * mass_spec[:, 1] / 10)
+            mass_spec = mass_spec + noise
+        return {'mass_spec_neg': mass_spec}
 
     def _load_c_nmr(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         c_nmr = self._get_tensor(idx, 'C_NMR')
@@ -153,6 +166,17 @@ class SPECTREInputLoader(SpectralInputLoader):
             noise[:, 1].copy_(torch.randn_like(mass_spec[:, 1]) * mass_spec[:, 1] / 10)
             mass_spec = mass_spec + noise
         return {'mass_spec': mass_spec}
+
+    def _load_mass_spec_neg(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
+        mass_spec = self._get_tensor(idx, 'MassSpecNeg')
+        mass_spec = normalize_mass_spec(mass_spec)
+        mass_spec = F.pad(mass_spec, (0,1), "constant", 0)
+        if jittering > 0:
+            noise = torch.zeros_like(mass_spec)
+            noise[:, 0].copy_(torch.randn_like(mass_spec[:, 0]) * mass_spec[:, 0] / 100_000)
+            noise[:, 1].copy_(torch.randn_like(mass_spec[:, 1]) * mass_spec[:, 1] / 10)
+            mass_spec = mass_spec + noise
+        return {'mass_spec_neg': mass_spec}
 
     def _load_c_nmr(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         c_nmr = self._get_tensor(idx, 'C_NMR')

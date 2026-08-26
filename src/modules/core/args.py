@@ -30,13 +30,13 @@ class SMARTArgs:
     # whether to do benchmarking
     benchmark: bool = True
     # restrictions on the input types to be used for benchmarking
-    restrictions: Optional[List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']]] = None
+    restrictions: Optional[List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']]] = None
 
-    input_types: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']] = field(
+    input_types: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']] = field(
         default_factory=lambda: ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']
     )
 
-    requires: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']] = field(
+    requires: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']] = field(
         default_factory=lambda: []
     )
 
@@ -80,7 +80,7 @@ class SMARTArgs:
     aug_alpha_remove: float = 0.1
 
     # BCE and cosine similarity loss lambda. 0 for full cosine similarity loss, 1 for full BCE loss.
-    lambda_hybrid: float = 0.0
+    lambda_hybrid: float = 0.5
     
     # fp type for prediction and evaluation. fingerprint details should be stored in 
     #   DATASET_ROOT/RankingEntropy/

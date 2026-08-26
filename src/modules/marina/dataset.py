@@ -162,7 +162,8 @@ class MARINADataset(Dataset):
             'hsqc': data_obj['has_hsqc'],
             'c_nmr': data_obj['has_c_nmr'],
             'h_nmr': data_obj['has_h_nmr'],
-            'mass_spec': data_obj['has_mass_spec']
+            'mass_spec': data_obj['has_mass_spec'],
+            'mass_spec_neg': data_obj.get('has_mass_spec_neg', False)
         }
         drop_candidates = [
             k for k, v in available_types.items() if k in self.input_types and v]

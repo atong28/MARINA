@@ -106,7 +106,8 @@ class SPECTREDataset(Dataset):
             'hsqc': data_obj['has_hsqc'],
             'c_nmr': data_obj['has_c_nmr'],
             'h_nmr': data_obj['has_h_nmr'],
-            'mass_spec': data_obj['has_mass_spec']
+            'mass_spec': data_obj['has_mass_spec'],
+            'mass_spec_neg': data_obj.get('has_mass_spec_neg', False)
         }
         drop_candidates = [
             k for k, v in available_types.items() if k in self.input_types and v]
@@ -262,6 +263,8 @@ class SPECTREDataModule(pl.LightningDataModule):
             data['h_nmr'] = F.pad(data['h_nmr'].view(-1, 1), (1, 1), "constant", 0)
         if 'mass_spec' in data:
             data['mass_spec'] = F.pad(data['mass_spec'].view(-1, 1), (0, 1), "constant", 0)
+        if 'mass_spec_neg' in data:
+            data['mass_spec_neg'] = F.pad(data['mass_spec_neg'].view(-1, 1), (0, 1), "constant", 0)
         inputs, type_indicators = self.test[0]._pad_and_stack_input(data)
         inputs, _, type_indicators = self._collate_fn([(inputs, torch.tensor([0.0]), type_indicators)])
         return {'inputs': inputs, 'type_indicator': type_indicators}

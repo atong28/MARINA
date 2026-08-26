@@ -26,7 +26,7 @@ SPECTRE_DATA_ID="${SPECTRE_DATA_ID:-1artiYvqQLGCcP_vg5gpkOU3TBbd0d3uh}"         
 SPECTRE_RETRIEVAL_ID="${SPECTRE_RETRIEVAL_ID:-}"                                    # TODO: spectre_retrieval.pkl (526,316 SMILES; extracted from SPECTRE inference metadata inference_metadata_name_updated.pkl)
 MNOVA_PREDICTIONS_ID="${MNOVA_PREDICTIONS_ID:-1XyiHjrWBugBl9OOEQOYkQdmEt6e4V6Mx}"   # 489-shard, verified 2026-08-25; supersedes 488-shard 1a6IkkpYVx5mO2HWffi5PO0gUVgXvOkAR
 MS_PREDICTIONS_POSITIVE_ID="${MS_PREDICTIONS_POSITIVE_ID:-1FHldU1aHLw3ju1UiIcCp_J6JGzDpnIEC}"  # re-predicted positive MS/MS; supersedes 1MiMcAI5j08ti-npKvc-ynkff17Mns1wC
-MS_PREDICTIONS_NEGATIVE_ID="${MS_PREDICTIONS_NEGATIVE_ID:-1oRUUkb2NAtimGlp2H4h5GfGdGJEUi5vM}"  # negative MS/MS, verified 2026-08-25 (not yet consumed by the build -- see below)
+MS_PREDICTIONS_NEGATIVE_ID="${MS_PREDICTIONS_NEGATIVE_ID:-1oRUUkb2NAtimGlp2H4h5GfGdGJEUi5vM}"  # negative MS/MS, consumed as the mass_spec_neg modality (stage 6)
 
 # ---- structure dumps: NP-MRD / COCONUT / LOTUS ----
 if [ -n "$STRUCTURE_DUMPS_ID" ]; then
@@ -85,9 +85,10 @@ unzip data/raw/mnova_predictions.zip -d data/raw/mnova_predictions/
 rm data/raw/mnova_predictions.zip
 
 # ---- ICEBERG MS/MS predictions ----
-# The build's process_ms_predictions() consumes data/raw/ms_predictions/*.json only.
-# Positive mode goes there. Negative-mode integration is a pending pipeline change (D5):
-# it is fetched to a separate dir and NOT yet read by the build, to avoid pos/neg key collisions.
+# Positive-mode MS/MS -> data/raw/ms_predictions/ (process_ms_predictions).
+# Negative-mode MS/MS -> data/raw/ms_predictions_negative/ (process_ms_predictions_negative);
+# consumed by stage 6 as the separate `mass_spec_neg` modality (own encoder). No key collision:
+# positive lands in mass_spec, negative in mass_spec_neg.
 if [ -n "$MS_PREDICTIONS_POSITIVE_ID" ]; then
     echo "Downloading positive-mode MS/MS predictions..."
     gdown "$MS_PREDICTIONS_POSITIVE_ID" -O data/raw/ms_predictions_positive.zip
@@ -97,7 +98,7 @@ else
     echo "MS_PREDICTIONS_POSITIVE_ID unset (re-prediction in flight) -- skipping positive MS/MS"
 fi
 if [ -n "$MS_PREDICTIONS_NEGATIVE_ID" ]; then
-    echo "Downloading negative-mode MS/MS predictions (staged, not yet consumed by the build)..."
+    echo "Downloading negative-mode MS/MS predictions (mass_spec_neg modality)..."
     gdown "$MS_PREDICTIONS_NEGATIVE_ID" -O data/raw/ms_predictions_negative.zip
     unzip data/raw/ms_predictions_negative.zip -d data/raw/   # zip wraps files in ms_predictions_negative/
     rm data/raw/ms_predictions_negative.zip

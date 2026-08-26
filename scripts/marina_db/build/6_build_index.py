@@ -37,6 +37,8 @@ def initialize_mapping(data, smiles: str) -> Dict[str, Any]:
         data[smiles]['h_nmr'] = {}
     if 'mass_spec' not in data[smiles]:
         data[smiles]['mass_spec'] = {}
+    if 'mass_spec_neg' not in data[smiles]:
+        data[smiles]['mass_spec_neg'] = {}
     if 'idx' not in data[smiles]:
         data[smiles]['idx'] = None
     data[smiles]['smiles'] = smiles
@@ -135,6 +137,19 @@ def process_ms_predictions():
             ms_data[canonicalize_smiles(data['SMILES'])] = data['peaks']
     return ms_data
 
+def process_ms_predictions_negative():
+    files = sorted(glob.glob(str(DATA_RAW / 'ms_predictions_negative' / '*.json')))
+    if not files:
+        print('WARNING: no negative-mode MS/MS in data/raw/ms_predictions_negative -- building '
+              'with has_mass_spec_neg=False.')
+        return {}
+    ms_data = {}
+    for file in tqdm(files, desc='Processing negative MS predictions'):
+        ms = json.load(open(file, 'r'))
+        for data in ms:
+            ms_data[canonicalize_smiles(data['SMILES'])] = data['peaks']
+    return ms_data
+
 def build_spectral_data() -> Dict[str, Dict]:
     print('Building spectral data...')
     os.makedirs(DATA_CLEANED, exist_ok=True)
@@ -178,12 +193,18 @@ def build_spectral_data() -> Dict[str, Dict]:
         mapping[smiles]['c_nmr']['mnova'] = nmr['c_nmr']
         mapping[smiles]['hsqc']['mnova'] = nmr['hsqc']
 
-    # load ms simulation data
+    # load ms simulation data (positive mode)
     ms_data = process_ms_predictions()
     for smiles, ms in tqdm(ms_data.items(), desc='Loading MS predictions'):
         smiles = canonicalize_smiles(smiles)
         initialize_mapping(mapping, smiles)
         mapping[smiles]['mass_spec']['ms'] = ms
+    # load negative-mode ms data
+    ms_neg_data = process_ms_predictions_negative()
+    for smiles, ms in tqdm(ms_neg_data.items(), desc='Loading negative MS predictions'):
+        smiles = canonicalize_smiles(smiles)
+        initialize_mapping(mapping, smiles)
+        mapping[smiles]['mass_spec_neg']['ms_neg'] = ms
     return mapping
 
 def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
@@ -197,7 +218,8 @@ def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
             'hsqc': priority_access(data['hsqc'], SOURCE_PRIORITY['hsqc']),
             'c_nmr': priority_access(data['c_nmr'], SOURCE_PRIORITY['c_nmr']),
             'h_nmr': priority_access(data['h_nmr'], SOURCE_PRIORITY['h_nmr']),
-            'mass_spec': priority_access(data['mass_spec'], SOURCE_PRIORITY['mass_spec'])
+            'mass_spec': priority_access(data['mass_spec'], SOURCE_PRIORITY['mass_spec']),
+            'mass_spec_neg': priority_access(data['mass_spec_neg'], SOURCE_PRIORITY['mass_spec_neg'])
         }
         mol = Chem.MolFromSmiles(smiles)
         mw = rdMolDescriptors.CalcExactMolWt(mol)
@@ -209,6 +231,7 @@ def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
             'has_c_nmr': data_entry['c_nmr'] != [],
             'has_h_nmr': data_entry['h_nmr'] != [],
             'has_mass_spec': data_entry['mass_spec'] != [],
+            'has_mass_spec_neg': data_entry['mass_spec_neg'] != [],
             'has_mw': True,
             'has_formula': True,
             'mw': mw,

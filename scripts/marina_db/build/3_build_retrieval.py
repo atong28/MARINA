@@ -4,7 +4,7 @@ Retrieval = smiles_dict (structure DBs) union journal union SPECTRE-corpus struc
 union Mnova structures union the SPECTRE retrieval bank (candidate pool), all fixed-point
 canonicalized (2D). Folding in SPECTRE's bank makes MARINA-DB retrieval a strict superset
 of it. Deliberately independent of the MS/MS predictions -- positive is being re-predicted,
-negative is D5-deferred -- so the retrieval set and the fingerprint rankingsets built on it
+negative is now folded in too (mass_spec_neg) -- so the retrieval set and the rankingsets built on it
 (stage 4) are NOT blocked on spectral data. This is the structure track; the spectral track
 (stage 6+) can lag.
 

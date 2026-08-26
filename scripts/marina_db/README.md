@@ -42,7 +42,7 @@ until the dataset is finalized.
 | 3 | `3_build_retrieval.py` | **Retrieval set from structures only** (`smiles_dict ∪ journal ∪ SPECTRE-corpus ∪ Mnova ∪ SPECTRE retrieval bank`, **no MS/MS**). Journal folded in so rank@k is defined for all 467; SPECTRE bank folded in so retrieval is a strict superset of SPECTRE's candidate pool; no later augment |
 | 4 | `4_fp_rankingset.py` | For **every `config.FP_TYPES`** (uncapped-multiplicity **D8**, `RankingEntropy`/sherlock, capped-k5 multiplicity, substructure) at r10/16384: `bitinfo_to_idx.pkl` + `rankingset.pt`. Retrieval-only, no spectral dependency |
 | 5 | `5_spectre_splits.py` | Derive the SPECTRE train/val/test partition from the corpus index (`data/raw/index.pkl` `split` field) → `spectre_splits.pkl` |
-| 6 | `6_build_index.py` | Spectral assembly + index (`has_*` flags, MW ≤ 1000 exact, ≥ 3 heavy atoms). **MS/MS optional** (empty ⇒ `has_mass_spec=False`). **Splits deferred to 7** |
+| 6 | `6_build_index.py` | Spectral assembly + index (`has_*` flags, MW ≤ 1000 exact, ≥ 3 heavy atoms). Both MS/MS modes ingested: `has_mass_spec` (positive) + `has_mass_spec_neg` (negative). **Splits deferred to 7** |
 | 7 | `7_splits.py` | **Unified split policy (D7/D9):** SPECTRE-aligned (val/test/train), **full 467-compound Journal** → test, then free pool balanced to **global** 90/5/5 |
 | 8 | `8_assemble_arrow.py` | `metadata.json` + JSONL → Arrow dataset |
 | 9 | `9_fp_fragidx.py` | Training-path FragIdx parquets for **every `config.FP_TYPES`** (per-kind `FragIdx*.parquet`), reusing the stage-4 vocabs. Needs index + arrow |
@@ -64,8 +64,8 @@ until the dataset is finalized.
 ## Decisions baked in (see `wiki/experiments/marina-db-final-run.md`)
 
 - **D1** 8 cross-attention layers · **D2** sweep conclusions transfer · **D3** no experimental 1D
-  ingestion (¹³C/¹H stay Mnova-simulated) · **D5** negative-mode MS/MS deferred (waiting on ICEBERG
-  checkpoints)
+  ingestion (¹³C/¹H stay Mnova-simulated) · **D5** negative-mode MS/MS **integrated as a separate
+  `mass_spec_neg` modality** (own encoder; verified subset of positive, 0 new compounds)
 - **D6** tie-aware rank-1 is the default retrieval metric (strict kept behind a flag), both MARINA
   and SPECTRE — implemented in `src/modules/core/ranker.py::dot_prod_rank`
 - **D7** the full 467-compound Journal benchmark is excluded from train (canonical-SMILES match)
