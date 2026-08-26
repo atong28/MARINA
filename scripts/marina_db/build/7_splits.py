@@ -1,15 +1,13 @@
-"""30_splits.py -- unify three divergent split policies into one (decisions D7 + D9).
+"""7_splits.py -- unify the divergent split policies into one (decisions D7 + D9).
 
 Sources merged:
-  - scripts/dataset/generate_dataset.py : random 90/5/5, benchmark.pkl -> test
-  - analysis/spectre-split/scripts/01_spectre_splits.py : SPECTRE val/test + wide train set
-  - analysis/spectre-split/scripts/02_match.py : SPECTRE membership -> split, benchmark guard
+  - scripts/dataset/generate_dataset.py : random 90/5/5, benchmark -> test
+  - 5_spectre_splits.py : SPECTRE train/val/test partition (derived from the corpus index)
 
-Unified policy, applied to config.INDEX_PKL (written by 20_build_index.py with split=None):
+Unified policy, applied to config.INDEX_PKL (written by 6_build_index.py with split=None):
   1. FORCED assignments by fixed-point canonical-SMILES membership (canonicalize BOTH
      sides with src.modules.data.smiles.canonicalize_smiles):
-       benchmark molecules -> test   (D7: benchmark.pkl AND the FULL 467-entry
-                                       benchmark-journal-prepared.pkl, not just annotated)
+       benchmark molecules -> test   (D7: the FULL 467-entry Journal benchmark)
        SPECTRE test -> test ; SPECTRE val -> val ; SPECTRE train -> train
      Precedence: benchmark->test beats everything (a benchmark molecule must never
      train); then SPECTRE test > val > train.
@@ -24,25 +22,18 @@ from pathlib import Path
 _HERE = Path(__file__).resolve()
 sys.path.insert(0, str(_HERE.parents[1]))
 sys.path.insert(0, str(_HERE.parents[3]))
-from config import INDEX_PKL, BENCH_ANNOTATED, BENCH_JOURNAL_PREPARED, SPECTRE_SPLITS_PKL, SPLIT_WEIGHTS, SEED
+from config import INDEX_PKL, BENCH_JOURNAL, SPECTRE_SPLITS_PKL, SPLIT_WEIGHTS, SEED
 from src.modules.data.smiles import canonicalize_smiles
 
 import argparse
 import json
 import pickle
 import random
-import subprocess
 from collections import Counter
 from multiprocessing import Pool, cpu_count
 
-REPO_ROOT = _HERE.parents[3]
-# 01's output location, used as a fallback and as the derive target.
-_SPECTRE_DERIVE = REPO_ROOT / "analysis" / "spectre-split" / "scripts" / "01_spectre_splits.py"
-_SPECTRE_RESULT = REPO_ROOT / "analysis" / "spectre-split" / "results" / "spectre_splits.pkl"
-
-# Expected spectre_splits.pkl keys (see 01_spectre_splits.py):
-#   train/val/test -> sets of canonical SMILES (train = union of SPECTRE's 2D + 1D
-#                     train branches, minus val/test); val_idx/test_idx unused here.
+# spectre_splits.pkl keys (written by 5_spectre_splits.py):
+#   train/val/test -> sets of canonical (2D) SMILES.
 SPECTRE_KEYS = ("train", "val", "test")
 
 
@@ -59,20 +50,15 @@ def _canon_set(smiles, workers):
 
 
 def load_spectre_splits(path, workers):
-    """Prefer the prebuilt pkl (config path, then 01's results dir); else run 01 to derive.
+    """Load the SPECTRE partition written by 5_spectre_splits.py.
 
-    Returns re-canonicalized (via the shared fn) train/val/test SMILES sets so membership
-    lines up with the index side. 01's canon differs slightly (no largest-fragment strip).
+    Re-canonicalizes (via the shared fn) train/val/test SMILES sets so membership lines
+    up with the index side even if the two canonicalizers ever diverge.
     """
-    candidates = [Path(path), SPECTRE_SPLITS_PKL, _SPECTRE_RESULT]
-    src = next((p for p in candidates if p.exists()), None)
-    if src is None:
-        # Derive it the way 01_spectre_splits.py does (needs the SPECTRE trees/zip it reads).
-        print(f"No spectre_splits.pkl found; deriving via {_SPECTRE_DERIVE}")
-        subprocess.run([sys.executable, str(_SPECTRE_DERIVE)], check=True)
-        if not _SPECTRE_RESULT.exists():
-            raise FileNotFoundError(f"derivation did not produce {_SPECTRE_RESULT}")
-        src = _SPECTRE_RESULT
+    src = Path(path)
+    if not src.exists():
+        raise FileNotFoundError(
+            f"{src} not found -- run stage 5 (5_spectre_splits.py) before splits")
     print(f"Loading SPECTRE splits from {src}")
     spec = pickle.load(open(src, "rb"))
     missing = [k for k in SPECTRE_KEYS if k not in spec]
@@ -81,12 +67,10 @@ def load_spectre_splits(path, workers):
     return {k: _canon_set(spec[k], workers) for k in SPECTRE_KEYS}
 
 
-def load_benchmark_smiles(bench_pkl, journal_pkl, workers):
-    """Canonical SMILES of ALL benchmark molecules: benchmark.pkl + FULL journal set (D7)."""
-    raw = []
-    for p in (bench_pkl, journal_pkl):
-        data = pickle.load(open(p, "rb"))
-        raw += [e["smiles"] for e in data.values() if e.get("smiles")]
+def load_benchmark_smiles(journal_pkl, workers):
+    """Canonical SMILES of ALL benchmark molecules: the FULL 467-entry Journal set (D7)."""
+    data = pickle.load(open(journal_pkl, "rb"))
+    raw = [e["smiles"] for e in data.values() if e.get("smiles")]
     return _canon_set(raw, workers)
 
 
@@ -103,7 +87,7 @@ def main():
     print(f"Loaded {n} entries from {args.index}")
 
     # --- forced membership sets (all fixed-point canonical) ---
-    bench_set = load_benchmark_smiles(BENCH_ANNOTATED, BENCH_JOURNAL_PREPARED, args.workers)
+    bench_set = load_benchmark_smiles(BENCH_JOURNAL, args.workers)
     spec = load_spectre_splits(args.spectre, args.workers)
     print(f"benchmark: {len(bench_set)} canonical SMILES | "
           f"SPECTRE train/val/test: {len(spec['train'])}/{len(spec['val'])}/{len(spec['test'])}")

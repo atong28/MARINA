@@ -45,6 +45,7 @@ def canonicalize_smiles(
     """
     if largest_fragment and "." in smiles:
         smiles = max(smiles.split("."), key=len)
+    seen = set()
     for _ in range(MAX_PASSES):
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
@@ -52,9 +53,18 @@ def canonicalize_smiles(
         folded = Chem.MolToSmiles(mol, isomericSmiles=keep_stereo, canonical=True)
         if folded == smiles:
             return smiles
+        seen.add(folded)
         smiles = folded
-    # Never observed. Returning the last form would put a non-fixed-point string into
-    # the dataset, which is the defect this function exists to prevent.
+    # Non-convergence. The 2D key path (keep_stereo=False) is not expected to oscillate
+    # (stereo stripped), and a non-fixed-point *key* would split one compound across two
+    # rows -- the defect this function exists to prevent -- so that stays a hard error.
+    # The stereo-preserving path DOES oscillate for a few natural products: RDKit flips the
+    # directional bonds around a ring-closure double bond between two equivalent spellings
+    # each pass (a 2-cycle, emitting "Conflicting single bond directions" warnings). That
+    # SMILES is provenance (canonical_3d_smiles / original_smiles), never a dedup key, so
+    # collapse the cycle to a deterministic representative rather than aborting the build.
+    if keep_stereo:
+        return min(seen)
     raise ValueError(
         f"SMILES did not reach a canonical fixed point in {MAX_PASSES} passes: {smiles}"
     )

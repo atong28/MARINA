@@ -1,14 +1,15 @@
 # Benchmark curation (upstream, human-in-the-loop)
 
-These scripts produce the **inputs** the deterministic benchmark builders consume; they are
+These scripts produce the **inputs** behind the frozen Journal benchmark; they are
 **not** part of the reproducible MARINA-DB build and are not called by `run_build.sh`. They are
 here so the whole benchmark-creation process lives in one place, but they are non-deterministic
 (network fetches, paper availability) and involve **manual** NMR-table extraction.
 
 They operate on the `Benchmark/` working directory (`$MARINA_DATA_ROOT/Benchmark`, paths still
 hardcoded inside each script) — harvesting candidates, fetching papers, and staging per-compound
-folders. A human then transcribes shifts into `Benchmark/filtered/<NPID>/{1H,13C,HSQC}.csv`, which
-`../benchmarks/build_journal.py` and `../benchmarks/build_annotated.py` read.
+folders. A human then transcribes shifts into `Benchmark/filtered/<NPID>/{1H,13C,HSQC}.csv`, from
+which the frozen `benchmark-journal.pkl` was built. The go-forward build consumes that frozen pkl
+(`build/7_build_journal.py` only re-derives the prepared view), not `filtered/` directly.
 
 ## Rough flow
 
@@ -29,4 +30,4 @@ update_queue.py            reconcile the manual download queue vs disk
 write_links.py write_table.py   render the queue as md/csv
 ```
 
-Then: human extraction into `filtered/<NPID>/*.csv` → `../benchmarks/build_{journal,annotated}.py`.
+Then: human extraction into `filtered/<NPID>/*.csv` → the frozen `benchmark-journal.pkl`.

@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """Verify the built MARINA-DB arrow dataset. Exits nonzero on any failure.
 
-Merges scripts/dataset/verify.py and analysis/spectre-split/scripts/04_verify.py into
-one checker over config.DATA_DATASET:
+One checker over config.DATA_DATASET:
 
   1. index <-> arrow split consistency: each modality shard holds exactly the index
      idx for that split (gated by the has_* flags; FragIdx covers every molecule),
      with no duplicate idx within a shard and disjoint shards across splits. The
      arrow shards are what the dataloader reads, so consistency is checked against
      them rather than against JSONL (this dataset ships none).
-  2. retrieval superset: every index molecule AND every benchmark molecule -- the
-     annotated set and all journal compounds -- is present in the retrieval bank by
-     canonical SMILES.
+  2. retrieval superset: every index molecule AND every Journal-benchmark molecule is
+     present in the retrieval bank by canonical SMILES (the journal is folded into
+     retrieval at stage 3, so all 467 must be present).
   3. no duplicate canonical SMILES in the index.
   4. split-distribution sanity: labels are exactly train/val/test, none empty.
 
@@ -30,7 +29,7 @@ import pyarrow.parquet as pq
 _HERE = Path(__file__).resolve()
 sys.path.insert(0, str(_HERE.parents[1]))
 sys.path.insert(0, str(_HERE.parents[3]))
-from config import DATA_DATASET, BENCH_ANNOTATED, BENCH_JOURNAL, SPLIT_WEIGHTS
+from config import DATA_DATASET, BENCH_JOURNAL, SPLIT_WEIGHTS
 from src.modules.data.smiles import canonicalize_smiles
 
 SPLITS = ("train", "val", "test")
@@ -96,7 +95,6 @@ def main():
         check(f"retrieval superset: every {label} molecule present ({len(data)})",
               not miss, f"{len(miss)} missing: {miss[:10]}")
 
-    bench_missing(BENCH_ANNOTATED, "annotated-benchmark")
     bench_missing(BENCH_JOURNAL, "journal")
 
     # ---- 3. no duplicate canonical SMILES in the index ----

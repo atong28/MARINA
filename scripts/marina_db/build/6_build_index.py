@@ -1,8 +1,13 @@
-"""Assemble spectral data, build the index, and build the retrieval set.
+"""Assemble spectral data and build the index (has_* flags + MW filter).
 
 This is generate_dataset.py minus the train/val/test decision: every index entry is
 written with split=None. Split assignment (and the benchmark->test forcing that used
-to live here) is deferred to 30_splits.py, which also writes the per-split jsonl.
+to live here) is deferred to 7_splits.py, which also writes the per-split jsonl.
+
+Retrieval is NOT built here -- it is the structure track (3_build_retrieval.py) so the
+rankingsets are not blocked on spectral data. MS/MS is OPTIONAL: if data/raw/ms_predictions
+is empty (positive re-prediction in flight), the build proceeds with has_mass_spec=False
+and the spectral MS source simply absent.
 """
 import json
 from typing import Any, Dict, List, Tuple
@@ -18,7 +23,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve()
 sys.path.insert(0, str(_HERE.parents[1]))   # scripts/marina_db -> config
 sys.path.insert(0, str(_HERE.parents[3]))   # repo root -> src
-from config import DATA_RAW, DATA_CLEANED, SMILES_DICT, INDEX_PKL, RETRIEVAL_PKL, MW_MAX_EXACT, MIN_HEAVY_ATOMS, SOURCE_PRIORITY
+from config import DATA_RAW, DATA_CLEANED, INDEX_PKL, MW_MAX_EXACT, MIN_HEAVY_ATOMS, SOURCE_PRIORITY
 from src.modules.data.smiles import canonicalize_smiles
 
 def initialize_mapping(data, smiles: str) -> Dict[str, Any]:
@@ -119,6 +124,10 @@ def process_mnova_predictions():
 
 def process_ms_predictions():
     files = sorted(glob.glob(str(DATA_RAW / 'ms_predictions' / '*.json')))
+    if not files:
+        print('WARNING: no MS/MS predictions in data/raw/ms_predictions -- building with '
+              'has_mass_spec=False (positive re-prediction in flight; see 1_download.sh).')
+        return {}
     ms_data = {}
     for file in tqdm(files, desc='Processing MS predictions'):
         ms = json.load(open(file, 'r'))
@@ -177,19 +186,6 @@ def build_spectral_data() -> Dict[str, Dict]:
         mapping[smiles]['mass_spec']['ms'] = ms
     return mapping
 
-def build_retrieval_set(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
-    print('Building retrieval set...')
-    os.makedirs(DATA_CLEANED, exist_ok=True)
-    with open(SMILES_DICT, 'r') as f:
-        smiles_dict = json.load(f)
-    all_smiles = sorted(set(smiles_dict.keys()) | set(mapping.keys()))
-    print(f'smiles_dict: {len(smiles_dict)}, mapping: {len(mapping)}, union: {len(all_smiles)}')
-    retrieval = {idx: {'smiles': smiles} for idx, smiles in enumerate(all_smiles)}
-    print(f'Built {len(retrieval)} retrieval set')
-    with open(RETRIEVAL_PKL, 'wb') as f:
-        pickle.dump(retrieval, f)
-    return retrieval
-
 def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
     print('Building index...')
     os.makedirs(DATA_CLEANED, exist_ok=True)
@@ -232,6 +228,4 @@ if __name__ == "__main__":
         mapping = build_spectral_data()
         with open(DATA_CLEANED / 'mapping.json', 'w') as f:
             json.dump(mapping, f)
-    if not os.path.exists(RETRIEVAL_PKL):
-        build_retrieval_set(mapping)
     build_json(mapping)

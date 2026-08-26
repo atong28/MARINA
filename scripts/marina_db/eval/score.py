@@ -2,25 +2,23 @@
 """
 The one MARINA checkpoint scorer for the marina_db build.
 
-Consolidates the four legacy scorers (eval_comprehensive / eval_all_models /
-score_journal / compare_benchmarks) onto lib.eval_loop. Scores each checkpoint on:
+Consolidates the legacy scorers onto lib.eval_loop. The Journal is the sole benchmark
+going forward. Scores each checkpoint on:
 
-  - annotated      (BENCH_ANNOTATED)      val & test
   - journal        (BENCH_JOURNAL_PREPARED, leakage-filtered) val / test / all,
                    reported for the full set AND the marina_clean / both_clean
                    subsets (199 of 467 journal compounds sit in MARINA1's train
                    split, so the full set is confounded -- keep both in view)
-  - simulated      (BENCH_SIMULATED)      val & test
   - test_nmr_mw    the test split restricted to molecules carrying all of
-                   hsqc/c_nmr/h_nmr/mw (24,157 mols), batched through the dataset
+                   hsqc/c_nmr/h_nmr/mw, batched through the dataset
 
-Metrics per (benchmark, split): rank@1/5/10 (tie-aware, D6) + dereplication
-top-1/5/10 (cosine of sparse FP > 0.99) + mean cosine. --strict also emits the
-pessimistic rank@k for reproducing published numbers.
+Metrics per split: rank@1/5/10 (tie-aware, D6) + dereplication top-1/5/10
+(cosine of sparse FP > 0.99) + mean cosine. --strict also emits the pessimistic
+rank@k for reproducing published numbers.
 
-rank@k uses the AUGMENTED rankingset (DATA_DATASET/<fp_type>/rankingset_aug.pt):
-augment_rankingset.py put the otherwise-absent journal compounds into the bank so
-the gold row is always present and rank@k is well-defined.
+rank@k uses DATA_DATASET/<fp_type>/rankingset.pt. The journal compounds are folded
+into the retrieval bank at build stage 3, so the gold row is always present and
+rank@k is well-defined for all 467 -- there is no separate augmented bank.
 
 Model list file: one row per checkpoint  ->  name|params.json|checkpoint.pt
 
@@ -45,10 +43,7 @@ from tqdm import tqdm
 
 # fp vocab (fp_type/out_dim) comes per-model from params.json, so a model is always
 # scored on its own vocabulary; config FP_TYPE/FP_OUT_DIM are the build-time default.
-from config import (
-    DATA_DATASET, RETRIEVAL_PKL, BENCH_ANNOTATED, BENCH_JOURNAL_PREPARED,
-    BENCH_SIMULATED,
-)
+from config import DATA_DATASET, RETRIEVAL_PKL, BENCH_JOURNAL_PREPARED
 from lib.eval_loop import to_device, build_args, eval_split, summarise
 
 from src.modules import MARINA, MARINADataModule
@@ -57,12 +52,6 @@ from src.modules.data.fp_loader import make_fp_loader
 from src.modules.core.ranker import RankingSet
 
 NMR_MW = ["hsqc", "c_nmr", "h_nmr", "mw"]
-
-
-def bucket(records, strict):
-    """val / test summaries from a flat record list (annotated / simulated)."""
-    return {split: summarise([r for r in records if r["split"] == split], strict)
-            for split in ("val", "test")}
 
 
 def bucket_journal(records, strict):
@@ -106,8 +95,7 @@ def eval_test_subset(args, model, fp_loader, device, strict,
     return summarise(recs, strict)
 
 
-def eval_model(params_path, ckpt_path, benchmarks, journal, device, strict,
-               augmented, skip_test):
+def eval_model(params_path, ckpt_path, journal, device, strict, skip_test):
     params = json.load(open(params_path))
     args = build_args(params, ckpt_path)
     fp_loader = make_fp_loader(args.fp_type, entropy_out_dim=args.out_dim,
@@ -115,24 +103,16 @@ def eval_model(params_path, ckpt_path, benchmarks, journal, device, strict,
     model = MARINA(args, fp_loader)
     data_module = MARINADataModule(args, fp_loader)
     # Not benchmark.load_model: it torch.loads without map_location (cannot run on a
-    # CPU box) and calls setup_ranker(), which reads the base rankingset that the
-    # augmented one replaces below.
+    # CPU box) and calls setup_ranker(), which reads a rankingset we override below.
     model.load_state_dict(torch.load(ckpt_path, map_location="cpu")["state_dict"])
     model.eval()
-    bank = "rankingset_aug.pt" if augmented else "rankingset.pt"
     model.ranker = RankingSet(
-        store=torch.load(os.path.join(DATA_DATASET, args.fp_type, bank),
+        store=torch.load(os.path.join(DATA_DATASET, args.fp_type, "rankingset.pt"),
                          map_location="cpu"))
     model = model.to(device)
     restrictions = args.input_types if args.restrictions is None else args.restrictions
 
     res = {"fp_type": args.fp_type, "ckpt": ckpt_path}
-
-    for label, data in benchmarks.items():
-        entries = [v for v in data.values() if v.get("split") in ("val", "test")]
-        recs = eval_split(entries, model, data_module, fp_loader, restrictions,
-                          device, smiles_key="smiles", strict=strict)
-        res[label] = bucket(recs, strict)
 
     # Journal: score every entry with a canonical structure once, then subset.
     jentries = [v for v in journal.values() if v.get("canonical_2d_smiles")]
@@ -158,16 +138,10 @@ def main():
     ap.add_argument("--out", required=True, help="results json (resumed if it exists)")
     ap.add_argument("--strict", action="store_true",
                     help="also emit pessimistic (tie_aware=False) rank@k")
-    ap.add_argument("--no_augmented", dest="augmented", action="store_false",
-                    help="rank over base rankingset.pt (rank@k undefined for ~74 journal mols)")
     ap.add_argument("--skip_test", action="store_true", help="skip the NMR+MW test subset")
     a = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    benchmarks = {
-        "annotated": pickle.load(open(BENCH_ANNOTATED, "rb")),
-        "simulated": pickle.load(open(BENCH_SIMULATED, "rb")),
-    }
     journal = pickle.load(open(BENCH_JOURNAL_PREPARED, "rb"))
 
     rows = [ln.strip() for ln in open(a.models) if ln.strip() and not ln.startswith("#")]
@@ -180,8 +154,8 @@ def main():
             continue
         print(f"=== {name}", flush=True)
         try:
-            results[name] = eval_model(params_path, ckpt_path, benchmarks, journal,
-                                       device, a.strict, a.augmented, a.skip_test)
+            results[name] = eval_model(params_path, ckpt_path, journal,
+                                       device, a.strict, a.skip_test)
         except Exception as e:
             results[name] = {"error": repr(e)}
             print(f"ERROR {name}: {e!r}", flush=True)

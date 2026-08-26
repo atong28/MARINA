@@ -30,8 +30,8 @@ from config import (
 
 SPLITS = ("train", "val", "test")
 
-# Source-priority order shared with build_json (stage 20) via config.SOURCE_PRIORITY.
-# FragIdx is written by stage 60 (fp_vocab), not here — the materialized JSONL
+# Source-priority order shared with the index build (stage 6) via config.SOURCE_PRIORITY.
+# FragIdx is written by stage 9 (fp_fragidx), not here — the materialized JSONL
 # never carries a "fragidx" field, so this stage only writes the spectral modalities.
 MOD_DIRS = {
     "hsqc": "HSQC_NMR",
@@ -46,8 +46,8 @@ REGULAR_FILES = [
     "metadata.json",
     f"count_hashes_under_radius_{FP_RADIUS}.pkl",
 ]
-# Stage 60 (fp_vocab) owns the FP-family dir; this copy is a no-op unless the live
-# family already exists beside the cleaned data (guarded by os.path.isdir below).
+# Stage 4 (fp_rankingset) writes the FP-family dirs straight into DATA_DATASET, so this
+# copy is a no-op unless a live family exists beside the cleaned data (guarded below).
 REGULAR_DIRS = [FP_TYPE]
 
 
@@ -112,9 +112,9 @@ def _priority_access(mod_dict: Dict[str, Any], order: List[str]) -> Any:
 
 
 def materialize_split_jsonl() -> None:
-    """Join index.pkl (idx, smiles, split — assigned by 30_splits.py) with the spectral
+    """Join index.pkl (idx, smiles, split — assigned by 7_splits.py) with the spectral
     data cached in mapping.json (keyed by smiles) into per-split {split}.jsonl that
-    convert_to_arrow consumes. Splits deferred out of stage 20 land here."""
+    convert_to_arrow consumes. Splits deferred out of stage 6 land here."""
     with open(INDEX_PKL, "rb") as f:
         index = pickle.load(f)
     with open(DATA_CLEANED / "mapping.json") as f:
@@ -126,7 +126,7 @@ def materialize_split_jsonl() -> None:
         for entry in tqdm(index.values(), desc="Materializing jsonl"):
             split = entry.get("split")
             if split not in handles:
-                raise ValueError(f"idx {entry.get('idx')} has split={split!r}; run 30_splits.py first")
+                raise ValueError(f"idx {entry.get('idx')} has split={split!r}; run 7_splits.py first")
             m = mapping.get(entry["smiles"], {})
             row = {"idx": entry["idx"], "smiles": entry["smiles"]}
             for mod, order in SOURCE_PRIORITY.items():

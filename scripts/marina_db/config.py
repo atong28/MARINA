@@ -33,6 +33,11 @@ NPMRD_CSV = DATA_RAW / "npmrd.csv"
 COCONUT_CSV = DATA_RAW / "coconut.csv"
 LOTUS_TXT = DATA_RAW / "lotus.txt"
 COCONUT_RELEASE = os.environ.get("COCONUT_RELEASE", "coconut_csv-08-2026")
+# SPECTRE retrieval bank (structure candidates), extracted from SPECTRE inference metadata
+# (~/SPECTRECheckpoints/inference_metadata_name_updated.pkl, 526,316 SMILES). Folded into
+# the retrieval set (3_build_retrieval.py) so MARINA-DB retrieval is a strict superset of
+# SPECTRE's candidate pool.
+SPECTRE_RETRIEVAL = DATA_RAW / "spectre_retrieval.pkl"
 
 # ---- intermediates ----
 SMILES_DICT = DATA_CLEANED / "smiles_dict.json"
@@ -41,21 +46,22 @@ RETRIEVAL_PKL = DATA_CLEANED / "retrieval.pkl"
 METADATA_JSON = DATA_CLEANED / "metadata.json"
 
 # ---- benchmarks ----
+# The Journal (benchmark-journal.pkl) is the sole benchmark going forward; it is a FROZEN
+# curated input (hand-extracted shifts). 10_build_journal.py regenerates only the *prepared*
+# view (leakage flags + retrieval_idx) against the current index/splits.
 BENCH_ROOT = Path(BENCHMARK_ROOT) if BENCHMARK_ROOT else MARINA_DATA_ROOT / "Benchmark"
-BENCH_ANNOTATED = BENCH_ROOT / "benchmark.pkl"
-BENCH_JOURNAL = BENCH_ROOT / "benchmark-journal.pkl"
+BENCH_JOURNAL = BENCH_ROOT / "benchmark-journal.pkl"                 # frozen curated input
 BENCH_JOURNAL_PREPARED = BENCH_ROOT / "benchmark-journal-prepared.pkl"
-BENCH_SIMULATED = BENCH_ROOT / "benchmark-sim.pkl"
 BENCH_FILTERED = BENCH_ROOT / "filtered"        # hand-extracted per-NPID CSVs (from curation/)
 
 # ---- SPECTRE split source (published partition, for alignment) ----
-# Produced by analysis/spectre-split/scripts/01_spectre_splits.py, which is the unique deriver of
-# the SPECTRE partition (kept for that reason; 02/03/05 there are superseded by 30_splits.py/80_verify.py).
-SPECTRE_SPLITS_PKL = REPO_ROOT / "analysis" / "spectre-split" / "results" / "spectre_splits.pkl"
+# Derived from the SPECTRE corpus index (data/raw/index.pkl 'split' field) by
+# 5_spectre_splits.py; consumed by 7_splits.py and 10_build_journal.py.
+SPECTRE_SPLITS_PKL = DATA_CLEANED / "spectre_splits.pkl"
 
 # ---- source priority per modality (single source of truth) ----
-# Order stage 20 (20_build_index.py, index has_* flags) and stage 40
-# (40_assemble_arrow.py, materialized spectra) resolve each modality's source in.
+# Order stage 6 (6_build_index.py, index has_* flags) and stage 8
+# (8_assemble_arrow.py, materialized spectra) resolve each modality's source in.
 # Both stages MUST agree so the index flags and materialized spectra never desync.
 SOURCE_PRIORITY = {
     "hsqc": ["spectre", "mnova"],
@@ -65,7 +71,17 @@ SOURCE_PRIORITY = {
 }
 
 # ---- fingerprint / dataset build knobs (decisions D6-D9) ----
-FP_TYPE = os.environ.get("FP_TYPE", "RankingEntropyMultiplicityUncapped")  # D8
+FP_TYPE = os.environ.get("FP_TYPE", "RankingEntropyMultiplicityUncapped")  # D8 (deployed)
+# Fingerprints built by stage 4 (fp_rankingset, vocab + rankingset) and stage 9
+# (fp_fragidx, training columns). All four entropy-selected loaders, so the fp-quality
+# analysis can compare on the same retrieval set: the deployed uncapped multiplicity (D8),
+# the presence-only "sherlock" (RankingEntropy), the capped-k5 multiplicity, and the
+# substructure FP. All at FP_RADIUS / FP_OUT_DIM. Override via FP_TYPES="a,b,...".
+FP_TYPES = [t for t in os.environ.get(
+    "FP_TYPES",
+    "RankingEntropyMultiplicityUncapped,RankingEntropy,"
+    "RankingEntropyMultiplicity,RankingEntropySubstructure",
+).split(",") if t]
 FP_OUT_DIM = int(os.environ.get("FP_OUT_DIM", "16384"))
 FP_RADIUS = int(os.environ.get("FP_RADIUS", "10"))  # D10: r10 wins both intrinsic axes (wiki/experiments/fp-quality.md)
 MW_MAX_EXACT = 1000.0     # D-filters: exact (monoisotopic) mass ceiling
