@@ -1,28 +1,57 @@
 """Build a folded-binary MAP4 rankingset over retrieval.pkl.
 
 MAP4 (Capecchi et al.) is natively a MinHash fingerprint; Count Your Bits benchmarks the FOLDED
-BINARY variant. We enumerate MAP4's atom-pair shingle set (the `map4` package's shingle code,
-which is pure RDKit — no tmap) and fold each shingle to a bit via a deterministic hash
-(bit = blake2b(shingle) % nbits), taking the set-union. That yields a binary column-set on which
-Tanimoto is the valid metric — NOT the MinHash signature, whose Jaccard != column-set Tanimoto
-(the trap the fp-quality hand-off calls out).
+BINARY variant. We enumerate MAP4's atom-pair shingle set and fold each shingle to a bit via a
+deterministic hash (bit = blake2b(shingle) % nbits), taking the set-union. That yields a binary
+column-set on which Tanimoto is the valid metric — NOT the MinHash signature, whose Jaccard !=
+column-set Tanimoto (the trap the fp-quality hand-off calls out).
 
-blake2b (not builtin hash()) so the fold is identical across Pool workers regardless of
-PYTHONHASHSEED. Output matches the CSR rankingset.pt contract build_ecfp4.py writes:
-torch.sparse_csr, vals 1/sqrt(nnz) per row, col = on-bits, row order = retrieval.pkl keys 0..N-1.
+The shingle enumeration (_get_atom_envs / _all_pairs) is inlined from the `map4` package (Capecchi
+et al.) — pure RDKit — rather than imported, because that package's top-level imports pull sklearn/
+matplotlib/mhfp (for its t-SNE viz + MinHash paths) which we do not need and cannot rely on in the
+build env. blake2b (not builtin hash()) so the fold is identical across Pool workers regardless of
+PYTHONHASHSEED. Output matches the CSR rankingset.pt contract build_ecfp4.py writes.
 
 Usage: python build_map4.py --retrieval <pkl> --out_dir <dir> [--nbits 2048] [--radius 2] \
            [--workers 16] [--name MAP4_2048]
 
-Deps: torch + rdkit + numpy + the `map4` package (only its shingle enumeration is used; no tmap).
+Deps: torch + rdkit + numpy. No external fingerprint package.
 """
-import argparse, hashlib, os, pickle, time
+import argparse, hashlib, itertools, os, pickle, time
 from multiprocessing import Pool
 
 import numpy as np
 
-_CALC = None
+_RADIUS = None
 _NBITS = None
+
+
+def _find_env(mol, atom_idx, radius):
+    """Canonical SMILES of the circular environment of `radius` around `atom_idx` ("" if empty)."""
+    from rdkit.Chem import FindAtomEnvironmentOfRadiusN, PathToSubmol, MolToSmiles
+    env = FindAtomEnvironmentOfRadiusN(mol, radius, atom_idx)
+    amap = {}
+    submol = PathToSubmol(mol, env, atomMap=amap)
+    if atom_idx in amap:
+        return MolToSmiles(submol, rootedAtAtom=amap[atom_idx], canonical=True, isomericSmiles=False)
+    return ""
+
+
+def _shingles(mol):
+    """MAP4 atom-pair shingle set: '{smaller_env}|{topodist}|{larger_env}' over all atom pairs and
+    radii 1..R (inlined from map4._get_atom_envs / _all_pairs)."""
+    from rdkit.Chem.rdmolops import GetDistanceMatrix
+    n = mol.GetNumAtoms()
+    envs = {a: [_find_env(mol, a, r) for r in range(1, _RADIUS + 1)] for a in range(n)}
+    dm = GetDistanceMatrix(mol)
+    out = set()
+    for i, j in itertools.combinations(range(n), 2):
+        dist = str(int(dm[i][j]))
+        for r in range(_RADIUS):
+            ea, eb = envs[i][r], envs[j][r]
+            smaller, larger = (eb, ea) if len(ea) > len(eb) else (ea, eb)
+            out.add(f"{smaller}|{dist}|{larger}")
+    return out
 
 
 def _fold_bit(shingle, nbits):
@@ -35,23 +64,16 @@ def _onbits(smi):
     if m is None:
         return []
     try:
-        shingles = _CALC._calculate(m)   # Set[str] of MAP4 atom-pair shingles (pure rdkit)
+        return sorted({_fold_bit(s, _NBITS) for s in _shingles(m)})
     except Exception:
         return []
-    return sorted({_fold_bit(s, _NBITS) for s in shingles})
 
 
 def _init(radius, nbits):
-    global _CALC, _NBITS
+    global _RADIUS, _NBITS
     from rdkit import RDLogger
-    from map4.map4 import MAP4Calculator
     RDLogger.DisableLog("rdApp.*")
-    # __new__ bypasses MAP4Calculator.__init__'s MHFPEncoder (which needs mhfp); we only use the
-    # shingle enumeration, which reads self.radius / self.include_duplicated_shingles.
-    c = MAP4Calculator.__new__(MAP4Calculator)
-    c.radius = radius
-    c.include_duplicated_shingles = False
-    _CALC, _NBITS = c, nbits
+    _RADIUS, _NBITS = radius, nbits
 
 
 def main():
@@ -76,7 +98,7 @@ def main():
     vals = []
     t0 = time.time()
     with Pool(a.workers, initializer=_init, initargs=(a.radius, a.nbits)) as pool:
-        for i, ob in enumerate(pool.imap(_onbits, smiles, chunksize=500)):
+        for i, ob in enumerate(pool.imap(_onbits, smiles, chunksize=200)):
             ob = sorted(set(ob))
             cols.extend(ob)
             v = 1.0 / np.sqrt(len(ob)) if ob else 0.0
