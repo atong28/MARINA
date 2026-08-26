@@ -4,14 +4,30 @@ Consumes the pairs parquet from exp1_mces.py. Higher Spearman = the fingerprint'
 better tracks graph-based structural similarity (the "meaningful similarity" C7 claim). Paired
 across fingerprints (identical pairs); bootstrap over pairs for CIs and Δρ vs a reference.
 
-Deps: scipy + pandas + pyarrow (no torch). Run under the ~/Workspace master pixi env (which
-has scipy), or any env with scipy — this step is cheap, so it does not need the cluster.
+Deps: pandas + pyarrow + numpy (no torch, no scipy). Runs in any env — the plain MARINA pixi
+env on the cluster or the ~/Workspace master env locally; this step is cheap either way.
 """
 import argparse, json, os
 
 import numpy as np
 import pandas as pd
-from scipy.stats import rankdata as _rankdata
+
+
+def _rankdata(a):
+    """Average ranks with tie handling, matching scipy.stats.rankdata(method='average').
+    Fully vectorized (no Python loops) so the per-bootstrap cost stays at the argsort."""
+    a = np.asarray(a)
+    n = a.size
+    order = a.argsort(kind="mergesort")
+    inv = np.empty(n, dtype=np.intp)
+    inv[order] = np.arange(n)
+    sa = a[order]
+    obs = np.r_[True, sa[1:] != sa[:-1]]         # start of each tie group in sorted order
+    grp_start = np.nonzero(obs)[0]
+    grp_sizes = np.diff(np.r_[grp_start, n])
+    avg_rank = grp_start + (grp_sizes + 1) / 2.0  # 1-based mean rank within each group
+    sorted_ranks = np.repeat(avg_rank, grp_sizes)
+    return sorted_ranks[inv]
 
 
 def spearman(x, y):
