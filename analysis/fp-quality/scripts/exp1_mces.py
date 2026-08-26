@@ -113,6 +113,10 @@ def main():
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=60)
+    ap.add_argument("--num-shards", type=int, default=1,
+                    help="split the 100k pairs into this many independent jobs (MCES is "
+                         "embarrassingly parallel); each writes a partial parquet to concat later")
+    ap.add_argument("--shard-id", type=int, default=0, help="which shard 0..num_shards-1")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
@@ -140,8 +144,14 @@ def main():
     while len(pairs) < args.n_pairs:
         a, b = rng.choice(idx, 2, replace=False)
         pairs.add((int(min(a, b)), int(max(a, b))))
-    pairs = list(pairs)
+    pairs = sorted(pairs)   # deterministic order so shard slices are stable across jobs
     print(f"sampled {len(pairs)} unique pairs", flush=True)
+
+    # shard: every job builds the identical full pair set (same seed) then takes a strided
+    # slice, so the shards partition the 100k pairs with no overlap and a mass-balanced mix.
+    if args.num_shards > 1:
+        pairs = pairs[args.shard_id::args.num_shards]
+        print(f"shard {args.shard_id}/{args.num_shards}: {len(pairs)} pairs this job", flush=True)
 
     # FP similarities (cheap, in-process) — only for rows touched by sampled pairs
     needed = {i for p in pairs for i in p}
