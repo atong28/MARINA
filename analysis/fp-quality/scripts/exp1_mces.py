@@ -56,6 +56,14 @@ def tanimoto(a, b):
     return inter / uni if uni else 0.0
 
 
+def _mass_one(smi):
+    from rdkit import Chem, RDLogger
+    from rdkit.Chem import Descriptors
+    RDLogger.DisableLog("rdApp.*")
+    m = Chem.MolFromSmiles(smi) if smi else None
+    return Descriptors.ExactMolWt(m) if m is not None else float("nan")
+
+
 _SMILES = None
 _TIMEOUT = 60
 
@@ -114,12 +122,13 @@ def main():
     n_all = len(R)
     smiles = [(R[i]["smiles"] if isinstance(R[i], dict) else R[i]) for i in range(n_all)]
 
-    # mass-stratified pool sample: sort by mass, take evenly spaced strata
-    from rdkit import Chem, RDLogger
-    from rdkit.Chem import Descriptors
-    RDLogger.DisableLog("rdApp.*")
-    masses = np.array([Descriptors.ExactMolWt(Chem.MolFromSmiles(s)) if Chem.MolFromSmiles(s)
-                       else np.nan for s in smiles])
+    # mass-stratified pool sample: sort by mass, take evenly spaced strata.
+    # Parallel: the mass pass over all N molecules is otherwise a single-threaded ~5-min
+    # fixed cost that does not scale with --workers and stalls the run before MCES starts.
+    t_mass = time.time()
+    with Pool(args.workers) as mpool:
+        masses = np.array(mpool.map(_mass_one, smiles, chunksize=2000))
+    print(f"masses over {n_all} molecules in {time.time()-t_mass:.0f}s ({args.workers} workers)", flush=True)
     valid = np.where(np.isfinite(masses))[0]
     order = valid[np.argsort(masses[valid])]
     idx = order[np.linspace(0, len(order) - 1, args.n_pool).astype(int)]
