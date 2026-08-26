@@ -4,8 +4,8 @@ Precedent: Huber & Pollmann, "Count your bits" (J. Cheminform. 2026), Fig 2 — 
 duplicate spanning a large mass difference is a worse collision than one within 1 Da.
 Extends analysis/fp-collision-recheck (column-set hashing) with mass stratification.
 
-Runs in MARINA's own pixi env (needs torch to read the CSR rankingset + rdkit for mass).
-Read-only on Datasets/ and the PVC.
+Deps: torch (read the CSR rankingset) + rdkit (mass) + numpy. Run under the ~/Workspace master
+pixi env locally, or the Nautilus MARINA image on the cluster. Read-only on the retrieval set.
 
 For each fingerprint (CSR rankingset.pt, binary thermometer/selected bits) it groups
 molecules by identical nonzero column-set, then for each tie group computes the maximum
@@ -42,12 +42,11 @@ def mass_vector(retrieval_pkl, n_rows):
     RDLogger.DisableLog("rdApp.*")
     with open(retrieval_pkl, "rb") as f:
         R = pickle.load(f)
-    # dict{int: {'smiles':..}} or list
-    getter = (lambda i: R[i]) if isinstance(R, dict) else (lambda i: R[i])
+    # R is dict{int: {'smiles':..}} or a list; R[i] indexes both
     mass = np.full(n_rows, np.nan, dtype=np.float64)
     t0 = time.time()
     for i in range(n_rows):
-        e = getter(i)
+        e = R[i]
         smi = e["smiles"] if isinstance(e, dict) else e
         m = Chem.MolFromSmiles(smi) if smi else None
         if m is not None:

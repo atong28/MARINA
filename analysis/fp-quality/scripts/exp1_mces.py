@@ -5,11 +5,19 @@ Riniker & Landrum benchmarking platform. Tests whether each fingerprint's simila
 tracks a graph-based ground-truth structural similarity (Metric A: Spearman correlation).
 
 RascalMCES is the ground truth; FP similarity is Tanimoto over the binary selected-bit
-column-sets (all five fingerprints are binary thermometer/selected bits, so plain Tanimoto
-is the consistent metric — no metric tuning). Runs in MARINA's env (torch + rdkit).
+column-sets (all fingerprints are binary thermometer/selected bits, so plain Tanimoto is the
+consistent metric — no metric tuning).
 
-Output: results/exp1_pairs.parquet with columns [i, j, mces, <fp Tanimoto per fingerprint>].
-exp1_analyze.py consumes it (torch-free).
+Single correct pass: RascalMCES runs with returnEmptyMCES=True + minFragSize=3, so
+screened-out dissimilar pairs get their real ~0 similarity instead of being dropped as NaN
+(the v1 bias, which the old exp1_mces_retry.py patched after the fact — now folded in here).
+Only true timeouts remain NaN and are flagged in the `timedout` column.
+
+Output: <out>.parquet with columns [i, j, mces, timedout, <fp Tanimoto per fingerprint>].
+exp1_analyze.py consumes it.
+
+Deps: torch (read CSR) + rdkit (MCES) + pandas + pyarrow. Run under the ~/Workspace master
+pixi env locally, or the Nautilus MARINA image on the cluster.
 
 Usage:
     python exp1_mces.py --retrieval /path/retrieval.pkl --n-pool 5000 --n-pairs 100000 \
@@ -55,16 +63,26 @@ def _mces_pair(ij):
     m1 = Chem.MolFromSmiles(_SMILES[i])
     m2 = Chem.MolFromSmiles(_SMILES[j])
     if m1 is None or m2 is None:
-        return (i, j, np.nan)
+        return (i, j, np.nan, False)   # unparseable -> excluded, not a timeout
     opts = rdRascalMCES.RascalOptions()
     opts.similarityThreshold = 0.05
+    opts.minFragSize = 3
+    # returnEmptyMCES=True is essential: without it RASCAL returns an EMPTY result for pairs
+    # it screens out below the 0.05 threshold (genuinely dissimilar, MCES ~ 0), which then get
+    # logged NaN and dropped -- removing the hard-to-rank dissimilar tail and biasing every
+    # Spearman rho high (the v1 bug this fold-in fixes; no separate retry pass needed).
+    opts.returnEmptyMCES = True
     opts.timeout = _TIMEOUT
     try:
-        res = rdRascalMCES.FindMCES(m1, m2, opts)
-        sim = float(res[0].similarity) if res else np.nan
+        r = rdRascalMCES.FindMCES(m1, m2, opts)
+        if not r:
+            return (i, j, np.nan, False)
+        res = r[0]
+        # timedOut=True => intractable at this timeout, left NaN (true timeout); else the
+        # similarity is reliable, including the recovered ~0 screen-outs.
+        return (i, j, float(res.similarity), bool(res.timedOut))
     except Exception:
-        sim = np.nan
-    return (i, j, sim)
+        return (i, j, np.nan, True)
 
 
 def _init(smiles, timeout):
@@ -126,18 +144,23 @@ def main():
     t0 = time.time()
     pos = {p: k for k, p in enumerate(pairs)}
     results = np.full(len(pairs), np.nan)
+    timedout = np.zeros(len(pairs), dtype=bool)
     with Pool(args.workers, initializer=_init, initargs=(smiles, args.timeout)) as pool:
-        for k, (i, j, sim) in enumerate(pool.imap_unordered(_mces_pair, pairs, chunksize=64)):
+        for k, (i, j, sim, to) in enumerate(pool.imap_unordered(_mces_pair, pairs, chunksize=64)):
             results[pos[(i, j)]] = sim
+            timedout[pos[(i, j)]] = to
             if k % 5000 == 0:
                 print(f"  mces {k}/{len(pairs)}  {time.time()-t0:.0f}s", flush=True)
 
-    df = pd.DataFrame({"i": [p[0] for p in pairs], "j": [p[1] for p in pairs], "mces": results})
+    df = pd.DataFrame({"i": [p[0] for p in pairs], "j": [p[1] for p in pairs],
+                       "mces": results, "timedout": timedout})
     for name, sims in fp_sims.items():
         df[name] = sims
-    n_timeout = int(np.isnan(results).sum())
-    print(f"MCES done in {time.time()-t0:.0f}s; {n_timeout} failed/timeout "
-          f"({100*n_timeout/len(pairs):.1f}%)", flush=True)
+    n_nan = int(np.isnan(results).sum())
+    n_to = int(timedout.sum())
+    print(f"MCES done in {time.time()-t0:.0f}s; {n_nan} NaN "
+          f"({100*n_nan/len(pairs):.1f}%), of which {n_to} true timeouts; "
+          f"{len(pairs)-n_nan} valid", flush=True)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     df.to_parquet(args.out)

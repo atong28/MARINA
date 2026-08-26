@@ -4,14 +4,19 @@ The feature keys in bitinfo_to_idx.pkl are 4-tuples (bit_id, atom_symbol, frag_s
 Answers directly: of the 16384 entropy-selected bits, what fraction come from radius > 6? If
 ~0%, entropy selection did not want the larger environments a higher radius cap exposes.
 
-Usage: python radius_hist.py NAME=/path/bitinfo_to_idx.pkl [NAME2=...]
+Usage: python radius_hist.py --fp NAME=/path/bitinfo_to_idx.pkl [--fp NAME2=...]
+
+Deps: stdlib only. Runs in any env.
 """
-import pickle, sys
+import argparse, pickle
 from collections import Counter
 
 
 def main():
-    for spec in sys.argv[1:]:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fp", action="append", default=[], help="NAME=/path/bitinfo_to_idx.pkl")
+    args = ap.parse_args()
+    for spec in args.fp:
         name, path = spec.split("=", 1)
         try:
             with open(path, "rb") as f:

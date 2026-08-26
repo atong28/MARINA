@@ -4,12 +4,15 @@ The off-the-shelf baseline (Rogers & Hahn). Output matches the CSR rankingset.pt
 other fingerprints use: torch sparse_csr with values 1/sqrt(nnz) per row (so cosine == the
 deployed metric) and col indices = set bits. Row order = retrieval.pkl integer keys 0..N-1.
 
-Usage: python build_ecfp4.py <retrieval.pkl> <out_dir> [n_bits=2048] [radius=2] [workers=16] [name=RankingEntropyECFP4]
+Usage: python build_ecfp4.py --retrieval <retrieval.pkl> --out_dir <dir> \
+           [--nbits 2048] [--radius 2] [--workers 16] [--name RankingEntropyECFP4]
 Writes <out_dir>/<name>/rankingset.pt
-  - ecfp4 baseline:            n_bits=2048  radius=2  name=RankingEntropyECFP4
-  - width+radius-matched fair: n_bits=16384 radius=6  name=RankingEntropyECFPr6
+  - ecfp4 baseline:            --nbits 2048  --radius 2   --name RankingEntropyECFP4
+  - width+radius-matched fair: --nbits 16384 --radius 10  --name RankingEntropyECFPr10
+
+Deps: torch + rdkit + numpy. Run under the ~/Workspace master pixi env or the Nautilus image.
 """
-import os, pickle, sys, time
+import argparse, os, pickle, time
 from multiprocessing import Pool
 
 import numpy as np
@@ -33,12 +36,16 @@ def _init(radius, nbits):
 
 
 def main():
-    retrieval = sys.argv[1]
-    out_dir = sys.argv[2]
-    nbits = int(sys.argv[3]) if len(sys.argv) > 3 else 2048
-    radius = int(sys.argv[4]) if len(sys.argv) > 4 else 2
-    workers = int(sys.argv[5]) if len(sys.argv) > 5 else 16
-    name = sys.argv[6] if len(sys.argv) > 6 else "RankingEntropyECFP4"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--retrieval", required=True)
+    ap.add_argument("--out_dir", required=True)
+    ap.add_argument("--nbits", type=int, default=2048)
+    ap.add_argument("--radius", type=int, default=2)
+    ap.add_argument("--workers", type=int, default=16)
+    ap.add_argument("--name", default="RankingEntropyECFP4")
+    a = ap.parse_args()
+    retrieval, out_dir, nbits, radius, workers, name = (
+        a.retrieval, a.out_dir, a.nbits, a.radius, a.workers, a.name)
     import torch
 
     with open(retrieval, "rb") as f:

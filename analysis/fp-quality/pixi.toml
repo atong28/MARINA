@@ -1,7 +1,7 @@
 [workspace]
 name = "fp-quality"
 version = "0.1.0"
-description = "Isolated analysis: intrinsic quality of the MARINA fingerprints (sherlock, multiplicity uncapped, multiplicity capped k=5, ecfp4, substructure). Exp2 = mass-stratified specificity (Count-your-bits Fig 2); Exp1 = MCES similarity-structure agreement (RascalMCES reference). Torch-free: consumes CSR->colset exports and MCES pair parquets produced on the cluster / in MARINA's env."
+description = "Intrinsic quality of the MARINA fingerprints. Exp2 = mass-stratified specificity (Count-your-bits Fig 2); Exp1 = MCES similarity-structure agreement (RascalMCES reference). Canonical run env is the ~/Workspace master pixi env (torch+rdkit+scipy together); this dir env is a torch-free fallback for the cheap analysis step (exp1_analyze) only."
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 

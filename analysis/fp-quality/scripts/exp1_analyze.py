@@ -1,33 +1,23 @@
 """Exp 1 (analyze) — Spearman(FP-sim, MCES) per fingerprint, paired bootstrap CIs.
 
-Numpy-only (no scipy), so it runs either in the fp-quality pixi env or in the cluster's
-MARINA env directly on the PVC parquet. Consumes results/exp1_pairs.parquet from exp1_mces.py.
-Higher Spearman = the fingerprint's similarity better tracks graph-based structural similarity
-(the "meaningful similarity" C7 claim). Paired across fingerprints (identical pairs); bootstrap
-over pairs for CIs and Δρ vs a reference fingerprint.
+Consumes the pairs parquet from exp1_mces.py. Higher Spearman = the fingerprint's similarity
+better tracks graph-based structural similarity (the "meaningful similarity" C7 claim). Paired
+across fingerprints (identical pairs); bootstrap over pairs for CIs and Δρ vs a reference.
+
+Deps: scipy + pandas + pyarrow (no torch). Run under the ~/Workspace master pixi env (which
+has scipy), or any env with scipy — this step is cheap, so it does not need the cluster.
 """
 import argparse, json, os
 
 import numpy as np
 import pandas as pd
-
-
-def rankdata(a):
-    """Average ranks (ties averaged), matching scipy.stats.rankdata(method='average')."""
-    a = np.asarray(a, dtype=float)
-    n = len(a)
-    sorter = np.argsort(a, kind="mergesort")
-    inv = np.empty(n, dtype=np.intp)
-    inv[sorter] = np.arange(n)
-    a_sorted = a[sorter]
-    obs = np.r_[True, a_sorted[1:] != a_sorted[:-1]]
-    dense = obs.cumsum()[inv]
-    count = np.r_[np.nonzero(obs)[0], n]
-    return 0.5 * (count[dense] + count[dense - 1] + 1)
+from scipy.stats import rankdata as _rankdata
 
 
 def spearman(x, y):
-    rx, ry = rankdata(x), rankdata(y)
+    """Spearman rho via ranks + Pearson, so a paired bootstrap can rank once per draw."""
+    rx = _rankdata(x)
+    ry = _rankdata(y)
     return float(np.corrcoef(rx, ry)[0, 1])
 
 
@@ -43,7 +33,9 @@ def main():
 
     df = pd.read_parquet(args.pairs)
     df = df[np.isfinite(df["mces"])].reset_index(drop=True)
-    fp_cols = [c for c in df.columns if c not in ("i", "j", "mces")]
+    # every column that is not bookkeeping (i/j/mces/timedout) and not a bool flag is an FP
+    fp_cols = [c for c in df.columns
+               if c not in ("i", "j", "mces", "timedout") and df[c].dtype != bool]
     mces = df["mces"].to_numpy()
     cols = {c: df[c].to_numpy() for c in fp_cols}
     n = len(df)
