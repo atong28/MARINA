@@ -29,11 +29,35 @@ Usage:
         --workers 16 --seed 0 --timeout 60 \
         --fp NAME=/path/rankingset.pt [--fp ...] --out results/exp1_pairs.parquet
 """
-import argparse, os, pickle, time
+import argparse, multiprocessing, os, pickle, time
 from collections import defaultdict
 from multiprocessing import Pool
+from multiprocessing.pool import Pool as _PoolBase
 
 import numpy as np
+
+
+# Pool workers are daemonic by default and daemonic processes cannot spawn children — but
+# _mces_pair needs to fork a per-pair subprocess for its hard timeout. NoDaemonPool makes the
+# MCES workers non-daemonic so that nesting is allowed. (Mass/FP pools stay plain Pool.)
+class _NoDaemonProcess(multiprocessing.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):
+        pass
+
+
+class _NoDaemonContext(type(multiprocessing.get_context("fork"))):
+    Process = _NoDaemonProcess
+
+
+class NoDaemonPool(_PoolBase):
+    def __init__(self, *args, **kwargs):
+        kwargs["context"] = _NoDaemonContext()
+        super().__init__(*args, **kwargs)
 import pandas as pd
 
 
@@ -196,7 +220,7 @@ def main():
     pos = {p: k for k, p in enumerate(pairs)}
     results = np.full(len(pairs), np.nan)
     timedout = np.zeros(len(pairs), dtype=bool)
-    with Pool(args.workers, initializer=_init, initargs=(smiles, args.timeout)) as pool:
+    with NoDaemonPool(args.workers, initializer=_init, initargs=(smiles, args.timeout)) as pool:
         for k, (i, j, sim, to) in enumerate(pool.imap_unordered(_mces_pair, pairs, chunksize=16)):
             results[pos[(i, j)]] = sim
             timedout[pos[(i, j)]] = to
