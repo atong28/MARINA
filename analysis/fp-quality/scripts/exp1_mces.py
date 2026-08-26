@@ -66,18 +66,19 @@ def _mass_one(smi):
 
 _SMILES = None
 _TIMEOUT = 60
+_CHEM = None
+_RASCAL = None
 
 
-def _mces_pair(ij):
-    from rdkit import Chem, RDLogger
-    from rdkit.Chem import rdRascalMCES
-    RDLogger.DisableLog("rdApp.*")
-    i, j = ij
-    m1 = Chem.MolFromSmiles(_SMILES[i])
-    m2 = Chem.MolFromSmiles(_SMILES[j])
+def _mces_compute(i, j, q):
+    """Actual RASCAL call; runs in a throwaway subprocess so a crash/hang can't wedge the pool.
+    Uses the _CHEM/_RASCAL modules imported once in _init and inherited via fork — importing
+    rdkit here would cost ~0.5s per pair."""
+    m1 = _CHEM.MolFromSmiles(_SMILES[i])
+    m2 = _CHEM.MolFromSmiles(_SMILES[j])
     if m1 is None or m2 is None:
-        return (i, j, np.nan, False)   # unparseable -> excluded, not a timeout
-    opts = rdRascalMCES.RascalOptions()
+        q.put((i, j, float("nan"), False)); return   # unparseable -> excluded, not a timeout
+    opts = _RASCAL.RascalOptions()
     opts.similarityThreshold = 0.05
     # NB: do NOT set opts.minFragSize — it explodes RASCAL's search into 60s timeouts on
     # ordinary above-threshold pairs (see module docstring). Default minFragSize is correct.
@@ -88,20 +89,45 @@ def _mces_pair(ij):
     opts.returnEmptyMCES = True
     opts.timeout = _TIMEOUT
     try:
-        r = rdRascalMCES.FindMCES(m1, m2, opts)
+        r = _RASCAL.FindMCES(m1, m2, opts)
         if not r:
-            return (i, j, np.nan, False)
+            q.put((i, j, float("nan"), False)); return
         res = r[0]
-        # timedOut=True => intractable at this timeout, left NaN (true timeout); else the
-        # similarity is reliable, including the recovered ~0 screen-outs.
-        return (i, j, float(res.similarity), bool(res.timedOut))
+        q.put((i, j, float(res.similarity), bool(res.timedOut)))
     except Exception:
-        return (i, j, np.nan, True)
+        q.put((i, j, float("nan"), True))
+
+
+def _mces_pair(ij):
+    """Run one RASCAL pair in an isolated subprocess with a HARD wall-clock cap.
+
+    RASCAL's timeout is a soft check and it can (a) overrun by minutes on pathological
+    symmetric molecules or (b) segfault the worker outright — which deadlocks a plain
+    multiprocessing.Pool forever (observed: a shard wedged at ~0% CPU for 48 min). Isolating
+    each call means a hang is hard-killed at _TIMEOUT+15s and a crash yields an empty queue;
+    either way the pair is recorded NaN/timedout and the run keeps going."""
+    import queue as _queue
+    from multiprocessing import Process, Queue
+    i, j = ij
+    q = Queue()
+    p = Process(target=_mces_compute, args=(i, j, q))
+    p.start()
+    try:
+        res = q.get(timeout=_TIMEOUT + 15)
+    except _queue.Empty:
+        res = (i, j, np.nan, True)     # hang or segfault -> treat as intractable timeout
+    if p.is_alive():
+        p.terminate()
+    p.join()
+    return res
 
 
 def _init(smiles, timeout):
-    global _SMILES, _TIMEOUT
-    _SMILES, _TIMEOUT = smiles, timeout
+    global _SMILES, _TIMEOUT, _CHEM, _RASCAL
+    from rdkit import Chem, RDLogger
+    from rdkit.Chem import rdRascalMCES
+    RDLogger.DisableLog("rdApp.*")
+    _SMILES, _TIMEOUT, _CHEM, _RASCAL = smiles, timeout, Chem, rdRascalMCES
 
 
 def main():
