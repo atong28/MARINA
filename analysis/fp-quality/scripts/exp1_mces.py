@@ -8,10 +8,15 @@ RascalMCES is the ground truth; FP similarity is Tanimoto over the binary select
 column-sets (all fingerprints are binary thermometer/selected bits, so plain Tanimoto is the
 consistent metric — no metric tuning).
 
-Single correct pass: RascalMCES runs with returnEmptyMCES=True + minFragSize=3, so
+Single correct pass: RascalMCES runs with returnEmptyMCES=True (default minFragSize), so
 screened-out dissimilar pairs get their real ~0 similarity instead of being dropped as NaN
 (the v1 bias, which the old exp1_mces_retry.py patched after the fact — now folded in here).
 Only true timeouts remain NaN and are flagged in the `timedout` column.
+
+Do NOT set opts.minFragSize: on the MARINA-DB pool it makes RASCAL's search explode on
+ordinary 250-900 Da pairs (real sim 0.05-0.2, above the screen so the full search runs) — ~35%
+of pairs hit the 60s timeout, collapsing throughput ~3x. returnEmptyMCES alone is fast and
+returns the same similarities; minFragSize=3 was the regression, verified pair-by-pair.
 
 Output: <out>.parquet with columns [i, j, mces, timedout, <fp Tanimoto per fingerprint>].
 exp1_analyze.py consumes it.
@@ -66,7 +71,8 @@ def _mces_pair(ij):
         return (i, j, np.nan, False)   # unparseable -> excluded, not a timeout
     opts = rdRascalMCES.RascalOptions()
     opts.similarityThreshold = 0.05
-    opts.minFragSize = 3
+    # NB: do NOT set opts.minFragSize — it explodes RASCAL's search into 60s timeouts on
+    # ordinary above-threshold pairs (see module docstring). Default minFragSize is correct.
     # returnEmptyMCES=True is essential: without it RASCAL returns an EMPTY result for pairs
     # it screens out below the 0.05 threshold (genuinely dissimilar, MCES ~ 0), which then get
     # logged NaN and dropped -- removing the hard-to-rank dissimilar tail and biasing every
@@ -146,7 +152,7 @@ def main():
     results = np.full(len(pairs), np.nan)
     timedout = np.zeros(len(pairs), dtype=bool)
     with Pool(args.workers, initializer=_init, initargs=(smiles, args.timeout)) as pool:
-        for k, (i, j, sim, to) in enumerate(pool.imap_unordered(_mces_pair, pairs, chunksize=64)):
+        for k, (i, j, sim, to) in enumerate(pool.imap_unordered(_mces_pair, pairs, chunksize=16)):
             results[pos[(i, j)]] = sim
             timedout[pos[(i, j)]] = to
             if k % 5000 == 0:

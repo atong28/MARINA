@@ -28,7 +28,8 @@ selected-bit vectors; no metric tuning — see [fingerprint MI redundancy §5](.
 - **Exp 1 — MCES similarity–structure agreement** (`scripts/exp1_mces.py` → `exp1_analyze.py`).
   *Precedent: Count your bits (RascalMCES reference); Riniker & Landrum.* Samples pairs from a
   mass-stratified pool, computes RascalMCES structural similarity (ground truth,
-  `similarityThreshold=0.05, minFragSize=3, returnEmptyMCES=True`) and each FP's Tanimoto, reports
+  `similarityThreshold=0.05, returnEmptyMCES=True`; minFragSize left at default — setting it to 3
+  makes RASCAL time out on ~35% of ordinary pairs) and each FP's Tanimoto, reports
   **Spearman(FP-sim, MCES)** with paired bootstrap CIs and Δρ vs a reference → **similarity figure**.
   `returnEmptyMCES=True` is set from the start so screened-out dissimilar pairs get their real ~0
   similarity instead of being dropped (the old `exp1_mces_retry.py` patch is folded in; true
