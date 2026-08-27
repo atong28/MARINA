@@ -42,8 +42,8 @@ class MARINAArgs(SMARTArgs):
     h_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 20.0])
     mz_wavelength_bounds: List[float] = field(
-        default_factory=lambda: [0.01, 5000.0])
+        default_factory=lambda: [0.01, 3100.0])
     intensity_wavelength_bounds: List[float] = field(
-        default_factory=lambda: [0.001, 200.0])
+        default_factory=lambda: [0.001, 2.0])
     mw_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 7000.0])
