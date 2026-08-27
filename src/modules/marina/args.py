@@ -2,12 +2,19 @@ from typing import List, Dict
 from pydantic.dataclasses import dataclass
 from dataclasses import field
 from ..core import SMARTArgs
+from ..core.const import INPUT_TYPES
 
 
 @dataclass
 class MARINAArgs(SMARTArgs):
     experiment_name: str = 'marina-development'
     project_name: str = 'MARINA'
+
+    # MARINA defaults to dual-mode MS/MS (positive + negative). Scoped here rather than the
+    # shared core default so SPECTRE (fixed 5-encoder list) is unaffected on old datasets.
+    input_types: List[INPUT_TYPES] = field(
+        default_factory=lambda: ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
+    )
 
     dim_model: int = 784
     nmr_dim_coords: List[int] = field(default_factory=lambda: [391, 391, 2])
