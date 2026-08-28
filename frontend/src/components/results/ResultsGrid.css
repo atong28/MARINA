@@ -23,6 +23,15 @@
   color: #6b7280;
 }
 
+.results-grid__note {
+  /* Pull up under the heading (which carries 16px of bottom margin). */
+  margin: -8px 0 16px;
+  max-width: 640px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
 .results-grid__list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

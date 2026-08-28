@@ -10,10 +10,12 @@ interface ResultsGridProps {
   /** Reference fingerprint from the last search; drives the substructure panel. */
   predFp?: number[] | null
   modelId?: string
+  /** How the results were produced; controls the retrieval-only caption. */
+  resultSource?: 'prediction' | 'smiles-search' | null
 }
 
 function ResultsGrid({
-  results, customResults = [], onRemoveCustom, predFp, modelId,
+  results, customResults = [], onRemoveCustom, predFp, modelId, resultSource,
 }: ResultsGridProps) {
   if (results.length === 0 && customResults.length === 0) return null
 
@@ -45,6 +47,13 @@ function ResultsGrid({
           <h2 className="results-grid__heading">
             Results <span className="results-grid__count">({results.length})</span>
           </h2>
+          {resultSource === 'prediction' && (
+            <p className="results-grid__note">
+              Results are retrieved from the MARINA retrieval database. The model does not
+              predict novel structures; use SMILES search to see a proposed structure's
+              closest matches.
+            </p>
+          )}
           <div className="results-grid__list">
             {results.map((result, i) => (
               <ResultCard

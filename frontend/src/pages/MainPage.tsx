@@ -474,6 +474,7 @@ function MainPage() {
         // and the calibration curve was fitted on predicted probabilities.
         predFp={resultSource === 'prediction' ? predictedFp : null}
         modelId={selectedModelId ?? undefined}
+        resultSource={resultSource}
       />
     </div>
   )

@@ -56,18 +56,34 @@
   z-index: 99999;
 
   width: 260px;
-  padding: 10px 13px;
+  max-width: calc(100vw - 16px); /* never exceed the viewport on narrow screens */
+  /* Cap to the viewport height so it can never be forced off the top/bottom
+     edge; the inner element scrolls when the content is taller than this. */
+  max-height: calc(100vh - 16px);
+  box-sizing: border-box;
   background: #1e293b;
   color: #f1f5f9;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.6;
-  white-space: pre-line; /* renders \n as visible line breaks */
-  pointer-events: none;
+  /* pointer-events enabled so the tooltip can be hovered and scrolled. */
+  pointer-events: auto;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
 
   animation: help-tooltip-in 0.12s ease both;
+}
+
+/* Scrollable content wrapper. Kept separate from the outer bubble so the outer
+   element does not need `overflow`, which would clip the arrow pseudo-element. */
+.help-btn__tooltip-content {
+  display: block;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* don't chain scroll to the page behind it */
+  padding: 10px 13px;
+  border-radius: inherit; /* keep the scroll area within the rounded corners */
+  white-space: pre-line; /* renders \n as visible line breaks */
 }
 
 @keyframes help-tooltip-in {
