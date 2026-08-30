@@ -6,11 +6,13 @@ row (so cosine == the deployed metric) and col indices = set bits. Row order = r
 integer keys 0..N-1.
 
 Usage: python build_ecfp4.py --retrieval <retrieval.pkl> --out_dir <dir> \
-           [--fp-type morgan|atompair] [--nbits 2048] [--radius 2] [--workers 16] [--name ...]
+           [--fp-type morgan|atompair|fcfp] [--nbits 2048] [--radius 2] [--workers 16] [--name ...]
 Writes <out_dir>/<name>/rankingset.pt
   - ecfp4 baseline:            --fp-type morgan   --nbits 2048  --radius 2  --name ECFP4_2048
   - width+radius-matched fair: --fp-type morgan   --nbits 16384 --radius 10 --name ECFP4_16384
   - atom pair (radius ignored): --fp-type atompair --nbits 2048             --name AtomPair_2048
+  - FCFP9 (feature-class Morgan, Count-your-bits' top MCES row):
+                                --fp-type fcfp     --nbits 16384 --radius 9  --name FCFP9_16384
 
 Deps: torch + rdkit + numpy. Run under the ~/Workspace master pixi env or the Nautilus image.
 """
@@ -36,6 +38,11 @@ def _init(fp_type, radius, nbits):
     RDLogger.DisableLog("rdApp.*")
     if fp_type == "morgan":
         _GEN = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=nbits)
+    elif fp_type == "fcfp":
+        # FCFP = Morgan with functional-class (pharmacophore) atom invariants, not exact-atom.
+        inv = rdFingerprintGenerator.GetMorganFeatureAtomInvGen()
+        _GEN = rdFingerprintGenerator.GetMorganGenerator(
+            radius=radius, fpSize=nbits, atomInvariantsGenerator=inv)
     elif fp_type == "atompair":
         _GEN = rdFingerprintGenerator.GetAtomPairGenerator(fpSize=nbits)
     else:
@@ -46,7 +53,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--retrieval", required=True)
     ap.add_argument("--out_dir", required=True)
-    ap.add_argument("--fp-type", choices=["morgan", "atompair"], default="morgan")
+    ap.add_argument("--fp-type", choices=["morgan", "atompair", "fcfp"], default="morgan")
     ap.add_argument("--nbits", type=int, default=2048)
     ap.add_argument("--radius", type=int, default=2)
     ap.add_argument("--workers", type=int, default=16)
