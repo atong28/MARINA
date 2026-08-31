@@ -47,6 +47,13 @@ CHAIN_SCRIPT="${CHAIN_SCRIPT:-$CODE_DIR/singularity/delta-train.sbatch}"
 MAX_CHUNKS="${MAX_CHUNKS:-12}"
 CHAIN_INDEX="${CHAIN_INDEX:-1}"
 
+# Partition/account propagate down the chain: chunk 1 takes them from the #SBATCH defaults
+# (or a CLI --partition/--account override on the initial sbatch, surfaced as SLURM_JOB_*),
+# and every successor is resubmitted onto the SAME partition. This is what lets a run submitted
+# with --partition=gpuA40x4 stay on A40 across all chunks instead of bouncing back to A100.
+PARTITION="${PARTITION:-${SLURM_JOB_PARTITION:-gpuA100x4}}"
+ACCOUNT="${ACCOUNT:-${SLURM_JOB_ACCOUNT:-bibx-delta-gpu}}"
+
 # Pinning the run id is what makes the chain a single run rather than N runs: it fixes both the
 # results directory (main.py reads SMART_RUN_ID) and the W&B run id, so every chunk resumes the
 # same last.ckpt and logs to the same W&B run.
@@ -69,6 +76,8 @@ fi
 if (( CHAIN_INDEX < MAX_CHUNKS )); then
     next_id=$(sbatch --parsable \
         --dependency=afterany:"$SLURM_JOB_ID" \
+        --partition="$PARTITION" \
+        --account="$ACCOUNT" \
         --job-name="${SLURM_JOB_NAME:-marina}" \
         --export=ALL,SMART_RUN_ID="$SMART_RUN_ID",CHAIN_INDEX="$((CHAIN_INDEX + 1))" \
         "$CHAIN_SCRIPT")
