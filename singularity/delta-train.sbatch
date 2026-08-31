@@ -53,6 +53,13 @@ CHAIN_INDEX="${CHAIN_INDEX:-1}"
 # with --partition=gpuA40x4 stay on A40 across all chunks instead of bouncing back to A100.
 PARTITION="${PARTITION:-${SLURM_JOB_PARTITION:-gpuA100x4}}"
 ACCOUNT="${ACCOUNT:-${SLURM_JOB_ACCOUNT:-bibx-delta-gpu}}"
+# GPU/CPU/mem also propagate down the chain (same reason as partition): a run started as a
+# 2-GPU shared job stays 2-GPU across all chunks instead of the successor reverting to the
+# #SBATCH full-node (4-GPU) request. NPROC (torchrun ranks) is derived separately from
+# nvidia-smi -L below, so it tracks whatever is actually allocated.
+GPUS_PER_NODE="${GPUS_PER_NODE:-${SLURM_GPUS_PER_NODE:-4}}"
+CPUS_PER_TASK="${CPUS_PER_TASK:-${SLURM_CPUS_PER_TASK:-64}}"
+MEM="${MEM:-${SLURM_MEM_PER_NODE:-240G}}"
 
 # Pinning the run id is what makes the chain a single run rather than N runs: it fixes both the
 # results directory (main.py reads SMART_RUN_ID) and the W&B run id, so every chunk resumes the
@@ -78,6 +85,9 @@ if (( CHAIN_INDEX < MAX_CHUNKS )); then
         --dependency=afterany:"$SLURM_JOB_ID" \
         --partition="$PARTITION" \
         --account="$ACCOUNT" \
+        --gpus-per-node="$GPUS_PER_NODE" \
+        --cpus-per-task="$CPUS_PER_TASK" \
+        --mem="$MEM" \
         --job-name="${SLURM_JOB_NAME:-marina}" \
         --export=ALL,SMART_RUN_ID="$SMART_RUN_ID",CHAIN_INDEX="$((CHAIN_INDEX + 1))" \
         "$CHAIN_SCRIPT")

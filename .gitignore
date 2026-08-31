@@ -223,7 +223,7 @@ old_ckpt/
 .pixi/*
 !.pixi/config.toml
 ckpt/
-data/
+/data/
 
 node_modules/
 

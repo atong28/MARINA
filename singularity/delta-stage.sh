@@ -48,7 +48,7 @@ rsync -az --delete -e "$RSYNC_E" \
     --exclude '.pixi/' \
     --exclude 'analysis/' \
     --exclude 'frontend/' \
-    --exclude 'data/' \
+    --exclude '/data/' \
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
