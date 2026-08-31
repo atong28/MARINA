@@ -81,10 +81,27 @@ def eval_split(entries, model, data_module, fp_loader, restrictions, device,
     (default off, so score.py's record shape is unchanged.)
     """
     records = []
+    skipped = 0
     for entry in entries:
-        inputs = to_device(
-            data_module.format_inference_data(filter_data(entry["input"], restrictions)),
-            device)
+        # A few journal entries carry a malformed modality (empty or 1-D array); collate
+        # needs a 2-D tensor per present modality, so drop invalid ones (mw is a scalar,
+        # handled downstream). If nothing spectral survives, skip the entry.
+        raw = filter_data(entry["input"], restrictions)
+        clean = {}
+        for k, val in raw.items():
+            if k == "mw":
+                clean[k] = val
+                continue
+            try:
+                t = torch.as_tensor(val)
+            except Exception:
+                continue
+            if t.ndim == 2 and t.shape[0] > 0:
+                clean[k] = val
+        if not any(k != "mw" for k in clean):
+            skipped += 1
+            continue
+        inputs = to_device(data_module.format_inference_data(clean), device)
         pred = torch.sigmoid(model(**inputs)[0])
         sfp = fp_loader.build_mfp_for_smiles(entry[smiles_key]).to(device)
         sfp = sfp / torch.norm(sfp)
@@ -94,21 +111,34 @@ def eval_split(entries, model, data_module, fp_loader, restrictions, device,
                      for i in idxs]
         derep = [c > derep_thresh for c in derep_cos]
 
+        # Ranks (0-based). batched_rank counts bank rows with sim >= cos(pred,sfp) minus
+        # the self-row -> STRICT (ties count against). tie-aware (D6) counts only rows
+        # strictly better than the truth, so fingerprint-identical twins don't penalise it.
+        p2 = pred.unsqueeze(0)
+        sims = model.ranker._sims(p2).squeeze(1)                 # (N,)
+        thr = torch.dot(torch.nn.functional.normalize(p2, dim=1)[0],
+                        torch.nn.functional.normalize(sfp.unsqueeze(0), dim=1)[0])
+        rank_tie = int(((sims > thr) & ~torch.isclose(sims, thr.expand_as(sims))).sum())
+
         rec = {
             "split": entry.get("split"),
             "cos": cos(pred, sfp),
             "rank": int(model.ranker.batched_rank(
-                pred.unsqueeze(0), sfp.unsqueeze(0), tie_aware=True)[0]),
+                pred.unsqueeze(0), sfp.unsqueeze(0))[0]),
+            "rank_tie": rank_tie,
             "derep": derep,
             "entry": entry,
         }
         if strict:
             rec["rank_strict"] = int(model.ranker.batched_rank(
-                pred.unsqueeze(0), sfp.unsqueeze(0), tie_aware=False)[0])
+                pred.unsqueeze(0), sfp.unsqueeze(0))[0])
         if return_details:
             rec["idxs"] = idxs
             rec["derep_cos"] = derep_cos
         records.append(rec)
+    if skipped:
+        print(f"[eval_split] skipped {skipped} entries with no valid spectral modality",
+              flush=True)
     return records
 
 
@@ -121,6 +151,9 @@ def summarise(records, strict=False):
     out["mean_cos"] = sum(r["cos"] for r in records) / n
     for k in (1, 5, 10):
         out[f"rank_{k}"] = 100.0 * sum(r["rank"] < k for r in records) / n
+    if "rank_tie" in records[0]:
+        for k in (1, 5, 10):
+            out[f"rank_tie_{k}"] = 100.0 * sum(r["rank_tie"] < k for r in records) / n
     if strict and "rank_strict" in records[0]:
         for k in (1, 5, 10):
             out[f"rank_{k}_strict"] = 100.0 * sum(r["rank_strict"] < k for r in records) / n

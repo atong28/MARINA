@@ -11,7 +11,7 @@ class MARINAArgs(SMARTArgs):
     project_name: str = 'MARINA'
 
     input_types: List[INPUT_TYPES] = field(
-        default_factory=lambda: ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
+        default_factory=lambda: ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
     )
 
     additional_test_types: list[list[str]] = field(default_factory=lambda: [
@@ -37,13 +37,18 @@ class MARINAArgs(SMARTArgs):
     ff_dim: int = 3072
     out_dim: int = 16384
 
+    # Molecular formula: a fixed-length element-count vector encoded by a small FFN (not
+    # self-attention) into `formula_tokens` cross-attention memory tokens. Active only when
+    # 'formula' is in input_types.
+    formula_tokens: int = 1
+
     c_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 400.0])
     h_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 20.0])
     mz_wavelength_bounds: List[float] = field(
-        default_factory=lambda: [0.01, 5000.0])
+        default_factory=lambda: [0.01, 3100.0])
     intensity_wavelength_bounds: List[float] = field(
-        default_factory=lambda: [0.001, 200.0])
+        default_factory=lambda: [0.001, 2.0])
     mw_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 7000.0])

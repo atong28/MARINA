@@ -6,7 +6,8 @@
 # nodes do have network, so the sync runs there. Because the chain pins the W&B run id
 # across chunks, syncing all of them folds the whole chain into a single W&B run.
 #
-# Safe to re-run: wandb skips run directories it has already synced.
+# Safe to re-run: --no-mark-synced leaves the dirs unmarked so a live chain can be
+# re-synced as it grows (the default would mark them and skip every later sync).
 #
 #   Usage:  bash singularity/sdsc-sync-wandb.sh <sdsc-username>
 set -euo pipefail
@@ -30,7 +31,7 @@ fi
 ssh -S "$SOCK" "$TARGET" bash -s <<EOF
 set -euo pipefail
 PROJECT_ROOT='$PROJECT_ROOT'
-WANDB_DIR="\$PROJECT_ROOT/runs/wandb"
+WANDB_DIR="\$PROJECT_ROOT/runs/wandb/wandb"  # sdsc-train.sbatch sets WANDB_DIR=/runs/wandb; wandb nests offline-run-* under a further wandb/
 
 shopt -s nullglob
 runs=("\$WANDB_DIR"/offline-run-*)
@@ -50,5 +51,5 @@ singularity exec --cleanenv \
     --env OPENBLAS_NUM_THREADS=1 --env OMP_NUM_THREADS=1 \
     -B "\$PROJECT_ROOT":"\$PROJECT_ROOT" \
     "\$PROJECT_ROOT/images/marina.sif" \
-    wandb sync "\${runs[@]}"
+    wandb sync --no-mark-synced "\${runs[@]}"
 EOF

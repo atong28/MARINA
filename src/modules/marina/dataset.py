@@ -121,6 +121,10 @@ class MARINADataset(Dataset):
                 self.augmenter = None
             
             self.drop_percentage = self.compute_drop_percentage(data)
+            self.dropout_scheme = getattr(args, 'modality_dropout_scheme', 'bernoulli')
+            if split == 'train':
+                logger.debug(
+                    f'[MARINADataset] Modality dropout scheme: {self.dropout_scheme}')
 
             self.data = list(data.items())
 
@@ -158,6 +162,15 @@ class MARINADataset(Dataset):
         if self.split != 'train':
             input_types = set(self.input_types)
             return self.spectral_loader.load(data_idx, input_types), self.mfp_loader.load(data_idx)
+        if self.dropout_scheme == 'uniform_cardinality':
+            input_types = self._sample_uniform_cardinality(data_obj)
+        else:
+            input_types = self._sample_bernoulli(data_obj)
+        return self.spectral_loader.load(data_idx, input_types, jittering=self.jittering, augmenter=self.augmenter), self.mfp_loader.load(data_idx)
+
+    def _sample_bernoulli(self, data_obj):
+        '''Legacy scheme: force-keep one random present spectral modality, then drop every
+        other present modality independently at drop_percentage.'''
         available_types = {
             'hsqc': data_obj['has_hsqc'],
             'c_nmr': data_obj['has_c_nmr'],
@@ -169,8 +182,7 @@ class MARINADataset(Dataset):
             k for k, v in available_types.items() if k in self.input_types and v]
         assert len(drop_candidates) > 0, 'Found an empty entry!'
 
-        idx = torch.randint(len(drop_candidates), (1,)).item()
-        always_keep = drop_candidates[idx]
+        always_keep = drop_candidates[torch.randint(len(drop_candidates), (1,)).item()]
         input_types = set(self.input_types)
         for input_type in self.input_types:
             if not data_obj[f'has_{input_type}']:
@@ -179,7 +191,24 @@ class MARINADataset(Dataset):
                   input_type not in self.requires and
                   torch.rand(1).item() < self.drop_percentage[input_type]):
                 input_types.remove(input_type)
-        return self.spectral_loader.load(data_idx, input_types, jittering=self.jittering, augmenter=self.augmenter), self.mfp_loader.load(data_idx)
+        return input_types
+
+    def _sample_uniform_cardinality(self, data_obj):
+        '''Uniform-over-cardinality scheme: pick the number of modalities uniformly, then a
+        uniform subset of that size among the present modalities, requiring >=1 spectral
+        modality. Unlike the bernoulli scheme, `requires` is not pinned here (it still
+        filters which compounds enter the split); every present modality is a free
+        candidate. Rejection-samples the (rare) all-non-spectral subset, which can only
+        occur at cardinality <= len(NON_SPECTRAL_INPUTS).'''
+        available = [m for m in self.input_types if data_obj[f'has_{m}']]
+        assert available, 'Found an empty entry!'
+        has_spectral = any(m not in NON_SPECTRAL_INPUTS for m in available)
+        k = torch.randint(1, len(available) + 1, (1,)).item()
+        while True:
+            perm = torch.randperm(len(available))[:k].tolist()
+            chosen = {available[i] for i in perm}
+            if not has_spectral or any(m not in NON_SPECTRAL_INPUTS for m in chosen):
+                return chosen
 
 
 class MARINADataModule(pl.LightningDataModule):

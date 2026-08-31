@@ -118,6 +118,12 @@ class MARINAInputLoader(SpectralInputLoader):
         mw = mw.view(1, 1)
         return {'mw': mw}
 
+    def _load_formula(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
+        # Precomputed element-count vector, read straight from the in-RAM index (like mw):
+        # no disk I/O. Shape (1, n_elements) so it flows through collate as a single token.
+        formula = torch.tensor(self.data_dict[idx]['formula_vec'], dtype=self.dtype)
+        return {'formula': formula.view(1, -1)}
+
     def _load_mass_spec(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         mass_spec = self._get_tensor(idx, 'MassSpec')
         mass_spec = normalize_mass_spec(mass_spec)

@@ -12,16 +12,28 @@ from wandb.sdk.wandb_run import Run
 import wandb
 
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
+from rdkit.Chem import rdMolDescriptors
 from rdkit.DataStructs import ConvertToNumpyArray
 from .marina import MARINAArgs,MARINADataModule, MARINA
 from .spectre import SPECTREArgs, SPECTREDataModule, SPECTRE
 from .log import get_logger
 from .core.const import BENCHMARK_ROOT, DATASET_ROOT, INPUT_TYPES
 from .data.fp_loader import EntropyFPLoader
+from .data.formula import formula_to_vector
 
 logger = get_logger(__file__)
 
 _gen = GetMorganGenerator(radius=2, fpSize=2048)
+
+
+def formula_vec_from_smiles(smiles: str) -> torch.Tensor:
+    """Formula element-count vector (1, n_elements) for a benchmark molecule, using the same
+    RDKit formula string + fixed vocabulary as the index.pkl precompute so it matches training."""
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Invalid SMILES: {smiles}")
+    formula = rdMolDescriptors.CalcMolFormula(mol)
+    return torch.tensor(formula_to_vector(formula), dtype=torch.float32).view(1, -1)
 
 def cos_sim(pred, target):
     return torch.dot(pred, target) / (torch.norm(pred) * torch.norm(target))
@@ -73,7 +85,10 @@ def _run_benchmark_loop(
 ) -> dict:
     """Run inference on all entries and attach predictions in-place. Returns benchmark_data."""
     for key, entry in tqdm(benchmark_data.items(), desc=desc):
-        inputs = data_module.format_inference_data(filter_data(entry['input'], restrictions))
+        raw_input = entry['input']
+        if 'formula' in restrictions:
+            raw_input = {**raw_input, 'formula': formula_vec_from_smiles(entry['smiles'])}
+        inputs = data_module.format_inference_data(filter_data(raw_input, restrictions))
         with torch.no_grad():
             output = model(**inputs)
         pred = torch.sigmoid(output[0])
