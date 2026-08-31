@@ -104,7 +104,14 @@ def eval_model(params_path, ckpt_path, journal, device, strict, skip_test):
     data_module = MARINADataModule(args, fp_loader)
     # Not benchmark.load_model: it torch.loads without map_location (cannot run on a
     # CPU box) and calls setup_ranker(), which reads a rankingset we override below.
-    model.load_state_dict(torch.load(ckpt_path, map_location="cpu")["state_dict"])
+    # Load non-strict, but assert the only gap is the unused negative-MS encoder
+    # (enc_ms_neg): the multuncap checkpoints were trained without mass_spec_neg, while
+    # the current model always instantiates that encoder. It is never fed here.
+    missing, unexpected = model.load_state_dict(
+        torch.load(ckpt_path, map_location="cpu")["state_dict"], strict=False)
+    bad = [k for k in missing if not k.startswith("enc_ms_neg")]
+    assert not bad, f"unexpected MISSING keys (not enc_ms_neg): {bad}"
+    assert not unexpected, f"unexpected keys in checkpoint: {unexpected}"
     model.eval()
     model.ranker = RankingSet(
         store=torch.load(os.path.join(DATA_DATASET, args.fp_type, "rankingset.pt"),
@@ -121,6 +128,8 @@ def eval_model(params_path, ckpt_path, journal, device, strict, skip_test):
     res["journal_full"] = bucket_journal(jrecs, strict)
     res["journal_marina_clean"] = bucket_journal(
         [r for r in jrecs if r["entry"].get("marina_clean")], strict)
+    res["journal_spectre_clean"] = bucket_journal(
+        [r for r in jrecs if r["entry"].get("spectre_clean")], strict)
     res["journal_both_clean"] = bucket_journal(
         [r for r in jrecs if r["entry"].get("both_clean")], strict)
 

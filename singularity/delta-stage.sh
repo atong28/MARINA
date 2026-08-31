@@ -48,6 +48,8 @@ rsync -az --delete -e "$RSYNC_E" \
     --exclude '.pixi/' \
     --exclude 'analysis/' \
     --exclude 'frontend/' \
+    --exclude 'data/' \
+    --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
     "$LOCAL_ROOT/MARINA/" "$TARGET:$PROJECT_ROOT/code/MARINA/"

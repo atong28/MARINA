@@ -6,7 +6,7 @@ from torchmetrics import MeanMetric
 
 from .args import MARINAArgs
 
-from ..core.const import SELF_ATTN_INPUTS
+from ..core.const import SELF_ATTN_INPUTS, FORMULA_ELEMENTS
 from ..core.metrics import cm
 from ..core.ranker import RankingSet
 
@@ -54,6 +54,31 @@ class CrossAttentionBlock(nn.Module):
         ff_out = self.ff(q1)
         out = self.norm2(q1 + ff_out)
         return out
+
+class FormulaEncoder(nn.Module):
+    """Encode a molecular-formula element-count vector into cross-attention memory tokens.
+
+    A small FFN (Linear -> GELU -> Linear) rather than a self-attention transformer: the
+    formula is a single fixed-length descriptor, not a peak sequence. Counts are log1p'd so
+    a C60 (60) and a C6 (6) do not differ by an order of magnitude at the input.
+    """
+
+    def __init__(self, n_elements, dim_model, n_tokens=1):
+        super().__init__()
+        self.n_tokens = n_tokens
+        self.dim_model = dim_model
+        self.proj = nn.Sequential(
+            nn.Linear(n_elements, dim_model),
+            nn.GELU(),
+            nn.Linear(dim_model, dim_model * n_tokens),
+        )
+
+    def forward(self, formula_vec):
+        # formula_vec: (B, n_elements) raw counts -> (B, n_tokens, dim_model)
+        x = torch.log1p(formula_vec)
+        x = self.proj(x)
+        return x.view(formula_vec.shape[0], self.n_tokens, self.dim_model)
+
 
 class MARINA(pl.LightningModule):
     def __init__(self, args: MARINAArgs, fp_loader: FPLoader):
@@ -140,6 +165,12 @@ class MARINA(pl.LightningModule):
             modality: nn.Parameter(torch.randn(1, 1, self.dim_model))
             for modality in self.encoders
         })
+        # Formula gets its own FFN encoder (not in self.encoders / self_attn): its tokens go
+        # straight into the cross-attention memory, bypassing per-modality self-attention.
+        self.enc_formula = (
+            FormulaEncoder(len(FORMULA_ELEMENTS), self.dim_model, args.formula_tokens)
+            if 'formula' in self.args.input_types else None
+        )
         self.cross_blocks = nn.ModuleList([
             CrossAttentionBlock(
                 dim_model=self.dim_model,
@@ -185,6 +216,13 @@ class MARINA(pl.LightningModule):
             attended = self.self_attn[m](enc_seq, src_key_padding_mask=mask)
             all_points.append(attended)
             all_masks.append(mask)
+        if self.enc_formula is not None and 'formula' in batch:
+            # (B, L, n_elements) -> (B, n_elements); L==1 when present, all-zero when dropped.
+            fvec = batch['formula'].sum(dim=1)
+            fmask = (fvec.abs().sum(-1) == 0)  # (B,) True where formula absent/dropped
+            ftok = self.enc_formula(fvec)      # (B, n_tokens, dim_model)
+            all_points.append(ftok)
+            all_masks.append(fmask.unsqueeze(1).expand(-1, ftok.size(1)))
         joint_seq = torch.cat(all_points, dim=1)
         joint_mask = torch.cat(all_masks, dim=1)
         global_token = self.global_cls.expand(B, 1, -1)

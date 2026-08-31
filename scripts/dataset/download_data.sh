@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# SUPERSEDED by scripts/marina_db/build/00_download.sh (the go-forward MARINA-DB pipeline).
+# Kept for provenance only. Its gdown IDs are stale (mnova points at the 488-shard
+# 1a6IkkpYVx5mO2HWffi5PO0gUVgXvOkAR; COCONUT pinned to 2026-04). Do not use for new builds.
+#
 # downloads the data from NP-MRD, COCONUT, and LOTUS and processes them.
 mkdir -p data/raw
 # download the data from NP-MRD

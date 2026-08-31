@@ -5,7 +5,7 @@ import torch
 import torch.distributed as dist
 import pytorch_lightning as pl
 
-from .benchmark import cos_sim, filter_data
+from .benchmark import cos_sim, filter_data, formula_vec_from_smiles
 from .core.const import BENCHMARK_ROOT
 from .log import get_logger
 
@@ -65,7 +65,11 @@ class BenchmarkCosineCallback(pl.Callback):
                 for entry in data.values():
                     sfp = self.fp_loader.build_mfp_for_smiles(entry["smiles"])
                     sfp = sfp / torch.norm(sfp)
-                    prepared.append((entry["input"], sfp))
+                    # Precompute the formula token so the live benchmark matches the model's
+                    # training inputs; None when formula is not an active modality.
+                    fvec = (formula_vec_from_smiles(entry["smiles"])
+                            if 'formula' in self.restrictions else None)
+                    prepared.append((entry["input"], sfp, fvec))
             else:
                 logger.warning(f"[BenchmarkCosine] {path} missing; '{name}' will be empty.")
             # Registered even when empty: a rank that skipped this source would
@@ -93,7 +97,9 @@ class BenchmarkCosineCallback(pl.Callback):
             prepared = self._entries[name]
             shard = prepared[rank::world] if world > 1 else prepared
             local_sum = 0.0
-            for raw_input, sfp in shard:
+            for raw_input, sfp, fvec in shard:
+                if fvec is not None:
+                    raw_input = {**raw_input, 'formula': fvec}
                 inputs = dm.format_inference_data(
                     filter_data(raw_input, self.restrictions)
                 )
