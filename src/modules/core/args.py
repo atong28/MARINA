@@ -57,11 +57,6 @@ class SMARTArgs:
     use_jaccard: bool = False
     warmup: bool = False
     accumulate_grad_batches_num: int = 4
-    # Trainer precision. bf16-mixed is the default every run to date has used, but bf16 has
-    # no hardware support below sm_80 -- on SDSC's V100s (sm_70) it runs without tensor-core
-    # acceleration, while 16-mixed does engage them. fp16 has a much narrower dynamic range,
-    # so Lightning applies automatic loss scaling for it; switching changes numerics and
-    # makes runs non-comparable with existing bf16 ones.
     precision: Literal['bf16-mixed', '16-mixed', '32-true'] = 'bf16-mixed'
     dropout: float = 0.1
     
@@ -72,6 +67,20 @@ class SMARTArgs:
     # (1 - 0.5/availability). Set 0.0 to disable dropping entirely, which is what a
     # mostly single-modality dataset wants since always_keep already protects those.
     modality_drop_override: Optional[float] = None
+
+    # Modality-dropout sampling scheme for TRAINING masks.
+    #   'bernoulli'          : legacy — one random present spectral modality is force-kept,
+    #                          every other present modality is dropped independently at
+    #                          drop_percentage (see MARINADataset.compute_drop_percentage).
+    #                          The number of surviving modalities is binomial → concentrated
+    #                          in the middle, starving the single- and full-modality regimes.
+    #   'uniform_cardinality': draw a modality COMBINATION with uniform-over-cardinality
+    #                          weighting — pick the number of modalities uniformly, then a
+    #                          uniform subset of that size among the present modalities,
+    #                          requiring >=1 spectral modality. Equalizes the low- and
+    #                          full-modality regimes. `requires` still filters which compounds
+    #                          enter the split, but does NOT pin modalities under this scheme.
+    modality_dropout_scheme: Literal['bernoulli', 'uniform_cardinality'] = 'bernoulli'
 
     # peak augmentation (injection + dropout); applies to hsqc/c_nmr/h_nmr during training only
     aug_add_prob: float = 0.0

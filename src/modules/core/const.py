@@ -6,8 +6,8 @@ from ..log import get_logger
 
 logger = get_logger(__file__)
 
-INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
-INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']
+INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
+INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
 
 DEBUG_LEN: int = 3000
 
@@ -17,10 +17,15 @@ DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
     'c_nmr': 0.5,
     'mass_spec': 0.5,
     'mass_spec_neg': 0.5,
-    'mw': 0.5
+    'mw': 0.5,
+    'formula': 0.5
 }
 
-NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw'}
+# formula is non-spectral like mw (a single global descriptor token, never a peak list) and,
+# also like mw, is dropped 50% of the time for robustness. It is deliberately NOT in
+# SELF_ATTN_INPUTS: it gets its own FFN encoder in the model and joins the cross-attention
+# memory directly, rather than going through a per-modality self-attention transformer.
+NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw', 'formula'}
 SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw'}
 
 
@@ -82,7 +87,7 @@ DO_NOT_OVERRIDE = [
     'train', 'test', 'visualize', 'load_from_checkpoint', 'input_types', 'requires',
     'benchmark', 'restrictions', 'benchmark_split', 'resume',
     'experiment_name', 'project_name', 'seed', 'lr', 'epochs', 'patience',
-    'early_stopping_metric', 'modality_drop_override',
+    'early_stopping_metric', 'modality_drop_override', 'modality_dropout_scheme',
 ]
 
 HSQC_TYPE = 0
@@ -91,6 +96,7 @@ H_NMR_TYPE = 2
 MW_TYPE = 3
 MS_TYPE = 4
 MS_NEG_TYPE = 5
+FORMULA_TYPE = 6
 
 INPUT_MAP = {
     'hsqc': HSQC_TYPE,
@@ -98,5 +104,17 @@ INPUT_MAP = {
     'h_nmr': H_NMR_TYPE,
     'mw': MW_TYPE,
     'mass_spec': MS_TYPE,
-    'mass_spec_neg': MS_NEG_TYPE
+    'mass_spec_neg': MS_NEG_TYPE,
+    'formula': FORMULA_TYPE
 }
+
+# Fixed element vocabulary for the molecular-formula encoder. Order is frozen (do not
+# reorder — precomputed formula_vec entries in index.pkl are positional). These are the 39
+# elements observed across all 486,583 MARINA-DB formulas (frequency-descending as of the
+# 2026-08-30 scan); '*' is a catch-all for any element not listed, so an unseen element at
+# inference degrades gracefully into one shared slot rather than being dropped.
+FORMULA_ELEMENTS: List[str] = [
+    'H', 'C', 'O', 'N', 'S', 'Cl', 'Br', 'P', 'F', 'I', 'Si', 'B', 'Se', 'As', 'Fe',
+    'Mg', 'Co', 'Na', 'Te', 'V', 'Al', 'Zn', 'Sn', 'Au', 'Mo', 'Cu', 'W', 'Ni', 'Bi',
+    'Ga', 'K', 'Pb', 'Ca', 'Gd', 'Sb', 'Sr', 'Ru', 'Ho', 'Cr', '*',
+]
