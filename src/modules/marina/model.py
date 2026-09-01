@@ -133,19 +133,12 @@ class MARINA(pl.LightningModule):
             [args.mz_wavelength_bounds, args.intensity_wavelength_bounds],
             args.ms_is_sign_encoding
         )
-        self.enc_mw = build_encoder(
-            args.dim_model,
-            args.mw_dim_coords,
-            [args.mw_wavelength_bounds],
-            args.mw_is_sign_encoding
-        )
         self.encoders = {
             "hsqc": self.enc_nmr,
             "h_nmr": self.enc_h_nmr,
             "c_nmr": self.enc_c_nmr,
             "mass_spec": self.enc_ms,
-            "mass_spec_neg": self.enc_ms_neg,
-            "mw": self.enc_mw
+            "mass_spec_neg": self.enc_ms_neg
         }
         self.encoders = nn.ModuleDict(
             {k: v for k, v in self.encoders.items() if k in self.args.input_types})
@@ -165,6 +158,11 @@ class MARINA(pl.LightningModule):
             modality: nn.Parameter(torch.randn(1, 1, self.dim_model))
             for modality in self.encoders
         })
+        # Molecular weight: a single scalar, so a plain linear projection to one cross-attention
+        # memory token (not self-attention): a lone value has no sequence for attention to mix.
+        self.mw_embed = (
+            nn.Linear(1, self.dim_model) if 'mw' in self.args.input_types else None
+        )
         # Formula gets its own FFN encoder (not in self.encoders / self_attn): its tokens go
         # straight into the cross-attention memory, bypassing per-modality self-attention.
         self.enc_formula = (
@@ -216,6 +214,13 @@ class MARINA(pl.LightningModule):
             attended = self.self_attn[m](enc_seq, src_key_padding_mask=mask)
             all_points.append(attended)
             all_masks.append(mask)
+        if self.mw_embed is not None and 'mw' in batch:
+            # (B, L, 1) -> (B, 1); L==1 when present, all-zero when dropped.
+            mwv = batch['mw'].sum(dim=1)
+            mwmask = (mwv.abs().sum(-1) == 0)  # (B,) True where mw absent/dropped
+            mwtok = self.mw_embed(mwv).unsqueeze(1)  # (B, 1, dim_model)
+            all_points.append(mwtok)
+            all_masks.append(mwmask.unsqueeze(1))
         if self.enc_formula is not None and 'formula' in batch:
             # (B, L, n_elements) -> (B, n_elements); L==1 when present, all-zero when dropped.
             fvec = batch['formula'].sum(dim=1)

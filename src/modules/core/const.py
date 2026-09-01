@@ -21,12 +21,12 @@ DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
     'formula': 0.5
 }
 
-# formula is non-spectral like mw (a single global descriptor token, never a peak list) and,
-# also like mw, is dropped 50% of the time for robustness. It is deliberately NOT in
-# SELF_ATTN_INPUTS: it gets its own FFN encoder in the model and joins the cross-attention
-# memory directly, rather than going through a per-modality self-attention transformer.
+# mw and formula are non-spectral (a single global descriptor token, never a peak list) and are
+# each dropped 50% of the time for robustness. Neither is in SELF_ATTN_INPUTS: each gets its own
+# encoder (mw a linear projection, formula an FFN) whose token joins the cross-attention memory
+# directly, rather than going through a per-modality self-attention transformer.
 NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw', 'formula'}
-SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw'}
+SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg'}
 
 
 if 'src/marina/src/modules' in __file__:
