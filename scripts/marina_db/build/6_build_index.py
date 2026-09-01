@@ -25,6 +25,7 @@ sys.path.insert(0, str(_HERE.parents[1]))   # scripts/marina_db -> config
 sys.path.insert(0, str(_HERE.parents[3]))   # repo root -> src
 from config import DATA_RAW, DATA_CLEANED, INDEX_PKL, MW_MAX_EXACT, MIN_HEAVY_ATOMS, SOURCE_PRIORITY
 from src.modules.data.smiles import canonicalize_smiles
+from src.modules.data.formula import formula_to_vector
 
 def initialize_mapping(data, smiles: str) -> Dict[str, Any]:
     if smiles not in data:
@@ -223,6 +224,7 @@ def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
         }
         mol = Chem.MolFromSmiles(smiles)
         mw = rdMolDescriptors.CalcExactMolWt(mol)
+        formula = rdMolDescriptors.CalcMolFormula(mol)
         index_entry = {
             'idx': idx,
             'smiles': smiles,
@@ -235,7 +237,10 @@ def build_json(mapping: Dict[str, Dict]) -> Dict[str, Dict]:
             'has_mw': True,
             'has_formula': True,
             'mw': mw,
-            'formula': rdMolDescriptors.CalcMolFormula(mol),
+            'formula': formula,
+            # formula_vec is canonical from index creation (was a post-hoc precompute_formula.py
+            # + update_zip_index.py swap): rides in-RAM like mw, so no per-sample disk I/O.
+            'formula_vec': formula_to_vector(formula),
         }
         if mw > MW_MAX_EXACT or mol.GetNumHeavyAtoms() < MIN_HEAVY_ATOMS:
             continue
