@@ -56,6 +56,7 @@ spec:
                 done & ) &&
               bash /root/gurusmart/startup.sh &&
               cd /code &&
+              pixi run python scripts/dataset/pack_arrow.py --root /workspace &&
               pixi run torchrun --nproc_per_node 4 --module src.main marina
               --experiment_name memtest
               --seed 0
