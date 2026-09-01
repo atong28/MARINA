@@ -7,8 +7,9 @@
 # validation (which spins up every val dataloader = the RAM high-water mark), read
 # the peak from the log, then delete the job.
 #
-#   requests.memory 64Gi  -> proves it schedules where the old 180Gi request could not
-#   limits.memory  180Gi  -> headroom so a wrong guess measures instead of OOM-killing
+#   requests.memory 48Gi  -> schedules where the old 180Gi request could not
+#   limits.memory   57Gi  -> within NRP's <=1.2x limit/request ratio; a peak above this
+#                            OOM-kills (backoffLimit 0 -> clean signal), telling us the floor
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -63,8 +64,8 @@ spec:
               --input_types hsqc c_nmr h_nmr mw mass_spec
               --val_num_workers 2
           resources:
-            requests: { cpu: "8", memory: 64Gi,  ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
-            limits:   { cpu: "8", memory: 180Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            requests: { cpu: "8", memory: 48Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            limits:   { cpu: "8", memory: 57Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
           volumeMounts:
             - { name: atong-spectre,  mountPath: /root/gurusmart }
             - { name: smart-datasets, mountPath: /root/datasets }
