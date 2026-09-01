@@ -1,0 +1,78 @@
+# One-off RAM measurement for the memmap + val-worker-cap data pipeline.
+#
+# Runs the normal 4-GPU MARINA training but (1) packs the Arrow shards into
+# memmap-ready arrays at startup (see nautilus/startup.sh) so the dataset is paged
+# in shared instead of copied per worker, and (2) samples the container's cgroup
+# memory every 60s and prints the running peak. Let it run through the first
+# validation (which spins up every val dataloader = the RAM high-water mark), read
+# the peak from the log, then delete the job.
+#
+#   requests.memory 64Gi  -> proves it schedules where the old 180Gi request could not
+#   limits.memory  180Gi  -> headroom so a wrong guess measures instead of OOM-killing
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-marina-memtest
+  labels:
+    owner: atong
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-TITAN-RTX
+                      - NVIDIA-A40
+                      - NVIDIA-GeForce-RTX-3090
+                      - NVIDIA-RTX-A6000
+                      - NVIDIA-RTX-A5000
+                      - NVIDIA-A10
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-L40
+                      - NVIDIA-L40S
+      containers:
+        - name: marina
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: BRANCH,   value: "main" }
+            - { name: DATASETS, value: "MARINA1.zip" }
+          command: ["/bin/bash", "-c"]
+          args:
+            - >-
+              set -euxo pipefail &&
+              ( while true; do
+                  cur=$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo 0);
+                  peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null || echo 0);
+                  echo "[memsample $(date +%H:%M:%S)] current=$((cur/1024/1024))MiB peak=$((peak/1024/1024))MiB";
+                  sleep 60;
+                done & ) &&
+              bash /root/gurusmart/startup.sh &&
+              cd /code &&
+              pixi run torchrun --nproc_per_node 4 --module src.main marina
+              --experiment_name memtest
+              --seed 0
+              --input_types hsqc c_nmr h_nmr mw mass_spec
+              --val_num_workers 2
+          resources:
+            requests: { cpu: "8", memory: 64Gi,  ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            limits:   { cpu: "8", memory: 180Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+          volumeMounts:
+            - { name: atong-spectre,  mountPath: /root/gurusmart }
+            - { name: smart-datasets, mountPath: /root/datasets }
+            - { name: dshm,           mountPath: /dev/shm }
+            - { name: data-unzip,     mountPath: /workspace }
+            - { name: code-workdir,   mountPath: /code }
+      volumes:
+        - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm,           emptyDir: { medium: Memory } }
+        - { name: data-unzip,     emptyDir: {} }
+        - { name: code-workdir,   emptyDir: {} }

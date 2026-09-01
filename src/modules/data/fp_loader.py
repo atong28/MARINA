@@ -11,7 +11,7 @@ import torch
 
 from ..core.const import DATASET_ROOT
 from ..log import get_logger
-from .arrow_store import ArrowFragIdxStore
+from .arrow_store import open_fragidx_store
 
 from .fp_utils import (
     Feature,                       # BitInfo 4-tuple, or fragment SMILES for SUBSTRUCTURE
@@ -109,7 +109,7 @@ class EntropyFPLoader(FPLoader):
                 self.dataset_root, "arrow", split, self.FRAGIDX_FILENAME)
             if not os.path.isfile(arrow_path):
                 raise FileNotFoundError(f"Missing FragIdx shard: {arrow_path}")
-            store = ArrowFragIdxStore(arrow_path)
+            store = open_fragidx_store(arrow_path)
             self._frag_stores[key] = store
         return store
 

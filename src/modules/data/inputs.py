@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from ..core.const import INPUT_TYPES
 from .fp_loader import FPLoader
-from .arrow_store import ArrowTensorStore
+from .arrow_store import open_tensor_store
 
 
 def normalize_mass_spec(mass_spec: torch.Tensor, floor: float = 0.01, top_k: int = 100) -> torch.Tensor:
@@ -61,7 +61,7 @@ class SpectralInputLoader:
         for mod in ("HSQC_NMR", "H_NMR", "C_NMR", "MassSpec", "MassSpecNeg"):
             path = os.path.join(arrow_split_dir, f"{mod}.parquet")
             if os.path.isfile(path):
-                self._arrow[mod] = ArrowTensorStore(path)
+                self._arrow[mod] = open_tensor_store(path)
 
     # ---- public API ----
     def load(self, idx, input_types: Iterable[INPUT_TYPES], jittering: float = 0.0, augmenter=None) -> Dict[str, torch.Tensor]:

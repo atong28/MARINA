@@ -44,6 +44,11 @@ class SMARTArgs:
     debug: bool = False
     batch_size: int = 32
     num_workers: int = 4
+    # Workers for the val/test dataloaders. There is one such loader per test type
+    # (input_types + additional_test_types), and with persistent_workers they all stay
+    # alive for the whole run, so mirroring num_workers here multiplies resident worker
+    # processes for loaders that only run at validation. Keep this small.
+    val_num_workers: int = 2
     epochs: int = 750
     patience: int = 30
     # metric monitored for early stopping and checkpointing (maximized)

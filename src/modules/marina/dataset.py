@@ -217,8 +217,11 @@ class MARINADataModule(pl.LightningDataModule):
         self.args = args
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
+        self.val_num_workers = getattr(args, 'val_num_workers', args.num_workers)
         self.persistent_workers = bool(
             args.persistent_workers and self.num_workers > 0)
+        self.val_persistent_workers = bool(
+            args.persistent_workers and self.val_num_workers > 0)
         self.fp_loader = fp_loader
         self.test_types = [args.input_types] + args.additional_test_types
         self.test_types = [types for types in self.test_types if all(t in args.input_types for t in types)]
@@ -298,9 +301,9 @@ class MARINADataModule(pl.LightningDataModule):
                 val_dl,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
-                num_workers=self.num_workers,
+                num_workers=self.val_num_workers,
                 pin_memory=True,
-                persistent_workers=self.persistent_workers,
+                persistent_workers=self.val_persistent_workers,
                 multiprocessing_context="fork",
             )
             for val_dl in self.val
@@ -320,9 +323,9 @@ class MARINADataModule(pl.LightningDataModule):
                 test_dl,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
-                num_workers=self.num_workers,
+                num_workers=self.val_num_workers,
                 pin_memory=True,
-                persistent_workers=self.persistent_workers,
+                persistent_workers=self.val_persistent_workers,
                 multiprocessing_context="fork",
             )
             for test_dl in self.test

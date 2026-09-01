@@ -55,5 +55,13 @@ done
 if [ "$PIXI_INSTALL" = "1" ]; then
     echo "[startup] pixi install"
     pixi install --manifest-path "$CODE_DIR/pixi.toml"
+
+    # Pack the Arrow shards into flat memmap-ready arrays so training pages the
+    # dataset in shared (via the page cache) instead of loading a full private copy
+    # per DataLoader worker. Skip-if-exists; the memmap stores are auto-selected when
+    # packed/ is present. Node-local ($WORKSPACE is an emptyDir), so it reruns per job
+    # unless packed/ is baked into the dataset zip.
+    echo "[startup] packing arrow shards -> memmap arrays"
+    (cd "$CODE_DIR" && pixi run python scripts/dataset/pack_arrow.py --root "$WORKSPACE")
 fi
 echo "[startup] ready"
