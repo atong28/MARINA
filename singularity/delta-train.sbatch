@@ -11,9 +11,18 @@
 # successor sees it and exits immediately without burning SUs. MAX_CHUNKS is the backstop
 # against a chunk that fails instantly every time.
 #
-#   Submit:  EXPERIMENT_NAME=marina-delta-s0 DATASET=MARINA1 \
+#   Submit (full node, 4 GPU):
+#            EXPERIMENT_NAME=marina-delta-s0 DATASET=MARINA1 \
 #            TRAIN_ARGS='--input_types hsqc c_nmr h_nmr mw mass_spec --seed 0 --precision bf16-mixed' \
 #            sbatch singularity/delta-train.sbatch
+#
+#   Submit (2-GPU shared): the memmap packing step below moves the dataset out of per-worker RAM,
+#   so a 2-GPU job fits in ~64G instead of 120G. GPUS_PER_NODE/CPUS_PER_TASK/MEM propagate down the
+#   chain, so set them once on chunk 1:
+#            EXPERIMENT_NAME=marina-delta-s0 DATASET=MARINA1 \
+#            GPUS_PER_NODE=2 CPUS_PER_TASK=32 MEM=64G \
+#            TRAIN_ARGS='--input_types hsqc c_nmr h_nmr mw mass_spec --seed 0 --precision bf16-mixed' \
+#            sbatch --gpus-per-node=2 --cpus-per-task=32 --mem=64G singularity/delta-train.sbatch
 #
 # --precision bf16-mixed: A100 is sm_80 with real bf16 tensor cores. This differs from Expanse,
 # where V100 (sm_70) has no bf16 hardware and must use 16-mixed.
@@ -108,6 +117,18 @@ LOCAL_DATA="/tmp/$USER/job_$SLURM_JOB_ID/data"
 mkdir -p "$LOCAL_DATA"
 echo "[stage] unpacking $DATASET.zip to $LOCAL_DATA"
 time unzip -q "$PROJECT_ROOT/datasets/${DATASET}.zip" -d "$LOCAL_DATA"
+
+# Pack the Arrow shards into flat memmap-ready arrays so the dataset is paged in shared (via the
+# OS page cache) instead of a full private copy per DataLoader worker -- the dominant host-RAM term
+# (see scripts/dataset/pack_arrow.py; the Memmap* stores auto-engage when packed/ is present). This
+# is what lets a 2-GPU shared job drop --mem from 120G to ~64G. Skip-if-exists; CPU-only, runs in
+# the sif for numpy/pyarrow. If the zip already ships a packed/ dir this is a fast no-op.
+echo "[stage] packing arrow -> memmap arrays"
+time apptainer exec --cleanenv --pwd /code \
+    -B "$CODE_DIR":/code \
+    -B "$LOCAL_DATA":/workspace \
+    "$IMAGE" \
+    python scripts/dataset/pack_arrow.py --root /workspace
 
 nvidia-smi --query-gpu=index,name,memory.total --format=csv
 
