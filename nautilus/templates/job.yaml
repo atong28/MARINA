@@ -26,7 +26,7 @@ spec:
               - matchExpressions:
                   - key: nvidia.com/gpu.product
                     operator: In
-                    values:                     # 24GB-class cards that fit 4-GPU MARINA
+                    values:                     # 24GB-class+ cards that fit 4-GPU MARINA
                       - NVIDIA-TITAN-RTX
                       - NVIDIA-A40
                       - NVIDIA-GeForce-RTX-3090
@@ -34,17 +34,14 @@ spec:
                       - NVIDIA-RTX-A5000
                       - NVIDIA-A10
                       - NVIDIA-GeForce-RTX-4090
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:                     # startup.sh hangs here (network), 2026-07-05
-                      - gpu-13.nrp.mghpcc.org
-                      - gpu-02.nrp.mghpcc.org
+                      - NVIDIA-L40
+                      - NVIDIA-L40S
       containers:
         - name: marina
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
           env:
             - { name: BRANCH,   value: "exp/<NAME>" }   # frozen experiment branch (or a tag)
-            - { name: DATASETS, value: "MARINA1.zip" }  # space-separated for multiple zips
+            - { name: DATASETS, value: "MARINA-DB.zip" }  # go-forward dataset; ships packed/ (memmap auto-selected). Space-separated for multiple zips
           command: ["/bin/bash", "-c"]
           args:
             - >-
