@@ -158,6 +158,14 @@ class MARINA(pl.LightningModule):
             modality: nn.Parameter(torch.randn(1, 1, self.dim_model))
             for modality in self.encoders
         })
+        # mw and formula bypass per-modality self-attention (each is a single descriptor
+        # token, not a peak sequence), so they need their own learned modality token too --
+        # added to their token(s) below. Without it the cross-attention memory has no way to
+        # tell an mw/formula token apart from a spectral one (e.g. a mass_spec_neg token).
+        for modality in ('mw', 'formula'):
+            if modality in self.args.input_types:
+                self.mod_tokens[modality] = nn.Parameter(
+                    torch.randn(1, 1, self.dim_model))
         # Molecular weight: a single scalar, so a plain linear projection to one cross-attention
         # memory token (not self-attention): a lone value has no sequence for attention to mix.
         self.mw_embed = (
@@ -219,6 +227,7 @@ class MARINA(pl.LightningModule):
             mwv = batch['mw'].sum(dim=1)
             mwmask = (mwv.abs().sum(-1) == 0)  # (B,) True where mw absent/dropped
             mwtok = self.mw_embed(mwv).unsqueeze(1)  # (B, 1, dim_model)
+            mwtok = mwtok + self.mod_tokens['mw'].to(mwtok.device)
             all_points.append(mwtok)
             all_masks.append(mwmask.unsqueeze(1))
         if self.enc_formula is not None and 'formula' in batch:
@@ -226,6 +235,7 @@ class MARINA(pl.LightningModule):
             fvec = batch['formula'].sum(dim=1)
             fmask = (fvec.abs().sum(-1) == 0)  # (B,) True where formula absent/dropped
             ftok = self.enc_formula(fvec)      # (B, n_tokens, dim_model)
+            ftok = ftok + self.mod_tokens['formula'].to(ftok.device)
             all_points.append(ftok)
             all_masks.append(fmask.unsqueeze(1).expand(-1, ftok.size(1)))
         joint_seq = torch.cat(all_points, dim=1)
