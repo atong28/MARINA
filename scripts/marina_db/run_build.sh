@@ -11,8 +11,8 @@
 #
 # Two tracks: stages 1-4 are the STRUCTURE track (retrieval + fingerprint rankingsets),
 # which need no spectral data and are NOT blocked on the positive MS/MS re-prediction.
-# Stages 5-12 are the SPECTRAL/training track (index, splits, arrow, fragidx, journal,
-# collapse, verify); MS/MS is optional there until the dataset is finalized.
+# Stages 5-13 are the SPECTRAL/training track (index, splits, arrow, fragidx, journal,
+# collapse, verify, pack); MS/MS is optional there until the dataset is finalized.
 #
 # Paths and knobs come from scripts/marina_db/config.py (override via env:
 # DATASET_ROOT, BENCHMARK_ROOT, MARINA_DATA_ROOT, COCONUT_RELEASE, FP_TYPE, FP_TYPES...).
@@ -41,6 +41,7 @@ STAGES=(
   "10:$PY $MDB/build/10_build_journal.py"
   "11:$PY $MDB/build/11_collapse_peaks.py --target all"
   "12:$PY $MDB/build/12_verify.py"
+  "13:$PY $MDB/build/13_pack_arrow.py"
 )
 
 FROM=""; ONLY=""; TO=""
@@ -67,4 +68,4 @@ for entry in "${STAGES[@]}"; do
   eval "$cmd"
   if [[ -n "$TO" && "$id" == "$TO" ]]; then break; fi
 done
-echo "== MARINA-DB build: done (stages $( [[ -n "$ONLY" ]] && echo "$ONLY" || echo "${FROM:-1}..${TO:-12}" ))"
+echo "== MARINA-DB build: done (stages $( [[ -n "$ONLY" ]] && echo "$ONLY" || echo "${FROM:-1}..${TO:-13}" ))"

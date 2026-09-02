@@ -31,9 +31,9 @@ scripts/marina_db/
 
 **Structure track (stages 1–4)** builds the retrieval set and the fingerprint rankingsets. It needs
 no spectral data and is **not blocked on the positive MS/MS re-prediction** — run `--to 4` to produce
-retrieval + rankingsets today. **Spectral/training track (stages 5–12)** assembles the spectra, index,
-splits, arrow shards, FragIdx training columns, journal prep, and verification; MS/MS is optional there
-until the dataset is finalized.
+retrieval + rankingsets today. **Spectral/training track (stages 5–13)** assembles the spectra, index,
+splits, arrow shards, FragIdx training columns, journal prep, verification, and the memmap pack; MS/MS
+is optional there until the dataset is finalized.
 
 | Stage | File | Does |
 |------|------|------|
@@ -49,6 +49,7 @@ until the dataset is finalized.
 | 10 | `10_build_journal.py` | Prepare the **frozen** Journal against this build: 2D canon + leakage flags `marina_clean`/`spectre_clean`/`both_clean` + `retrieval_idx` → `benchmark-journal-prepared.pkl` (does **not** rebuild `benchmark-journal.pkl`) |
 | 11 | `11_collapse_peaks.py` | **Per-peak collapse dataset-wide** (train ¹³C/¹H + Journal; 1e-4 ppm merge; HSQC untouched) |
 | 12 | `12_verify.py` | One verifier: index↔arrow split consistency, **retrieval superset incl. the Journal AND every index molecule** (this is what confirms MS/MS added no new compounds once positive lands), no duplicate SMILES, split sanity. Nonzero exit on failure |
+| 13 | `13_pack_arrow.py` | Pack the finalized `arrow/<split>/*.parquet` into `packed/<split>/<shard>/` flat memmap `.npy` arrays (runs after the stage-11 peak collapse mutates arrow). Training auto-selects these memmap stores, so shipping `packed/` in the dataset means no per-node packing at train time |
 
 ## Scoring (`eval/`)
 

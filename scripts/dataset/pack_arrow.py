@@ -94,6 +94,20 @@ def pack_shard(parquet_path: str, out_dir: str, force: bool) -> str:
     return "packed"
 
 
+def pack_root(root: str, force: bool = False) -> None:
+    """Pack every arrow/{split}/*.parquet shard under `root` into root/packed/."""
+    parquets = sorted(glob.glob(os.path.join(root, "arrow", "*", "*.parquet")))
+    if not parquets:
+        raise SystemExit(f"No parquet shards found under {root}/arrow/*/")
+
+    for path in parquets:
+        split = os.path.basename(os.path.dirname(path))
+        base = os.path.splitext(os.path.basename(path))[0]
+        out_dir = os.path.join(root, "packed", split, base)
+        status = pack_shard(path, out_dir, force)
+        print(f"[{status:6}] {split}/{base} -> {out_dir}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True,
@@ -101,17 +115,7 @@ def main() -> None:
     ap.add_argument("--force", action="store_true",
                     help="Repack shards even if packed output already exists")
     args = ap.parse_args()
-
-    parquets = sorted(glob.glob(os.path.join(args.root, "arrow", "*", "*.parquet")))
-    if not parquets:
-        raise SystemExit(f"No parquet shards found under {args.root}/arrow/*/")
-
-    for path in parquets:
-        split = os.path.basename(os.path.dirname(path))
-        base = os.path.splitext(os.path.basename(path))[0]
-        out_dir = os.path.join(args.root, "packed", split, base)
-        status = pack_shard(path, out_dir, args.force)
-        print(f"[{status:6}] {split}/{base} -> {out_dir}")
+    pack_root(args.root, args.force)
 
 
 if __name__ == "__main__":
