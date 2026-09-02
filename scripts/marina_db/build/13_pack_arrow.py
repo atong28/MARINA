@@ -19,6 +19,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve()
 sys.path.insert(0, str(_HERE.parents[1]))              # marina_db/ (config)
 sys.path.insert(0, str(_HERE.parents[2] / "dataset"))  # scripts/dataset/ (pack_arrow)
+sys.path.insert(0, str(_HERE.parents[3]))              # repo root (config's `from src...`)
 
 from config import DATA_DATASET
 from pack_arrow import pack_root
