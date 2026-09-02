@@ -48,7 +48,10 @@ for ds in $DATASETS; do
         exit 1
     fi
     echo "[startup] unzipping $ds -> $WORKSPACE"
-    unzip -q "$src" -d "$WORKSPACE"
+    # -o: overwrite without prompting. Multiple DATASETS can legitimately overlap (e.g. the
+    # packed-inclusive MARINA-DB.zip + a standalone packed zip both carry packed/); without -o
+    # unzip prompts, reads EOF in the container, and exits non-zero -> set -e kills startup.
+    unzip -q -o "$src" -d "$WORKSPACE"
 done
 
 # --- pixi env ---
