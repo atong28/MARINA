@@ -1,3 +1,0 @@
-multuncap-s0|/root/gurusmart/Moonshot/results/marina-multuncap-s0/multuncap-s0/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s0/multuncap-s0/epoch_epoch=745.ckpt
-multuncap-s1|/root/gurusmart/Moonshot/results/marina-multuncap-s1/multuncap-s1/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s1/multuncap-s1/epoch_epoch=700.ckpt
-multuncap-s2|/root/gurusmart/Moonshot/results/marina-multuncap-s2/multuncap-s2/params.json|/root/gurusmart/Moonshot/results/marina-multuncap-s2/multuncap-s2/epoch_epoch=665.ckpt
