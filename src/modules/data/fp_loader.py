@@ -139,7 +139,7 @@ class EntropyFPLoader(FPLoader):
 
     def _filter_by_radius(self, counts: Dict[Feature, int]) -> list:
         """
-        Drop features above max_radius. A Morgan counts file built once at radius 6 is
+        Drop features above max_radius. A counts file built once at a given radius is
         reusable for any smaller max_radius because radius is part of the key.
         """
         return [(k, c) for k, c in counts.items() if k[3] <= self.max_radius]
