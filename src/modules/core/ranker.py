@@ -143,23 +143,39 @@ class RankingSet(torch.nn.Module):
         queries: torch.Tensor,
         truths: torch.Tensor,
         thresh: torch.Tensor,
+        tie_aware: bool = False,
     ) -> torch.Tensor:
         """
         Count, per query, how many entries in `data` meet/exceed the *cosine* threshold.
 
-        Expects `queries` and `truths` already L2-normalized.
-        Returns (Q,) int32 counts, minus 1 to ignore the self-row.
+        Expects `queries` and `truths` already L2-normalized. Returns (Q,) int32 counts.
+
+        tie_aware=False (default): strict/pessimistic -- rows tied with the truth
+            threshold count against it; the self-row is dropped (minus 1). This is the
+            training test-loop convention (matches test_result.pkl rank@k).
+        tie_aware=True: optimistic (decision D6) -- only rows STRICTLY better than the
+            truth threshold count; fingerprint-identical twins tied with the truth (and
+            the self-row, which sits at thresh) are excluded, so no -1.
         """
         assert queries.size() == truths.size(), "queries and truths must share shape"
         with torch.no_grad():
             sims = data @ queries.T  # (N, Q)
-            ct = torch.sum(
-                torch.logical_or(sims >= thresh, torch.isclose(sims, thresh)),
-                dim=0,
-                keepdim=True,
-                dtype=torch.int32,
-            )
-            ct = ct - 1
+            close = torch.isclose(sims, thresh)
+            if tie_aware:
+                ct = torch.sum(
+                    torch.logical_and(sims > thresh, torch.logical_not(close)),
+                    dim=0,
+                    keepdim=True,
+                    dtype=torch.int32,
+                )
+            else:
+                ct = torch.sum(
+                    torch.logical_or(sims >= thresh, close),
+                    dim=0,
+                    keepdim=True,
+                    dtype=torch.int32,
+                )
+                ct = ct - 1
             if self.debug:
                 truth_sims = data @ truths.T
                 logger.debug(f"truth_sims shape: {truth_sims.shape}")
@@ -171,6 +187,7 @@ class RankingSet(torch.nn.Module):
         queries: torch.Tensor,
         truths: torch.Tensor,
         use_jaccard: bool = False,
+        tie_aware: bool = False,
     ) -> torch.Tensor:
         """
         Rank each query against `self.data` and count how many entries beat its query-specific threshold.
@@ -192,6 +209,6 @@ class RankingSet(torch.nn.Module):
                 qn = F.normalize(queries, dim=1, p=2.0)
                 tn = F.normalize(truths, dim=1, p=2.0)
                 thresh = torch.sum((qn * tn), dim=1, keepdim=True).T  # (1, Q)
-                return self.dot_prod_rank(self.data, qn, tn, thresh)
+                return self.dot_prod_rank(self.data, qn, tn, thresh, tie_aware=tie_aware)
             else:
                 raise ValueError(f"Unknown metric: {self.metric}")
