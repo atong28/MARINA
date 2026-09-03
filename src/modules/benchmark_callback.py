@@ -11,21 +11,20 @@ from .log import get_logger
 
 logger = get_logger(__file__)
 
-# Fixed order, iterated in full on every rank. The number of collectives issued
-# in on_validation_epoch_end must not depend on which files a rank can see.
-SOURCES = (
-    ("benchmark", "benchmark.pkl"),
-    ("benchmark_journal", "benchmark-journal.pkl"),
-)
+# The journal is the sole live benchmark. Both splits are iterated in fixed order on
+# every rank: the number of collectives issued in on_validation_epoch_end must not
+# depend on which files/entries a rank can see (else DDP all_reduce desyncs).
+JOURNAL_FILE = "benchmark-journal.pkl"
+SPLITS = ("val", "test")
 
 
 class BenchmarkCosineCallback(pl.Callback):
     """
-    Every validation epoch, run a forward pass over the annotated benchmark and
-    log the mean cosine similarity between the predicted and ground-truth
-    structural fingerprints. This is the same `mean_cos` as the post-training
-    benchmark, but *without* the expensive ranking/dereplication retrieval, so
-    it is cheap enough to track live.
+    Every validation epoch, run a forward pass over the journal benchmark (val and
+    test splits) and log the mean cosine similarity between the predicted and
+    ground-truth structural fingerprints. This is the same `mean_cos` as the
+    post-training benchmark, but *without* the expensive full-bank ranking, so it is
+    cheap enough to track live.
 
     Work is sharded across DDP ranks and reduced, so the per-epoch cost is one
     forward pass over (benchmark size / world_size) entries.
@@ -50,35 +49,29 @@ class BenchmarkCosineCallback(pl.Callback):
         if BENCHMARK_ROOT is None:
             logger.warning("[BenchmarkCosine] BENCHMARK_ROOT not set; skipping.")
             return
+        path = os.path.join(BENCHMARK_ROOT, JOURNAL_FILE)
+        if not os.path.exists(path):
+            logger.warning(f"[BenchmarkCosine] {path} missing; live journal benchmark disabled.")
+            return
         self._active = True
-        for name, fname in SOURCES:
-            path = os.path.join(BENCHMARK_ROOT, fname)
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        # Each split registered (even if empty) so every rank issues the same number of
+        # collectives in on_validation_epoch_end regardless of what it can see.
+        for split in SPLITS:
             prepared = []
-            if os.path.exists(path):
-                with open(path, "rb") as f:
-                    data = pickle.load(f)
-                if self.args.benchmark_split != "all":
-                    data = {
-                        k: v for k, v in data.items()
-                        if v["split"] == self.args.benchmark_split
-                    }
-                for entry in data.values():
-                    sfp = self.fp_loader.build_mfp_for_smiles(entry["smiles"])
-                    sfp = sfp / torch.norm(sfp)
-                    # Precompute the formula token so the live benchmark matches the model's
-                    # training inputs; None when formula is not an active modality.
-                    fvec = (formula_vec_from_smiles(entry["smiles"])
-                            if 'formula' in self.restrictions else None)
-                    prepared.append((entry["input"], sfp, fvec))
-            else:
-                logger.warning(f"[BenchmarkCosine] {path} missing; '{name}' will be empty.")
-            # Registered even when empty: a rank that skipped this source would
-            # issue one fewer all_reduce below and deadlock the others.
-            self._entries[name] = prepared
-            logger.info(
-                f"[BenchmarkCosine] Prepared {len(prepared)} '{name}' entries "
-                f"(split={self.args.benchmark_split})."
-            )
+            for entry in data.values():
+                if entry.get("split") != split:
+                    continue
+                sfp = self.fp_loader.build_mfp_for_smiles(entry["smiles"])
+                sfp = sfp / torch.norm(sfp)
+                # Precompute the formula token so the live benchmark matches the model's
+                # training inputs; None when formula is not an active modality.
+                fvec = (formula_vec_from_smiles(entry["smiles"])
+                        if 'formula' in self.restrictions else None)
+                prepared.append((entry["input"], sfp, fvec))
+            self._entries[split] = prepared
+            logger.info(f"[BenchmarkCosine] Prepared {len(prepared)} journal '{split}' entries.")
 
     @torch.no_grad()
     def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
@@ -93,8 +86,8 @@ class BenchmarkCosineCallback(pl.Callback):
         world = trainer.world_size
         rank = trainer.global_rank
 
-        for name, _ in SOURCES:
-            prepared = self._entries[name]
+        for split in SPLITS:
+            prepared = self._entries.get(split, [])
             shard = prepared[rank::world] if world > 1 else prepared
             local_sum = 0.0
             for raw_input, sfp, fvec in shard:
@@ -113,7 +106,9 @@ class BenchmarkCosineCallback(pl.Callback):
             mean_cos = (stats[0] / stats[1]).item() if stats[1] > 0 else 0.0
 
             # All ranks hold the same reduced value -> log without further sync.
+            # Key matches the end-of-run 'all' subset so the per-epoch curve and the
+            # final benchmark_marina point share one series.
             pl_module.log(
-                f"val/{name}_cos", mean_cos,
+                f"benchmark_journal/{split}/all/mean_cos", mean_cos,
                 on_epoch=True, on_step=False, sync_dist=False,
             )

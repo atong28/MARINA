@@ -3,7 +3,6 @@ import numpy as np
 import torch
 import os
 import pickle
-import json
 from collections import OrderedDict
 from tqdm import tqdm
 from rdkit import Chem
@@ -17,7 +16,7 @@ from rdkit.DataStructs import ConvertToNumpyArray
 from .marina import MARINAArgs,MARINADataModule, MARINA
 from .spectre import SPECTREArgs, SPECTREDataModule, SPECTRE
 from .log import get_logger
-from .core.const import BENCHMARK_ROOT, DATASET_ROOT, INPUT_TYPES
+from .core.const import BENCHMARK_ROOT, INPUT_TYPES
 from .data.fp_loader import EntropyFPLoader
 from .data.formula import formula_to_vector
 
@@ -73,90 +72,89 @@ def load_model(args: MARINAArgs | SPECTREArgs, model: MARINA | SPECTRE) -> None:
 def filter_data(data: dict[int, Any], restrictions: List[INPUT_TYPES]) -> dict[int, Any]:
     return {k: v for k, v in data.items() if k in restrictions}
 
+def _rank_conventions(pred: torch.Tensor, sfp: torch.Tensor, ranker) -> tuple[int, int]:
+    """0-based rank of the gold structure against the full bank, both tie conventions.
+
+    strict : bank rows with sim >= cos(pred, gold) count against the gold (ties count),
+             minus the self-row -- the training test-loop convention.
+    tie    : only rows STRICTLY better than the gold count; fingerprint-identical twins
+             tied with the gold (and the self-row, which sits at the threshold) are
+             excluded (decision D6).
+    """
+    q = pred.reshape(1, -1)
+    sims = ranker._sims(q).squeeze(1).float()                      # (N,)
+    qn = torch.nn.functional.normalize(q, dim=1, p=2.0)[0]
+    gn = torch.nn.functional.normalize(sfp.reshape(1, -1).to(qn.device), dim=1, p=2.0)[0]
+    thr = torch.dot(qn, gn).float()
+    close = torch.isclose(sims, thr.expand_as(sims))
+    rank_strict = int((((sims >= thr) | close).sum() - 1).item())
+    rank_tie = int(((sims > thr) & ~close).sum().item())
+    return rank_strict, rank_tie
+
+
 def _run_benchmark_loop(
     benchmark_data: dict,
     data_module: MARINADataModule | SPECTREDataModule,
     model: MARINA | SPECTRE,
     fp_loader: EntropyFPLoader,
     restrictions: List,
-    metadata: dict,
-    meta_smi_to_idx: dict,
     desc: str = 'Benchmarking',
-) -> dict:
-    """Run inference on all entries and attach predictions in-place. Returns benchmark_data."""
-    for key, entry in tqdm(benchmark_data.items(), desc=desc):
+) -> list[dict]:
+    """One forward pass per entry under `restrictions`; return per-entry records
+    [{cos, rank_strict, rank_tie}]. Entries with no spectral modality left after the
+    restriction (e.g. an NMR-only compound under the MS/MS-only subset) are skipped."""
+    recs = []
+    for entry in tqdm(benchmark_data.values(), desc=desc):
         raw_input = entry['input']
         if 'formula' in restrictions:
             raw_input = {**raw_input, 'formula': formula_vec_from_smiles(entry['smiles'])}
-        inputs = data_module.format_inference_data(filter_data(raw_input, restrictions))
+        clean = filter_data(raw_input, restrictions)
+        if not any(k not in ('mw', 'formula') for k in clean):
+            continue  # nothing spectral to feed for this subset
+        inputs = data_module.format_inference_data(clean)
         with torch.no_grad():
             output = model(**inputs)
         pred = torch.sigmoid(output[0])
-        idxs = model.ranker.retrieve_idx(pred, 10).tolist()
         sfp = fp_loader.build_mfp_for_smiles(entry['smiles'])
-        sfp = sfp / torch.norm(sfp)
-        mfp = get_mfp(entry['smiles'])
-        gt_retrieval_idx = meta_smi_to_idx.get(entry['smiles'], None)
-        retrievals = {}
-        near_identical_matches = []
-        for idx_k in range(10):
-            retrieval_idx = idxs[idx_k]
-            retrieval_sfp = model.ranker.data[retrieval_idx].to_dense().float()
-            retrieval_mfp = get_mfp(metadata[str(retrieval_idx)]['canonical_2d_smiles'])
-            cos_sim_sfp = cos_sim(sfp, retrieval_sfp)
-            near_identical_matches.append(cos_sim_sfp > 0.99)
-            retrievals[idx_k] = {
-                'retrieval_idx': retrieval_idx,
-                'retrieval_sfp': retrieval_sfp,
-                'retrieval_mfp': retrieval_mfp,
-                'cosine_sim_sfp': cos_sim_sfp,
-                'tani_sim_sfp': tanimoto_sim(sfp, retrieval_sfp),
-                'cosine_sim_mfp': cos_sim(mfp, retrieval_mfp),
-                'tani_sim_mfp': tanimoto_sim(mfp, retrieval_mfp)
-            }
-        benchmark_data[key]['predictions'] = {
-            'pred_sfp': pred / torch.norm(pred),
-            'sfp': sfp,
-            'mfp': mfp,
-            'cosine_sim': cos_sim(pred, sfp),
-            'retrievals': retrievals,
-            'retrieval_idx': gt_retrieval_idx,
-            'dereplication_topk': {k: any(near_identical_matches[:k]) for k in range(1, 11)}
-        }
-    return benchmark_data
+        sfp = (sfp / torch.norm(sfp)).to(pred.device)
+        rs, rt = _rank_conventions(pred, sfp, model.ranker)
+        recs.append({'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt})
+    return recs
 
 
-def _log_benchmark_results(
-    benchmark_data: dict,
-    prefix: str,
-    wandb_run: Run | None,
-) -> None:
-    """Log benchmark metrics to logger and wandb under the given prefix."""
-    mean_cos = torch.mean(torch.tensor([
-        entry["predictions"]["cosine_sim"] for entry in benchmark_data.values()
-    ])).detach().item()
-    dereplication_topk = {
-        k: [entry["predictions"]["dereplication_topk"][k]
-            for entry in benchmark_data.values()
-            if entry["predictions"]["dereplication_topk"][k] is not None]
-        for k in range(1, 11)
-    }
-    logger.info(f'[{prefix}] Benchmarking completed ({len(benchmark_data)} entries)')
-    logger.info(f'[{prefix}] Average cosine similarity: {mean_cos}')
-    logger.info(f'[{prefix}] Dereplication top1:  {sum(dereplication_topk[1])} / {len(dereplication_topk[1])} ({sum(dereplication_topk[1]) / len(dereplication_topk[1]) * 100:.2f}%)')
-    logger.info(f'[{prefix}] Dereplication top5:  {sum(dereplication_topk[5])} / {len(dereplication_topk[5])} ({sum(dereplication_topk[5]) / len(dereplication_topk[5]) * 100:.2f}%)')
-    logger.info(f'[{prefix}] Dereplication top10: {sum(dereplication_topk[10])} / {len(dereplication_topk[10])} ({sum(dereplication_topk[10]) / len(dereplication_topk[10]) * 100:.2f}%)')
-    if wandb_run is not None:
-        n1, n5, n10 = len(dereplication_topk[1]), len(dereplication_topk[5]), len(dereplication_topk[10])
-        wandb.log({
-            f"{prefix}/mean_cos": mean_cos,
-            f"{prefix}/dereplication_top1_pct": sum(dereplication_topk[1]) / n1 * 100 if n1 else 0.0,
-            f"{prefix}/dereplication_top5_pct": sum(dereplication_topk[5]) / n5 * 100 if n5 else 0.0,
-            f"{prefix}/dereplication_top10_pct": sum(dereplication_topk[10]) / n10 * 100 if n10 else 0.0,
-            f"{prefix}/dereplication_top1_count": sum(dereplication_topk[1]),
-            f"{prefix}/dereplication_top5_count": sum(dereplication_topk[5]),
-            f"{prefix}/dereplication_top10_count": sum(dereplication_topk[10]),
-        })
+def _summarise(recs: list[dict], prefix: str, wandb_metrics: dict) -> None:
+    """Aggregate records into mean_cos + rank_strict/tie @1/5/10, log to the console,
+    and accumulate into `wandb_metrics` (the caller flushes once)."""
+    n = len(recs)
+    if n == 0:
+        logger.info(f'[{prefix}] no entries; skipped')
+        return
+    mean_cos = sum(r['cos'] for r in recs) / n
+    m = {f"{prefix}/mean_cos": mean_cos, f"{prefix}/n": n}
+    for k in (1, 5, 10):
+        m[f"{prefix}/rank_strict_top{k}_pct"] = 100.0 * sum(r['rank_strict'] < k for r in recs) / n
+        m[f"{prefix}/rank_tie_top{k}_pct"] = 100.0 * sum(r['rank_tie'] < k for r in recs) / n
+    logger.info(
+        f"[{prefix}] n={n} mean_cos={mean_cos:.4f} | strict @1/5/10 = "
+        f"{m[f'{prefix}/rank_strict_top1_pct']:.2f}/{m[f'{prefix}/rank_strict_top5_pct']:.2f}/"
+        f"{m[f'{prefix}/rank_strict_top10_pct']:.2f} | tie @1/5/10 = "
+        f"{m[f'{prefix}/rank_tie_top1_pct']:.2f}/{m[f'{prefix}/rank_tie_top5_pct']:.2f}/"
+        f"{m[f'{prefix}/rank_tie_top10_pct']:.2f}"
+    )
+    wandb_metrics.update(m)
+
+
+def _journal_subsets(base: List) -> dict:
+    """Journal modality subsets: 'all' = the model's own inputs; 'nmr' = the three NMR
+    modalities; 'msms' = positive + negative MS/MS. Each restricts what is fed to the model."""
+    subs = {'all': list(base)}
+    nmr = [m for m in ('hsqc', 'c_nmr', 'h_nmr') if m in base]
+    msms = [m for m in ('mass_spec', 'mass_spec_neg') if m in base]
+    if nmr:
+        subs['nmr'] = nmr
+    if msms:
+        subs['msms'] = msms
+    return subs
 
 
 def benchmark_marina(
@@ -167,46 +165,43 @@ def benchmark_marina(
     wandb_run: Run | None = None,
     load_from_checkpoint: str | None = None,
 ) -> None:
+    """Benchmark a MARINA/SPECTRE model on the journal set.
+
+    Runs the journal (benchmark-journal.pkl) for BOTH the val and test splits, each under
+    three modality subsets (all / nmr / msms), reporting mean_cos and the strict and
+    tie-aware rank@1/5/10 for every combination. The NP-MRD benchmark and the >0.99
+    dereplication metric are retired.
     """
-    Benchmark a MARINA or SPECTRE model on benchmark.pkl and benchmark-journal.pkl.
-    """
-    restrictions = args.input_types if args.restrictions is None else args.restrictions
+    base = args.input_types if args.restrictions is None else args.restrictions
     if load_from_checkpoint is not None:
         load_model(args, model)
     if BENCHMARK_ROOT is None:
         raise ValueError('Benchmarking is not supported on this setup')
 
-    logger.info(f'[Benchmark] Benchmarking model {model.__class__.__name__}')
-    metadata = json.load(open(os.path.join(DATASET_ROOT, "metadata.json"), 'r'))
-    meta_smi_to_idx = {entry['canonical_2d_smiles']: int(idx) for idx, entry in metadata.items()}
+    journal_path = os.path.join(BENCHMARK_ROOT, "benchmark-journal.pkl")
+    if not os.path.exists(journal_path):
+        logger.warning(f'[Benchmark] benchmark-journal.pkl not found at {journal_path}; skipping.')
+        return
+
+    logger.info(f'[Benchmark] Benchmarking {model.__class__.__name__} (journal, val+test)')
+    journal: dict[str, Any] = pickle.load(open(journal_path, 'rb'))
+    subsets = _journal_subsets(base)
     os.makedirs(os.path.join(BENCHMARK_ROOT, 'benchmarks'), exist_ok=True)
 
-    # --- benchmark.pkl (NP-MRD peak-picked) ---
-    benchmark_data: dict[int, Any] = pickle.load(open(os.path.join(BENCHMARK_ROOT, "benchmark.pkl"), 'rb'))
-    if args.benchmark_split != 'all':
-        benchmark_data = {k: v for k, v in benchmark_data.items() if v['split'] == args.benchmark_split}
-    benchmark_data = _run_benchmark_loop(
-        benchmark_data, data_module, model, fp_loader, restrictions,
-        metadata, meta_smi_to_idx, desc='Benchmark (NP-MRD)')
-    nm_out = os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_results.pkl")
-    with open(nm_out, 'wb') as f:
-        pickle.dump(benchmark_data, f)
-    logger.info(f'[Benchmark] Saved NP-MRD results to {nm_out} ({os.path.getsize(nm_out)} bytes)')
-    _log_benchmark_results(benchmark_data, prefix='benchmark', wandb_run=wandb_run)
+    wandb_metrics: dict = {}
+    saved: dict = {}
+    for split in ('val', 'test'):
+        split_data = {k: v for k, v in journal.items() if v.get('split') == split}
+        for sub_name, sub_mods in subsets.items():
+            recs = _run_benchmark_loop(
+                split_data, data_module, model, fp_loader, sub_mods,
+                desc=f'journal/{split}/{sub_name}')
+            _summarise(recs, f'benchmark_journal/{split}/{sub_name}', wandb_metrics)
+            saved[f'{split}/{sub_name}'] = recs
 
-    # --- benchmark-journal.pkl (paper-reported shifts) ---
-    journal_path = os.path.join(BENCHMARK_ROOT, "benchmark-journal.pkl")
-    if os.path.exists(journal_path):
-        journal_data: dict[str, Any] = pickle.load(open(journal_path, 'rb'))
-        if args.benchmark_split != 'all':
-            journal_data = {k: v for k, v in journal_data.items() if v['split'] == args.benchmark_split}
-        journal_data = _run_benchmark_loop(
-            journal_data, data_module, model, fp_loader, restrictions,
-            metadata, meta_smi_to_idx, desc='Benchmark (journal)')
-        jn_out = os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_journal_results.pkl")
-        with open(jn_out, 'wb') as f:
-            pickle.dump(journal_data, f)
-        logger.info(f'[Benchmark] Saved journal results to {jn_out} ({os.path.getsize(jn_out)} bytes)')
-        _log_benchmark_results(journal_data, prefix='benchmark_journal', wandb_run=wandb_run)
-    else:
-        logger.warning(f'[Benchmark] benchmark-journal.pkl not found at {journal_path}, skipping journal benchmark')
+    out = os.path.join(BENCHMARK_ROOT, 'benchmarks', f"{args.experiment_name}_benchmark_journal_results.pkl")
+    with open(out, 'wb') as f:
+        pickle.dump(saved, f)
+    logger.info(f'[Benchmark] Saved journal results to {out} ({os.path.getsize(out)} bytes)')
+    if wandb_run is not None and wandb_metrics:
+        wandb.log(wandb_metrics)
