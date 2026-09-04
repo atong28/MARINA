@@ -270,6 +270,13 @@ class MARINA(pl.LightningModule):
             no_ranking=True
         )
         input_type_key = self.spectral_types[dataloader_idx]
+        if batch_idx == 0:
+            logger.info(
+                f"[MARINA][rank {self.global_rank}] validation_step first batch: "
+                f"dataloader_idx={dataloader_idx} input_type_key={input_type_key!r} "
+                f"metrics.keys()={list(metrics.keys())} "
+                f"batch_inputs.keys()={list(batch_inputs.keys())} fps.shape={tuple(fps.shape)}"
+            )
         for feat, val in metrics.items():
             mm = self._get_metric_mm(self._val_mm, feat, input_type_key)
             mm.update(torch.tensor(
@@ -295,7 +302,18 @@ class MARINA(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         keys = list(self._val_mm.keys())
+        logger.info(
+            f"[MARINA][rank {self.global_rank}] on_validation_epoch_end: "
+            f"sanity_checking={getattr(self.trainer, 'sanity_checking', '?')} "
+            f"len(keys)={len(keys)} keys={keys[:8]}{'...' if len(keys) > 8 else ''} "
+            f"spectral_types={self.spectral_types}"
+        )
         if not keys:
+            logger.warning(
+                f"[MARINA][rank {self.global_rank}] _val_mm is EMPTY at "
+                f"on_validation_epoch_end -- validation_step never populated it. "
+                f"No val/* metrics will be logged this epoch."
+            )
             return
         input_types = sorted({k.split("__", 1)[1] for k in keys})
         feats = sorted({k.split("__", 1)[0] for k in keys})
@@ -310,6 +328,16 @@ class MARINA(pl.LightningModule):
                 if input_type == "all_inputs":
                     di[f"val/mean_{feat}"] = v
                 vals_for_avg.append(v)
+        if "all_inputs" not in input_types:
+            logger.warning(
+                f"[MARINA][rank {self.global_rank}] 'all_inputs' missing from "
+                f"input_types={input_types}; bare val/mean_* keys will not be "
+                f"emitted and any EarlyStopping on val/mean_cos will fail."
+            )
+        logger.info(
+            f"[MARINA][rank {self.global_rank}] on_validation_epoch_end logging "
+            f"{len(di)} metrics: {sorted(di.keys())[:6]}..."
+        )
         for k, v in di.items():
             self.log(k, v, on_epoch=True, on_step=False, sync_dist=True)
         for mm in self._val_mm.values():
