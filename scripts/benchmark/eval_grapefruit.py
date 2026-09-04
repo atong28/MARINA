@@ -42,7 +42,7 @@ from src.modules import MARINA, MARINAArgs, MARINADataModule
 from src.modules.marina.dataset import MARINADataset, collate
 from src.modules.data.fp_loader import make_fp_loader
 from src.modules.benchmark import (
-    load_model, filter_data, _run_benchmark_loop,
+    load_model, filter_data, formula_vec_from_smiles, _rank_conventions, cos_sim,
 )
 from src.modules.core.const import BENCHMARK_ROOT, DATASET_ROOT
 
@@ -192,6 +192,34 @@ def score_test_combo(cache, keys, model, device, batch_size):
 
 
 # --------------------------------------------------------------------------- #
+# Part 2: journal benchmark. Device-aware port of benchmark._run_benchmark_loop
+# (that helper leaves format_inference_data tensors on CPU; here the model lives on
+# GPU, so inputs must be moved to match). Formula is computed on the fly when in the
+# restriction; benchmark-journal.pkl is never modified.
+# --------------------------------------------------------------------------- #
+@torch.no_grad()
+def run_benchmark_loop(bench_data, data_module, model, fp_loader, restrictions, device, desc):
+    restr = list(restrictions)
+    recs = []
+    for entry in tqdm(bench_data.values(), desc=desc):
+        raw_input = entry['input']
+        if 'formula' in restr:
+            raw_input = {**raw_input, 'formula': formula_vec_from_smiles(entry['smiles'])}
+        clean = filter_data(raw_input, restr)
+        if not any(k not in ('mw', 'formula') for k in clean):
+            continue  # nothing spectral to feed for this subset
+        inputs = data_module.format_inference_data(clean)
+        inputs = {'batch': _to_device(inputs['batch'], device)}
+        output = model(**inputs)
+        pred = torch.sigmoid(output[0])
+        sfp = fp_loader.build_mfp_for_smiles(entry['smiles'])
+        sfp = (sfp / torch.norm(sfp)).to(pred.device)
+        rs, rt = _rank_conventions(pred, sfp, model.ranker)
+        recs.append({'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt})
+    return recs
+
+
+# --------------------------------------------------------------------------- #
 # Per-run driver
 # --------------------------------------------------------------------------- #
 def build_args(params, ckpt):
@@ -240,8 +268,8 @@ def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits)
     for split in bench_splits:
         split_data = {k: v for k, v in journal.items() if v.get('split') == split}
         for combo, keys in BENCHMARK_COMBOS.items():
-            recs = _run_benchmark_loop(split_data, data_module, model, fp_loader, keys,
-                                       desc=f"{run_name} bench/{split}/{combo}")
+            recs = run_benchmark_loop(split_data, data_module, model, fp_loader, keys,
+                                      device, desc=f"{run_name} bench/{split}/{combo}")
             m = _agg_recs(recs)
             raw['benchmark'].setdefault(split, {})[combo] = recs
             rows.append({'run': run_name, 'ckpt': ckpt_path, 'part': 'benchmark',
