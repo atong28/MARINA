@@ -31,7 +31,7 @@ def process_npmrd(input_dir: Path, smiles_dict: Dict[str, Dict]) -> Dict[str, Di
             smiles = canonicalize_smiles(row["SMILES"], keep_stereo=False)
             smiles_3d = canonicalize_smiles(row["SMILES"], keep_stereo=True)
             if smiles is not None:
-                db_entry = {"npid": row["NP_MRD_ID"], "name": row["Natural_Products_Name"], "original_smiles": smiles_3d}
+                db_entry = {"npmrd_id": row["NP_MRD_ID"], "name": row["Natural_Products_Name"], "original_smiles": smiles_3d}
                 if smiles not in smiles_dict:
                     smiles_dict[smiles] = {
                         "smiles": smiles,
