@@ -235,10 +235,19 @@ def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits)
         raise ValueError(f"{run_name}: only MARINA runs are supported (got {params.get('project_name')})")
     args = build_args(params, ckpt_path)
 
-    missing = [m for m in ALL_INPUTS if m not in args.input_types]
-    if missing:
-        raise ValueError(f"{run_name}: model was not trained with {missing}; "
-                         f"the all-7 population / combo matrix needs all of {ALL_INPUTS}")
+    # Population is fixed to all-7-DATA molecules (same molecules for every model, so
+    # cross-model numbers are comparable). The MODEL, however, may lack some modalities
+    # (e.g. a formula-free or MS+-only run) -- run only the combos it supports, skip the
+    # rest, rather than erroring the whole run.
+    model_mods = set(args.input_types)
+    all_test = build_test_combos()
+    test_combos = OrderedDict((n, k) for n, k in all_test.items() if set(k) <= model_mods)
+    bench_combos = OrderedDict((n, k) for n, k in BENCHMARK_COMBOS.items() if set(k) <= model_mods)
+    skipped = [n for n in all_test if n not in test_combos] + \
+              [f"bench:{n}" for n in BENCHMARK_COMBOS if n not in bench_combos]
+    if skipped:
+        print(f"[{run_name}] model input_types={sorted(model_mods)}; "
+              f"skipping combos needing absent modalities: {skipped}")
 
     fp_loader = make_fp_loader(
         args.fp_type, entropy_out_dim=args.out_dim,
@@ -254,7 +263,7 @@ def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits)
     # (1) simulated test scores, fixed all-7 population -----------------------
     cache = load_all7_population(args, fp_loader)
     print(f"[{run_name}] all-7 test population: n={len(cache)}")
-    for combo, keys in build_test_combos().items():
+    for combo, keys in test_combos.items():
         rs, rt, cos = score_test_combo(cache, keys, model, device, batch_size)
         m = _agg(rs, rt, cos)
         raw['test'][combo] = {'rank_strict': rs, 'rank_tie': rt, 'cos': cos}
@@ -267,7 +276,7 @@ def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits)
     journal = pickle.load(open(journal_path, 'rb'))
     for split in bench_splits:
         split_data = {k: v for k, v in journal.items() if v.get('split') == split}
-        for combo, keys in BENCHMARK_COMBOS.items():
+        for combo, keys in bench_combos.items():
             recs = run_benchmark_loop(split_data, data_module, model, fp_loader, keys,
                                       device, desc=f"{run_name} bench/{split}/{combo}")
             m = _agg_recs(recs)
