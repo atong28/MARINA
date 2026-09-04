@@ -113,7 +113,7 @@ class BitExplainRequest(BaseModel):
     pred_fp:  List[float]   = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
                                      description="Predicted fingerprint from /predict or /smiles-search")
     model_id: Optional[str] = Field(None)
-    limit:    int           = Field(60, ge=1, le=500, description="Max rows to return")
+    limit:    int           = Field(60, ge=1, le=100000, description="Max rows to return")
     include_fragment_svg: bool = Field(False, description="Attach a drawing of each substructure")
 
 
