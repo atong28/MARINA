@@ -270,13 +270,6 @@ class MARINA(pl.LightningModule):
             no_ranking=True
         )
         input_type_key = self.spectral_types[dataloader_idx]
-        if batch_idx == 0:
-            logger.info(
-                f"[MARINA][rank {self.global_rank}] validation_step first batch: "
-                f"dataloader_idx={dataloader_idx} input_type_key={input_type_key!r} "
-                f"metrics.keys()={list(metrics.keys())} "
-                f"batch_inputs.keys()={list(batch_inputs.keys())} fps.shape={tuple(fps.shape)}"
-            )
         for feat, val in metrics.items():
             mm = self._get_metric_mm(self._val_mm, feat, input_type_key)
             mm.update(torch.tensor(
@@ -301,30 +294,8 @@ class MARINA(pl.LightningModule):
         raise NotImplementedError()
 
     def on_validation_epoch_end(self):
-        # Trace to a real file so tqdm cannot mangle it (stderr prints were being
-        # overwritten by the training-epoch progress bar's \r updates).
-        def _trace(msg):
-            try:
-                with open("/tmp/marina_val_trace.log", "a") as _f:
-                    _f.write(f"[rank {self.global_rank}] {msg}\n")
-            except Exception:
-                pass
-        _trace(f"on_validation_epoch_end ENTER sanity="
-               f"{getattr(self.trainer, 'sanity_checking', '?')} "
-               f"n_keys={len(self._val_mm)}")
         keys = list(self._val_mm.keys())
-        logger.info(
-            f"[MARINA][rank {self.global_rank}] on_validation_epoch_end: "
-            f"sanity_checking={getattr(self.trainer, 'sanity_checking', '?')} "
-            f"len(keys)={len(keys)} keys={keys[:8]}{'...' if len(keys) > 8 else ''} "
-            f"spectral_types={self.spectral_types}"
-        )
         if not keys:
-            logger.warning(
-                f"[MARINA][rank {self.global_rank}] _val_mm is EMPTY at "
-                f"on_validation_epoch_end -- validation_step never populated it."
-            )
-            _trace("EXIT early (empty _val_mm)")
             return
         input_types = sorted({k.split("__", 1)[1] for k in keys})
         feats = sorted({k.split("__", 1)[0] for k in keys})
@@ -339,19 +310,10 @@ class MARINA(pl.LightningModule):
                 if input_type == "all_inputs":
                     di[f"val/mean_{feat}"] = v
                 vals_for_avg.append(v)
-        if "all_inputs" not in input_types:
-            _trace(f"WARNING all_inputs missing from input_types={input_types}; "
-                   f"bare val/mean_* keys will not be emitted")
-        _trace(f"logging {len(di)} metrics: sample={sorted(di.keys())[:6]}")
-        logger.info(
-            f"[MARINA][rank {self.global_rank}] on_validation_epoch_end logging "
-            f"{len(di)} metrics: {sorted(di.keys())[:6]}..."
-        )
         # Metrics are already all-reduced inside MeanMetric.compute() via
         # sync_on_compute=True, so sync_dist here would double-sync.
         for k, v in di.items():
             self.log(k, v, on_epoch=True, on_step=False, sync_dist=False)
-        _trace("EXIT normal (metrics logged)")
         for mm in self._val_mm.values():
             mm.reset()
 

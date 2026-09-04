@@ -25,6 +25,7 @@ from collections import Counter
 from pathlib import Path
 
 import pyarrow.parquet as pq
+import torch
 
 _HERE = Path(__file__).resolve()
 sys.path.insert(0, str(_HERE.parents[1]))
@@ -36,6 +37,11 @@ SPLITS = ("train", "val", "test")
 MODALITIES = ("HSQC_NMR", "C_NMR", "H_NMR", "MassSpec", "MassSpecNeg", "FragIdx")
 HAS_FLAG = {"HSQC_NMR": "has_hsqc", "C_NMR": "has_c_nmr", "H_NMR": "has_h_nmr",
             "MassSpec": "has_mass_spec", "MassSpecNeg": "has_mass_spec_neg"}
+# Canonical last-dim per spectral modality in an entry's input dict.
+# collate expects 2D tensors of shape (N, JOURNAL_MOD_D[mod]); a 1D or
+# wrong-width tensor crashes forward with StopIteration (which the eval loop
+# silently swallows, killing val/mean_cos). Lint catches that upfront.
+JOURNAL_MOD_D = {"hsqc": 3, "c_nmr": 1, "h_nmr": 1, "mass_spec": 2, "mass_spec_neg": 2}
 
 failures = []
 
@@ -96,6 +102,46 @@ def main():
               not miss, f"{len(miss)} missing: {miss[:10]}")
 
     bench_missing(BENCH_JOURNAL, "journal")
+
+    # ---- 2c. journal input tensors are well-formed ----
+    # Every modality tensor in a journal entry's input dict must be 2D with the
+    # canonical last-dim, and non-empty when it claims to carry data. A 1D empty
+    # tensor (has-modality-but-no-peaks stored as torch.tensor([])) slips past
+    # the runtime "all None -> skip" check but crashes forward with StopIteration
+    # inside the eval callback -- which Lightning's eval_loop.run silently
+    # absorbs (evaluation_loop.py:147 `except StopIteration`), losing the whole
+    # module.on_validation_epoch_end pass and any EarlyStopping metric with it.
+    def check_journal_input_tensors(path, label):
+        if not Path(path).exists():
+            print(f"[skip] {label} input-tensor lint: not present ({path})")
+            return
+        data = pickle.load(open(path, "rb"))
+        bad = []  # (npid, split, mod, shape_or_type, reason)
+        for k, entry in data.items():
+            inp = entry.get("input", {}) or {}
+            sp = entry.get("split", "?")
+            for mod, v in inp.items():
+                if mod == "mw":
+                    continue  # scalar; format_inference_data reshapes to (1, 1)
+                if mod == "formula":
+                    continue  # not stored in input dict for journal
+                if v is None:
+                    continue
+                if not isinstance(v, torch.Tensor):
+                    bad.append((k, sp, mod, type(v).__name__, "not-tensor"))
+                    continue
+                expected_d = JOURNAL_MOD_D.get(mod)
+                if v.ndim != 2:
+                    bad.append((k, sp, mod, tuple(v.shape), "ndim!=2"))
+                elif expected_d is not None and v.shape[1] != expected_d:
+                    bad.append((k, sp, mod, tuple(v.shape), f"shape[1]!={expected_d}"))
+                elif v.shape[1] == 0:
+                    bad.append((k, sp, mod, tuple(v.shape), "shape[1]==0"))
+        check(f"{label} input tensors well-formed ({len(data)} entries)",
+              not bad,
+              f"{len(bad)} bad tensors; first: {bad[:5]}")
+
+    check_journal_input_tensors(BENCH_JOURNAL, "journal")
 
     # ---- 3. no duplicate canonical SMILES in the index ----
     counts = Counter(v["smiles"] for v in index.values())
