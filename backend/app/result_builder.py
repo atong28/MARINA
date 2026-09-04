@@ -64,7 +64,8 @@ def _database_links(entry: Dict[str, Any]) -> Dict[str, Optional[str]]:
         links["coconut"] = f"https://coconut.naturalproducts.net/compounds/{cid}"
     if lid := lotus.get("lotus_id"):
         links["lotus"] = f"https://lotus.naturalproducts.net/compound/lotus_id/{lid}"
-    if nid := npmrd.get("npmrd_id"):
+    # MARINA-DB metadata stores the NP-MRD id under 'npid'; MARINA1 used 'npmrd_id'.
+    if nid := (npmrd.get("npmrd_id") or npmrd.get("npid")):
         links["npmrd"] = f"https://np-mrd.org/natural_products/{nid}"
     return links
 
@@ -92,13 +93,14 @@ def _npclassifier(session: Any, global_idx: int) -> Optional[Dict[str, Any]]:
 
 def _primary(entry: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """Return (name, link) for the most authoritative database."""
-    for db, url_template, id_key in [
-        ("coconut", "https://coconut.naturalproducts.net/compounds/{}", "coconut_id"),
-        ("lotus",   "https://lotus.naturalproducts.net/compound/lotus_id/{}", "lotus_id"),
-        ("npmrd",   "https://np-mrd.org/natural_products/{}", "npmrd_id"),
+    # NP-MRD id lives under 'npmrd_id' (MARINA1) or 'npid' (MARINA-DB), so both are tried.
+    for db, url_template, id_keys in [
+        ("coconut", "https://coconut.naturalproducts.net/compounds/{}", ("coconut_id",)),
+        ("lotus",   "https://lotus.naturalproducts.net/compound/lotus_id/{}", ("lotus_id",)),
+        ("npmrd",   "https://np-mrd.org/natural_products/{}", ("npmrd_id", "npid")),
     ]:
         rec = entry.get(db) or {}
-        db_id = rec.get(id_key)
+        db_id = next((rec[k] for k in id_keys if rec.get(k)), None)
         if db_id:
             return rec.get("name"), url_template.format(db_id)
     return None, None
