@@ -117,11 +117,12 @@ export const HELP = {
 
     formulaFilter:
       'Restricts retrieved results to compounds whose molecular formula matches ' +
-      'the atom counts you specify, per element, as count ± tolerance (e.g. C = 40 ' +
-      '± 5 keeps candidates with 35–45 carbons; tolerance 0 or blank means exactly ' +
-      '40). Add a row per element; all rows must be satisfied. Applied after neural ' +
-      'network retrieval — like the MW filter, it narrows candidates and does not ' +
-      'change the fingerprint. Candidates whose structure cannot be parsed are kept.',
+      'the atom counts you specify, per element, as an inclusive range: element ' +
+      'between low and high (e.g. C between 35 and 45). Leave either bound blank for ' +
+      'no bound on that side. Add a row per element; all rows must be satisfied. ' +
+      'Applied after neural network retrieval — like the MW filter, it narrows ' +
+      'candidates and does not change the fingerprint. Candidates whose structure ' +
+      'cannot be parsed are kept.',
 
     resultsCount:
       'How many top-ranked compounds to retrieve from the database (1–50). ' +

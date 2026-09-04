@@ -53,34 +53,38 @@ describe('tokenizeFormula', () => {
 })
 
 describe('buildFormulaConstraints', () => {
-  it('turns count ± tolerance into [min, max]', () => {
-    expect(buildFormulaConstraints([{ element: 'C', count: '40', tolerance: '5' }]))
+  it('turns low/high into [min, max]', () => {
+    expect(buildFormulaConstraints([{ element: 'C', low: '35', high: '45' }]))
       .toEqual([{ element: 'C', min: 35, max: 45 }])
   })
 
-  it('treats blank/zero tolerance as an exact count', () => {
-    expect(buildFormulaConstraints([{ element: 'N', count: '2', tolerance: '' }]))
-      .toEqual([{ element: 'N', min: 2, max: 2 }])
+  it('allows an open-ended bound (blank low or high)', () => {
+    expect(buildFormulaConstraints([{ element: 'N', low: '2', high: '' }]))
+      .toEqual([{ element: 'N', min: 2 }])
+    expect(buildFormulaConstraints([{ element: 'O', low: '', high: '8' }]))
+      .toEqual([{ element: 'O', max: 8 }])
   })
 
-  it('clamps min at 0 and skips blank or invalid rows', () => {
+  it('skips blank or invalid rows', () => {
     const out = buildFormulaConstraints([
-      { element: 'O', count: '3', tolerance: '10' },   // min clamps to 0
-      { element: '', count: '', tolerance: '' },        // blank → skipped
-      { element: 'Xz', count: '5', tolerance: '0' },    // bad element → skipped
+      { element: 'C', low: '10', high: '12' },
+      { element: '', low: '', high: '' },        // blank → skipped
+      { element: 'Xz', low: '5', high: '9' },    // bad element → skipped
     ])
-    expect(out).toEqual([{ element: 'O', min: 0, max: 13 }])
+    expect(out).toEqual([{ element: 'C', min: 10, max: 12 }])
   })
 })
 
 describe('formulaFilterEntryError', () => {
   it('accepts a blank row and a valid row', () => {
-    expect(formulaFilterEntryError({ element: '', count: '', tolerance: '' })).toBeNull()
-    expect(formulaFilterEntryError({ element: 'C', count: '40', tolerance: '5' })).toBeNull()
+    expect(formulaFilterEntryError({ element: '', low: '', high: '' })).toBeNull()
+    expect(formulaFilterEntryError({ element: 'C', low: '35', high: '45' })).toBeNull()
+    expect(formulaFilterEntryError({ element: 'C', low: '35', high: '' })).toBeNull()
   })
-  it('rejects unknown elements and bad counts', () => {
-    expect(formulaFilterEntryError({ element: 'Xz', count: '1', tolerance: '' })).toContain('Xz')
-    expect(formulaFilterEntryError({ element: 'C', count: '-1', tolerance: '' })).toBeTruthy()
-    expect(formulaFilterEntryError({ element: 'C', count: '4', tolerance: '-2' })).toBeTruthy()
+  it('rejects unknown elements, bad numbers, and low > high', () => {
+    expect(formulaFilterEntryError({ element: 'Xz', low: '1', high: '' })).toContain('Xz')
+    expect(formulaFilterEntryError({ element: 'C', low: '-1', high: '' })).toBeTruthy()
+    expect(formulaFilterEntryError({ element: 'C', low: '', high: '' })).toBeTruthy()
+    expect(formulaFilterEntryError({ element: 'C', low: '10', high: '5' })).toBeTruthy()
   })
 })

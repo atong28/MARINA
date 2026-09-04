@@ -46,36 +46,43 @@ export function tokenizeFormula(formula: string): FormulaToken[] {
 
 import type { FormulaConstraint } from './api'
 
-export interface FilterEntryInput { element: string; count: string; tolerance: string }
+export interface FilterEntryInput { element: string; low: string; high: string }
 
-/** Validation for one atom-count filter row. Null = ok (a fully blank row is ok, ignored). */
+function intOrNull(s: string): number | null {
+  const t = s.trim()
+  return t === '' ? null : Number(t)
+}
+
+/** Validation for one atom-count filter row (element between low..high, inclusive).
+ *  Null = ok; a fully blank row is ok (ignored). Either bound may be left blank. */
 export function formulaFilterEntryError(e: FilterEntryInput): string | null {
   const el = e.element.trim()
-  const countStr = e.count.trim()
-  if (el === '' && countStr === '') return null            // blank row, ignored
+  const low = e.low.trim()
+  const high = e.high.trim()
+  if (el === '' && low === '' && high === '') return null   // blank row, ignored
   if (!ELEMENTS.has(el)) return `Unknown element “${el || '?'}”.`
-  const count = Number(countStr)
-  if (countStr === '' || !Number.isInteger(count) || count < 0) {
-    return 'Count must be a non-negative integer.'
-  }
-  const tolStr = e.tolerance.trim()
-  if (tolStr !== '') {
-    const tol = Number(tolStr)
-    if (!Number.isInteger(tol) || tol < 0) return 'Tolerance must be a non-negative integer.'
-  }
+  const lo = intOrNull(low)
+  const hi = intOrNull(high)
+  if (lo !== null && (!Number.isInteger(lo) || lo < 0)) return 'Low must be a non-negative integer.'
+  if (hi !== null && (!Number.isInteger(hi) || hi < 0)) return 'High must be a non-negative integer.'
+  if (lo === null && hi === null) return 'Enter a low and/or high bound.'
+  if (lo !== null && hi !== null && lo > hi) return 'Low cannot exceed high.'
   return null
 }
 
-/** Convert filter rows to backend constraints ({count ± tolerance} → [min, max]). */
+/** Convert filter rows to backend constraints. A blank bound means unbounded on that side. */
 export function buildFormulaConstraints(entries: FilterEntryInput[]): FormulaConstraint[] {
   const out: FormulaConstraint[] = []
   for (const e of entries) {
     if (formulaFilterEntryError(e) !== null) continue
     const el = e.element.trim()
-    if (el === '' || e.count.trim() === '') continue
-    const count = Number(e.count)
-    const tol = e.tolerance.trim() === '' ? 0 : Number(e.tolerance)
-    out.push({ element: el, min: Math.max(0, count - tol), max: count + tol })
+    const lo = intOrNull(e.low)
+    const hi = intOrNull(e.high)
+    if (!el || (lo === null && hi === null)) continue
+    const c: FormulaConstraint = { element: el }
+    if (lo !== null) c.min = lo
+    if (hi !== null) c.max = hi
+    out.push(c)
   }
   return out
 }

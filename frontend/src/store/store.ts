@@ -83,11 +83,11 @@ export interface CustomResult {
   card: ResultCard
 }
 
-/** One row of the atom-count filter UI (raw input strings). */
+/** One row of the atom-count filter UI (raw input strings): element between low..high. */
 export interface FormulaFilterEntry {
   element: string
-  count: string
-  tolerance: string
+  low: string
+  high: string
 }
 
 let customIdSeq = 0
