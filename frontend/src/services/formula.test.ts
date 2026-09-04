@@ -1,7 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateFormula, tokenizeFormula, buildFormulaConstraints, formulaFilterEntryError,
+  toSubscript, fromSubscript,
 } from './formula'
+
+describe('subscript conversion', () => {
+  it('renders digits as subscripts and round-trips back to ASCII', () => {
+    expect(toSubscript('C10H12N2O')).toBe('C₁₀H₁₂N₂O')
+    expect(fromSubscript('C₁₀H₁₂N₂O')).toBe('C10H12N2O')
+    expect(fromSubscript(toSubscript('CuSO4'))).toBe('CuSO4')
+  })
+  it('leaves letters untouched', () => {
+    expect(toSubscript('NaCl')).toBe('NaCl')
+  })
+})
 
 describe('validateFormula', () => {
   it('accepts an empty string (formula is optional)', () => {

@@ -1,58 +1,40 @@
 import { useAppStore } from '../../store/store'
-import { validateFormula, tokenizeFormula } from '../../services/formula'
+import { validateFormula, toSubscript, fromSubscript } from '../../services/formula'
 import HelpButton from './HelpButton'
 import { HELP } from '../../helpContent'
 import './FormulaInput.css'
 
 /**
- * Optional molecular-formula input. The <input> holds plain ASCII (e.g.
- * "C10H12N2O"); a live preview renders the counts as real subscripts and flags
- * an invalid formula. Formula is a descriptor, not a spectrum, so it never
- * satisfies the "at least one spectral input" requirement on its own.
+ * Optional molecular-formula input, WYSIWYG: digits are shown as subscripts right
+ * in the field (C₁₀H₁₂N₂O) while the store keeps plain ASCII. Formula is a
+ * descriptor, not a spectrum, so it never satisfies the "≥1 spectral input" rule.
  */
 function FormulaInput() {
   const formula = useAppStore((s) => s.formula)
   const setFormula = useAppStore((s) => s.setFormula)
 
-  const trimmed = formula.trim()
   const validation = validateFormula(formula)
-  const tokens = tokenizeFormula(formula)
+  const invalid = formula.trim() !== '' && !validation.valid
 
   return (
-    <div className="main-page__mw-row">
-      <label className="main-page__label">
-        <span className="main-page__label-text">
-          Molecular formula
-          <HelpButton content={HELP.spectral.formula} placement="right" />
-        </span>
-        <input
-          type="text"
-          placeholder="Optional, e.g. C10H12N2O"
-          value={formula}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          className={trimmed && !validation.valid ? 'formula-input--invalid' : undefined}
-          onChange={(e) => setFormula(e.target.value)}
-        />
-      </label>
-      {trimmed && (
-        <div className="formula-input__feedback">
-          {validation.valid ? (
-            <span className="formula-input__preview" aria-label="parsed formula">
-              {tokens.map((t, i) => (
-                <span key={i}>
-                  {t.symbol}
-                  {t.count && <sub>{t.count}</sub>}
-                </span>
-              ))}
-            </span>
-          ) : (
-            <span className="formula-input__error">{validation.error}</span>
-          )}
-        </div>
-      )}
-    </div>
+    <label className="main-page__label formula-input">
+      <span className="main-page__label-text">
+        Molecular formula
+        <HelpButton content={HELP.spectral.formula} placement="right" />
+      </span>
+      <input
+        type="text"
+        className={`formula-input__field${invalid ? ' formula-input--invalid' : ''}`}
+        placeholder="Optional, e.g. C10H12N2O"
+        // Show subscripts; store ASCII. The map is 1:1 so the caret stays put.
+        value={toSubscript(formula)}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        onChange={(e) => setFormula(fromSubscript(e.target.value))}
+      />
+      {invalid && <span className="formula-input__error">{validation.error}</span>}
+    </label>
   )
 }
 

@@ -12,6 +12,8 @@ export interface ExampleData {
   /** Optional negative-mode MS/MS; absent in older example files. */
   mass_spec_neg?: number[]
   mw: number | null
+  /** Optional molecular formula; absent in older example files. */
+  formula?: string
 }
 
 export interface ExampleMeta {

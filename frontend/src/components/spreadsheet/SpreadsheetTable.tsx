@@ -183,7 +183,9 @@ function SpreadsheetTable({
       data: i,
       type: 'numeric' as const,
       editor: 'numeric' as const,
-      width: 130,
+      // Narrow enough that all 9 columns (incl. negative MS/MS) fit a standard
+      // laptop; stretchH widens them when there's room. Overflow scrolls otherwise.
+      width: 96,
       allowEmpty: true,
       className: GROUP_STARTS.has(i) ? 'ht-modality-start' : undefined,
     })),

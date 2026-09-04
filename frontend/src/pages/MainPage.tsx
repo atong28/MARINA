@@ -60,7 +60,7 @@ function MainPage() {
     results, predictedFp, queryFp, resultSource,
     customResults,
     setPredictResults, setSmilesResults,
-    setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setSpectra, setMW,
+    setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setSpectra, setMW, setFormula,
     setSmilesInput,
     setRetrievalMwRange,
     addCustomResult, removeCustomResult,
@@ -209,12 +209,13 @@ function MainPage() {
       setMassSpec(data.mass_spec ?? [])
       setMassSpecNeg(data.mass_spec_neg ?? [])
       setMW(data.mw ?? null)
+      setFormula(data.formula ?? '')
     } catch (err) {
       console.error('Failed to load example:', err)
     } finally {
       setIsLoadingExample(false)
     }
-  }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setMW])
+  }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setMW, setFormula])
 
   const isPending = predictMutation.isPending || smilesSearchMutation.isPending
   // A cancelled request is not a failure worth showing — see isAbortError.
@@ -290,7 +291,7 @@ function MainPage() {
 
           <SpectraPreview hsqc={hsqc} h_nmr={h_nmr} c_nmr={c_nmr} mass_spec={mass_spec} mass_spec_neg={mass_spec_neg} />
 
-          <div className="main-page__mw-row">
+          <div className="main-page__descriptor-row">
             <label className="main-page__label">
               <span className="main-page__label-text">
                 Molecular weight (Da)
@@ -304,9 +305,9 @@ function MainPage() {
                 onChange={(e) => setMW(e.target.value ? parseFloat(e.target.value) : null)}
               />
             </label>
-          </div>
 
-          <FormulaInput />
+            <FormulaInput />
+          </div>
 
           <MWRangeFilter
             min={retrievalMwMin}

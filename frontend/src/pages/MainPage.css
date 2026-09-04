@@ -180,6 +180,14 @@
   align-items: center;
 }
 
+/* Molecular weight + molecular formula share one line. */
+.main-page__descriptor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
 /* ── Action row ────────────────────────────────────────────────────────────────── */
 
 .main-page__action-row {

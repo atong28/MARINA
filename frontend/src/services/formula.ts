@@ -19,6 +19,16 @@ export const ELEMENTS = new Set([
   'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
 ])
 
+// WYSIWYG subscripting: the input shows counts as Unicode subscripts while the
+// store keeps plain ASCII ("C10H12N2O"). Convert on the way in/out of the field.
+const SUB = '₀₁₂₃₄₅₆₇₈₉'
+export function toSubscript(ascii: string): string {
+  return ascii.replace(/[0-9]/g, (d) => SUB[+d])
+}
+export function fromSubscript(text: string): string {
+  return text.replace(/[₀-₉]/g, (c) => String(SUB.indexOf(c)))
+}
+
 const TOKEN_RE = /([A-Z][a-z]?)(\d*)/g
 // The whole string must be element+optional-count groups, nothing else.
 const SHAPE_RE = /^([A-Z][a-z]?\d*)+$/

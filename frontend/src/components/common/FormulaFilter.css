@@ -20,8 +20,21 @@
   gap: 6px;
 }
 
+/* Match the app's number/text inputs. */
 .formula-filter__row input {
-  height: 30px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.formula-filter__row input:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
 .formula-filter__el {
@@ -40,9 +53,9 @@
 .formula-filter__remove {
   border: 1px solid #e5e7eb;
   background: #fff;
-  border-radius: 5px;
-  width: 26px;
-  height: 30px;
+  border-radius: 6px;
+  width: 30px;
+  height: 32px;
   cursor: pointer;
   color: #6b7280;
   line-height: 1;
@@ -51,6 +64,11 @@
 .formula-filter__remove:hover {
   background: #f3f4f6;
   color: #dc2626;
+}
+
+.formula-filter--invalid,
+.formula-input--invalid {
+  border-color: #dc2626 !important;
 }
 
 .formula-filter__error {
@@ -62,8 +80,8 @@
   align-self: flex-start;
   border: 1px dashed #d1d5db;
   background: #fff;
-  border-radius: 5px;
-  padding: 4px 10px;
+  border-radius: 6px;
+  padding: 5px 12px;
   font-size: 13px;
   color: #374151;
   cursor: pointer;
