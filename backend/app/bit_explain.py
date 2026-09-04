@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 # actually has them. ~16,318 of 16,384 bits per molecule sit under 0.01.
 MIN_CONFIDENCE = 0.01
 
+# Multiplicity thermometer floor: a cumulative level is worth a bar only if the
+# candidate reaches it or the model predicts it at least this strongly. Trailing
+# levels that are neither (all sit at ~0) are dropped, and a whole fragment that is
+# neither present nor predicted above this is not shown at all.
+BUCKET_FLOOR = 0.05
+
 # Group ordering: confident misses first, then confirmations, then the tail.
 GROUP_MISSING = "missing"        # predicted present, candidate lacks it
 GROUP_MATCH = "match"            # predicted present, candidate has it
@@ -164,6 +170,18 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
             one_raw, one_conf, one_col = b0["raw_confidence"], b0["confidence"], b0["index"]
         true_count = max(present_levels) if present_levels else 0
         is_present = true_count >= 1
+
+        # Drop a fragment that is neither present nor predicted above the floor — an
+        # all-zero thermometer carries no information.
+        max_conf = max((b["confidence"] for b in buckets), default=0.0)
+        if not is_present and max_conf < BUCKET_FLOOR:
+            continue
+        # Trim trailing buckets that are neither present nor predicted, so the strip
+        # shows only the meaningful range (up to the true count or the last prediction).
+        kmax = max((b["level"] for b in buckets if b["present"] or b["confidence"] >= BUCKET_FLOOR),
+                   default=1)
+        buckets = [b for b in buckets if b["level"] <= kmax]
+
         group = ((GROUP_MATCH if is_present else GROUP_MISSING) if one_conf >= CONFIDENT
                  else (GROUP_UNEXPECTED if is_present else GROUP_UNCERTAIN))
         rows.append({

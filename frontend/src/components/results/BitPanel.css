@@ -179,7 +179,9 @@
   gap: 3px;
   margin-left: auto;
   padding-left: 8px;
-  /* Scroll sideways when a fragment has many cumulative levels. */
+  /* Scroll sideways when a fragment has many cumulative levels. position:relative
+     makes child offsetLeft measure from the strip, so scroll-centering is correct. */
+  position: relative;
   max-width: 300px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -200,6 +202,15 @@
   display: flex;
   align-items: flex-end;
   overflow: hidden;
+}
+
+/* Faint track tint by correctness, so the colour reads even at low bar height. */
+.bit-panel__thermo-bar.is-correct {
+  background: #dcfce7;   /* faint green */
+}
+
+.bit-panel__thermo-bar.is-wrong {
+  background: #fee2e2;   /* faint red */
 }
 
 /* Bar height = predicted confidence; colour = whether the prediction is right. */

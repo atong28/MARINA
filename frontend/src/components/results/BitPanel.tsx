@@ -32,7 +32,7 @@ function BucketBars({ buckets, trueCount }: { buckets: BucketPrediction[]; trueC
             className="bit-panel__thermo-col"
             ref={b.level === trueCount ? trueRef : undefined}
           >
-            <span className="bit-panel__thermo-bar">
+            <span className={`bit-panel__thermo-bar ${correct ? 'is-correct' : 'is-wrong'}`}>
               <span
                 className={`bit-panel__thermo-fill ${correct ? 'is-correct' : 'is-wrong'}`}
                 style={{ height: `${Math.max(3, Math.round(b.confidence * 100))}%` }}
@@ -149,7 +149,8 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
     setLoading(true)
     setError(null)
     api
-      .explainBits({ smiles, pred_fp: predFp, model_id: modelId, limit: 60, include_fragment_svg: true })
+      // No practical limit: show every substructure, never a truncated "+k more".
+      .explainBits({ smiles, pred_fp: predFp, model_id: modelId, limit: 100000, include_fragment_svg: true })
       .then((res) => { if (!cancelled) setData(res) })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)) })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -169,7 +170,6 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
     return <div className="bit-panel__status">No substructures to report.</div>
   }
 
-  const hidden = data.total_available - data.total_shown
   // Multiplicity vocabularies collapse to one row per fragment (each carrying a
   // bucket thermometer) and are ordered by radius then entropy, so they render as
   // one flat list rather than the disagreement groups.
@@ -244,7 +244,7 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
       )}
 
       <div className="bit-panel__truncated">
-        {hidden > 0 ? `+ ${hidden} more not shown` : `All ${data.total_shown} shown`}
+        {data.total_shown} substructure{data.total_shown === 1 ? '' : 's'} shown
       </div>
 
       {/*
