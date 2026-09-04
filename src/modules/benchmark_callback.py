@@ -75,10 +75,16 @@ class BenchmarkCosineCallback(pl.Callback):
 
     @torch.no_grad()
     def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+        import sys as _sys
+        r = trainer.global_rank
+        print(f"[TRACE-BC][rank {r}] BenchmarkCosine.on_validation_epoch_end ENTER "
+              f"sanity={trainer.sanity_checking}", file=_sys.stderr, flush=True)
         if trainer.sanity_checking:
+            print(f"[TRACE-BC][rank {r}] returning (sanity_checking)", file=_sys.stderr, flush=True)
             return
         self._prepare()
         if not self._active:
+            print(f"[TRACE-BC][rank {r}] returning (not active)", file=_sys.stderr, flush=True)
             return
 
         dm = trainer.datamodule
@@ -87,6 +93,7 @@ class BenchmarkCosineCallback(pl.Callback):
         rank = trainer.global_rank
 
         for split in SPLITS:
+            print(f"[TRACE-BC][rank {r}] split={split} loop START", file=_sys.stderr, flush=True)
             prepared = self._entries.get(split, [])
             shard = prepared[rank::world] if world > 1 else prepared
             local_sum = 0.0
@@ -100,10 +107,14 @@ class BenchmarkCosineCallback(pl.Callback):
                 pred = torch.sigmoid(pl_module(batch)[0])
                 local_sum += cos_sim(pred, sfp.to(device)).item()
 
+            print(f"[TRACE-BC][rank {r}] split={split} loop DONE local_sum={local_sum:.4f} n={len(shard)}",
+                  file=_sys.stderr, flush=True)
             stats = torch.tensor([local_sum, float(len(shard))], device=device)
             if world > 1 and dist.is_available() and dist.is_initialized():
                 dist.all_reduce(stats)
             mean_cos = (stats[0] / stats[1]).item() if stats[1] > 0 else 0.0
+            print(f"[TRACE-BC][rank {r}] split={split} logging mean_cos={mean_cos:.4f}",
+                  file=_sys.stderr, flush=True)
 
             # All ranks hold the same reduced value -> log without further sync.
             # Key matches the end-of-run 'all' subset so the per-epoch curve and the
@@ -112,3 +123,6 @@ class BenchmarkCosineCallback(pl.Callback):
                 f"benchmark_journal/{split}/all/mean_cos", mean_cos,
                 on_epoch=True, on_step=False, sync_dist=False,
             )
+            print(f"[TRACE-BC][rank {r}] split={split} log() returned", file=_sys.stderr, flush=True)
+        print(f"[TRACE-BC][rank {r}] BenchmarkCosine.on_validation_epoch_end EXIT",
+              file=_sys.stderr, flush=True)

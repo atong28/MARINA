@@ -301,6 +301,12 @@ class MARINA(pl.LightningModule):
         raise NotImplementedError()
 
     def on_validation_epoch_end(self):
+        # Raw print bypasses the rank-0-only logger cache and any handler buffering
+        # so we can prove the hook fires on every rank regardless of logger state.
+        import sys as _sys
+        print(f"[TRACE-OVEE][rank {self.global_rank}] on_validation_epoch_end ENTER "
+              f"sanity={getattr(self.trainer, 'sanity_checking', '?')} "
+              f"n_keys={len(self._val_mm)}", file=_sys.stderr, flush=True)
         keys = list(self._val_mm.keys())
         logger.info(
             f"[MARINA][rank {self.global_rank}] on_validation_epoch_end: "
