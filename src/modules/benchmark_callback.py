@@ -75,16 +75,20 @@ class BenchmarkCosineCallback(pl.Callback):
 
     @torch.no_grad()
     def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        import sys as _sys
+        def _trace(msg):
+            try:
+                with open("/tmp/marina_val_trace.log", "a") as _f:
+                    _f.write(f"[rank {trainer.global_rank}] BC: {msg}\n")
+            except Exception:
+                pass
         r = trainer.global_rank
-        print(f"[TRACE-BC][rank {r}] BenchmarkCosine.on_validation_epoch_end ENTER "
-              f"sanity={trainer.sanity_checking}", file=_sys.stderr, flush=True)
+        _trace(f"BenchmarkCosine.on_validation_epoch_end ENTER sanity={trainer.sanity_checking}")
         if trainer.sanity_checking:
-            print(f"[TRACE-BC][rank {r}] returning (sanity_checking)", file=_sys.stderr, flush=True)
+            _trace("returning (sanity_checking)")
             return
         self._prepare()
         if not self._active:
-            print(f"[TRACE-BC][rank {r}] returning (not active)", file=_sys.stderr, flush=True)
+            _trace("returning (not active)")
             return
 
         dm = trainer.datamodule
@@ -93,28 +97,30 @@ class BenchmarkCosineCallback(pl.Callback):
         rank = trainer.global_rank
 
         for split in SPLITS:
-            print(f"[TRACE-BC][rank {r}] split={split} loop START", file=_sys.stderr, flush=True)
+            _trace(f"split={split} loop START")
             prepared = self._entries.get(split, [])
             shard = prepared[rank::world] if world > 1 else prepared
             local_sum = 0.0
-            for raw_input, sfp, fvec in shard:
-                if fvec is not None:
-                    raw_input = {**raw_input, 'formula': fvec}
-                inputs = dm.format_inference_data(
-                    filter_data(raw_input, self.restrictions)
-                )
-                batch = {k: v.to(device) for k, v in inputs["batch"].items()}
-                pred = torch.sigmoid(pl_module(batch)[0])
-                local_sum += cos_sim(pred, sfp.to(device)).item()
+            for i, (raw_input, sfp, fvec) in enumerate(shard):
+                try:
+                    if fvec is not None:
+                        raw_input = {**raw_input, 'formula': fvec}
+                    inputs = dm.format_inference_data(
+                        filter_data(raw_input, self.restrictions)
+                    )
+                    batch = {k: v.to(device) for k, v in inputs["batch"].items()}
+                    pred = torch.sigmoid(pl_module(batch)[0])
+                    local_sum += cos_sim(pred, sfp.to(device)).item()
+                except Exception as e:
+                    _trace(f"split={split} entry {i} RAISED {type(e).__name__}: {e}")
+                    raise
 
-            print(f"[TRACE-BC][rank {r}] split={split} loop DONE local_sum={local_sum:.4f} n={len(shard)}",
-                  file=_sys.stderr, flush=True)
+            _trace(f"split={split} loop DONE local_sum={local_sum:.4f} n={len(shard)}")
             stats = torch.tensor([local_sum, float(len(shard))], device=device)
             if world > 1 and dist.is_available() and dist.is_initialized():
                 dist.all_reduce(stats)
             mean_cos = (stats[0] / stats[1]).item() if stats[1] > 0 else 0.0
-            print(f"[TRACE-BC][rank {r}] split={split} logging mean_cos={mean_cos:.4f}",
-                  file=_sys.stderr, flush=True)
+            _trace(f"split={split} logging mean_cos={mean_cos:.4f}")
 
             # All ranks hold the same reduced value -> log without further sync.
             # Key matches the end-of-run 'all' subset so the per-epoch curve and the
@@ -123,6 +129,5 @@ class BenchmarkCosineCallback(pl.Callback):
                 f"benchmark_journal/{split}/all/mean_cos", mean_cos,
                 on_epoch=True, on_step=False, sync_dist=False,
             )
-            print(f"[TRACE-BC][rank {r}] split={split} log() returned", file=_sys.stderr, flush=True)
-        print(f"[TRACE-BC][rank {r}] BenchmarkCosine.on_validation_epoch_end EXIT",
-              file=_sys.stderr, flush=True)
+            _trace(f"split={split} log() returned")
+        _trace("BenchmarkCosine.on_validation_epoch_end EXIT")

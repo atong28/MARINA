@@ -301,12 +301,17 @@ class MARINA(pl.LightningModule):
         raise NotImplementedError()
 
     def on_validation_epoch_end(self):
-        # Raw print bypasses the rank-0-only logger cache and any handler buffering
-        # so we can prove the hook fires on every rank regardless of logger state.
-        import sys as _sys
-        print(f"[TRACE-OVEE][rank {self.global_rank}] on_validation_epoch_end ENTER "
-              f"sanity={getattr(self.trainer, 'sanity_checking', '?')} "
-              f"n_keys={len(self._val_mm)}", file=_sys.stderr, flush=True)
+        # Trace to a real file so tqdm cannot mangle it (stderr prints were being
+        # overwritten by the training-epoch progress bar's \r updates).
+        def _trace(msg):
+            try:
+                with open("/tmp/marina_val_trace.log", "a") as _f:
+                    _f.write(f"[rank {self.global_rank}] {msg}\n")
+            except Exception:
+                pass
+        _trace(f"on_validation_epoch_end ENTER sanity="
+               f"{getattr(self.trainer, 'sanity_checking', '?')} "
+               f"n_keys={len(self._val_mm)}")
         keys = list(self._val_mm.keys())
         logger.info(
             f"[MARINA][rank {self.global_rank}] on_validation_epoch_end: "
@@ -317,9 +322,9 @@ class MARINA(pl.LightningModule):
         if not keys:
             logger.warning(
                 f"[MARINA][rank {self.global_rank}] _val_mm is EMPTY at "
-                f"on_validation_epoch_end -- validation_step never populated it. "
-                f"No val/* metrics will be logged this epoch."
+                f"on_validation_epoch_end -- validation_step never populated it."
             )
+            _trace("EXIT early (empty _val_mm)")
             return
         input_types = sorted({k.split("__", 1)[1] for k in keys})
         feats = sorted({k.split("__", 1)[0] for k in keys})
@@ -331,21 +336,26 @@ class MARINA(pl.LightningModule):
                     self._val_mm, feat, input_type, sync_on_compute=True)
                 v = mm.compute().item()
                 di[f"val/mean_{feat}/{input_type}"] = v
-                if input_type == "all_inputs":
-                    di[f"val/mean_{feat}"] = v
                 vals_for_avg.append(v)
-        if "all_inputs" not in input_types:
-            logger.warning(
-                f"[MARINA][rank {self.global_rank}] 'all_inputs' missing from "
-                f"input_types={input_types}; bare val/mean_* keys will not be "
-                f"emitted and any EarlyStopping on val/mean_cos will fail."
-            )
+            # Always emit the bare val/mean_{feat} key so EarlyStopping has a stable
+            # metric to monitor even when 'all_inputs' isn't present in _val_mm.
+            # Prefer the 'all_inputs' value when available (preserves formula-arm
+            # semantics); otherwise fall back to the mean across input_types
+            # (SPECTRE-style, see spectre/model.py:217).
+            if "all_inputs" in input_types:
+                di[f"val/mean_{feat}"] = di[f"val/mean_{feat}/all_inputs"]
+            else:
+                di[f"val/mean_{feat}"] = sum(vals_for_avg) / len(vals_for_avg)
+        _trace(f"logging {len(di)} metrics: sample={sorted(di.keys())[:6]}")
         logger.info(
             f"[MARINA][rank {self.global_rank}] on_validation_epoch_end logging "
             f"{len(di)} metrics: {sorted(di.keys())[:6]}..."
         )
+        # Metrics are already all-reduced inside MeanMetric.compute() via
+        # sync_on_compute=True, so sync_dist here would double-sync.
         for k, v in di.items():
-            self.log(k, v, on_epoch=True, on_step=False, sync_dist=True)
+            self.log(k, v, on_epoch=True, on_step=False, sync_dist=False)
+        _trace("EXIT normal (metrics logged)")
         for mm in self._val_mm.values():
             mm.reset()
 
