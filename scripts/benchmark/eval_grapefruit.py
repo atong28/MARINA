@@ -229,7 +229,7 @@ def build_args(params, ckpt):
     return MARINAArgs(**kw)
 
 
-def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits):
+def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits, parts):
     params = json.load(open(params_path))
     if params.get('project_name', 'MARINA') != 'MARINA':
         raise ValueError(f"{run_name}: only MARINA runs are supported (got {params.get('project_name')})")
@@ -261,31 +261,33 @@ def eval_run(run_name, params_path, ckpt_path, device, batch_size, bench_splits)
     rows, raw = [], {'test': {}, 'benchmark': {}}
 
     # (1) simulated test scores, fixed all-7 population -----------------------
-    cache = load_all7_population(args, fp_loader)
-    print(f"[{run_name}] all-7 test population: n={len(cache)}")
-    for combo, keys in test_combos.items():
-        rs, rt, cos = score_test_combo(cache, keys, model, device, batch_size)
-        m = _agg(rs, rt, cos)
-        raw['test'][combo] = {'rank_strict': rs, 'rank_tie': rt, 'cos': cos}
-        rows.append({'run': run_name, 'ckpt': ckpt_path, 'part': 'test',
-                     'split': 'test_all7pop', 'combo': combo, **m})
-        _print_metric_line(f"test/{combo}", m)
+    if parts in ('both', 'test'):
+        cache = load_all7_population(args, fp_loader)
+        print(f"[{run_name}] all-7 test population: n={len(cache)}")
+        for combo, keys in test_combos.items():
+            rs, rt, cos = score_test_combo(cache, keys, model, device, batch_size)
+            m = _agg(rs, rt, cos)
+            raw['test'][combo] = {'rank_strict': rs, 'rank_tie': rt, 'cos': cos}
+            rows.append({'run': run_name, 'ckpt': ckpt_path, 'part': 'test',
+                         'split': 'test_all7pop', 'combo': combo, **m})
+            _print_metric_line(f"test/{combo}", m)
 
     # (2) benchmark (journal) derep, NMR+MW and +formula ---------------------
-    journal_path = os.path.join(BENCHMARK_ROOT, 'benchmark-journal.pkl')
-    journal = pickle.load(open(journal_path, 'rb'))
-    for split in bench_splits:
-        split_data = {k: v for k, v in journal.items() if v.get('split') == split}
-        for combo, keys in bench_combos.items():
-            recs = run_benchmark_loop(split_data, data_module, model, fp_loader, keys,
-                                      device, desc=f"{run_name} bench/{split}/{combo}")
-            m = _agg_recs(recs)
-            raw['benchmark'].setdefault(split, {})[combo] = recs
-            rows.append({'run': run_name, 'ckpt': ckpt_path, 'part': 'benchmark',
-                         'split': split, 'combo': combo, **m})
-            _print_metric_line(f"bench/{split}/{combo}", m)
+    if parts in ('both', 'benchmark'):
+        journal_path = os.path.join(BENCHMARK_ROOT, 'benchmark-journal.pkl')
+        journal = pickle.load(open(journal_path, 'rb'))
+        for split in bench_splits:
+            split_data = {k: v for k, v in journal.items() if v.get('split') == split}
+            for combo, keys in bench_combos.items():
+                recs = run_benchmark_loop(split_data, data_module, model, fp_loader, keys,
+                                          device, desc=f"{run_name} bench/{split}/{combo}")
+                m = _agg_recs(recs)
+                raw['benchmark'].setdefault(split, {})[combo] = recs
+                rows.append({'run': run_name, 'ckpt': ckpt_path, 'part': 'benchmark',
+                             'split': split, 'combo': combo, **m})
+                _print_metric_line(f"bench/{split}/{combo}", m)
 
-    del model, data_module, fp_loader, cache
+    del model, data_module, fp_loader
     if device == 'cuda':
         torch.cuda.empty_cache()
     return rows, raw
@@ -320,6 +322,8 @@ def main():
                     help='batch size for the test-split ranking (bounds ranker memory)')
     ap.add_argument('--bench_splits', default='val,test',
                     help='comma-separated journal splits for the benchmark part')
+    ap.add_argument('--parts', choices=['both', 'test', 'benchmark'], default='both',
+                    help='which parts to run: test-split scores, journal benchmark, or both')
     ap.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
     ap.add_argument('--dry_run', action='store_true', help='list discovered runs and exit')
     a = ap.parse_args()
@@ -340,7 +344,7 @@ def main():
     for name, params_path, ckpt in runs:
         print(f"\n=== {name} ===")
         try:
-            rows, raw = eval_run(name, params_path, ckpt, a.device, a.batch_size, bench_splits)
+            rows, raw = eval_run(name, params_path, ckpt, a.device, a.batch_size, bench_splits, a.parts)
         except Exception as e:
             print(f"[{name}] ERROR: {e!r}")
             all_rows.append({'run': name, 'ckpt': ckpt, 'part': 'error',
