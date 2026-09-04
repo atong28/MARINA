@@ -43,7 +43,7 @@ from src.modules.marina.dataset import MARINADataset, collate
 from src.modules.data.fp_loader import make_fp_loader
 from src.modules.benchmark import filter_data, formula_vec_from_smiles, _rank_conventions, cos_sim
 from src.modules.core.const import (
-    BENCHMARK_ROOT, DATASET_ROOT, INPUTS_CANONICAL_ORDER,
+    BENCHMARK_ROOT, DATASET_ROOT, INPUTS_CANONICAL_ORDER, NON_SPECTRAL_INPUTS,
 )
 
 SCHEMA_VERSION = "1.0"
@@ -57,10 +57,14 @@ def canon(mods):
 
 
 def nonempty_subsets(input_types):
-    """All non-empty subsets of input_types, each in canonical order."""
+    """All non-empty subsets of input_types with >=1 spectral modality, each in canonical
+    order. Subsets made up only of non-spectral inputs ({mw}, {formula}, {mw, formula})
+    are skipped: with no spectral channel the model has nothing to rank on."""
     it = canon(input_types)
     for r in range(1, len(it) + 1):
         for c in combinations(it, r):
+            if all(m in NON_SPECTRAL_INPUTS for m in c):
+                continue
             yield list(c)
 
 
