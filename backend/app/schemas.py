@@ -4,7 +4,7 @@ Pydantic request and response models for all API endpoints.
 from __future__ import annotations
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import (
     MAX_FP_LENGTH, MAX_HSQC_PEAKS, MAX_MS_PEAKS, MAX_NMR_PEAKS, MAX_SMILES_LENGTH,
@@ -27,8 +27,12 @@ class SpectralInput(BaseModel):
     c_nmr:     Optional[List[float]] = Field(None, max_length=MAX_NMR_PEAKS,
                                              description="¹³C NMR shifts (ppm)")
     mass_spec: Optional[List[float]] = Field(None, max_length=_MAX_MS_LEN,
-                                             description="Mass spec pairs [m/z,I, ...]")
+                                             description="Positive MS/MS pairs [m/z,I, ...]")
+    mass_spec_neg: Optional[List[float]] = Field(None, max_length=_MAX_MS_LEN,
+                                             description="Negative MS/MS pairs [m/z,I, ...]")
     mw:        Optional[float]       = Field(None, gt=0, description="Molecular weight (Da)")
+    formula:   Optional[str]         = Field(None, max_length=200,
+                                             description="Molecular formula, Hill notation (e.g. C10H12N2O)")
 
     @field_validator("hsqc")
     @classmethod
@@ -37,12 +41,30 @@ class SpectralInput(BaseModel):
             raise ValueError("hsqc must contain triplets (length divisible by 3)")
         return v
 
-    @field_validator("mass_spec")
+    @field_validator("mass_spec", "mass_spec_neg")
     @classmethod
     def mass_spec_pairs(cls, v: Optional[List[float]]) -> Optional[List[float]]:
         if v is not None and len(v) % 2 != 0:
-            raise ValueError("mass_spec must contain pairs (length divisible by 2)")
+            raise ValueError("mass spec must contain pairs (length divisible by 2)")
         return v
+
+
+# ── Molecular-formula (atom-count) retrieval filter ───────────────────────────
+
+class FormulaConstraint(BaseModel):
+    """A per-element atom-count constraint on retrieved candidates, e.g. C in [35,45]."""
+    element: str           = Field(..., min_length=1, max_length=3,
+                                   description="Element symbol, e.g. C")
+    min:     Optional[int] = Field(None, ge=0, description="Minimum count (inclusive)")
+    max:     Optional[int] = Field(None, ge=0, description="Maximum count (inclusive)")
+
+    @model_validator(mode="after")
+    def _check_bounds(self) -> "FormulaConstraint":
+        if self.min is None and self.max is None:
+            raise ValueError(f"formula filter for {self.element!r} needs a min or a max")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError(f"formula filter for {self.element!r}: min cannot exceed max")
+        return self
 
 
 # ── Predict ───────────────────────────────────────────────────────────────────
@@ -57,6 +79,8 @@ class PredictRequest(BaseModel):
     model_id:  Optional[str]       = Field(None)
     mw_min:    Optional[float]     = Field(None, gt=0, description="Min MW filter (Da)")
     mw_max:    Optional[float]     = Field(None, gt=0, description="Max MW filter (Da)")
+    formula_filter: Optional[List[FormulaConstraint]] = Field(
+        None, max_length=40, description="Per-element atom-count constraints on candidates")
 
 
 # ── SMILES search ─────────────────────────────────────────────────────────────
@@ -68,6 +92,7 @@ class SmilesSearchRequest(BaseModel):
     model_id: Optional[str]   = Field(None)
     mw_min:   Optional[float] = Field(None, gt=0)
     mw_max:   Optional[float] = Field(None, gt=0)
+    formula_filter: Optional[List[FormulaConstraint]] = Field(None, max_length=40)
 
 
 # ── Fingerprints ──────────────────────────────────────────────────────────────
@@ -177,6 +202,12 @@ class PredictResponse(BaseModel):
     offset:      int = Field(default=0, ge=0)
     limit:       int = Field(ge=0)
     pred_fp:     Optional[List[float]] = None
+    # Which checkpoint served this request, for the UI to display now that the
+    # manual model picker is gone. auto_selected is False when the client pinned
+    # model_id explicitly.
+    model_id:           Optional[str] = None
+    model_display_name: Optional[str] = None
+    auto_selected:      bool = True
 
 
 # ── SMILES search response ────────────────────────────────────────────────────
@@ -188,6 +219,10 @@ class SmilesSearchResponse(BaseModel):
     limit:        int = Field(ge=0)
     query_smiles: str
     query_fp:     Optional[List[float]] = None
+    # Checkpoint whose fingerprint space this query was scored in, for the UI and
+    # for follow-up bit-explain / custom scoring to reuse.
+    model_id:           Optional[str] = None
+    model_display_name: Optional[str] = None
 
 
 # ── Custom SMILES card ────────────────────────────────────────────────────────

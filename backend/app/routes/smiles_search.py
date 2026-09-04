@@ -23,6 +23,7 @@ async def smiles_search(body: SmilesSearchRequest):
     from app.registry import ensure_loaded
     from app.config import MAX_TOP_K, MOLECULE_IMG_SIZE
     from app.result_builder import build_result_cards
+    from app.session import MWDataUnavailable, FormulaDataUnavailable
 
     mid, err = resolve_model_id(body.model_id)
     if err:
@@ -37,6 +38,9 @@ async def smiles_search(body: SmilesSearchRequest):
 
     k = min(body.k, MAX_TOP_K)
 
+    formula_filter = ({c.element: (c.min, c.max) for c in body.formula_filter}
+                      if body.formula_filter else None)
+
     try:
         import asyncio
         session = await asyncio.to_thread(ensure_loaded, mid)
@@ -49,7 +53,7 @@ async def smiles_search(body: SmilesSearchRequest):
         query_tensor = fp.clone().detach().float() if isinstance(fp, torch.Tensor) else torch.tensor(fp, dtype=torch.float32)
 
         def _retrieve():
-            rs, kept = session.get_filtered_rankingset(body.mw_min, body.mw_max)
+            rs, kept = session.get_filtered_rankingset(body.mw_min, body.mw_max, formula_filter)
             n = min(k, len(kept))
             if n == 0:
                 return [], []
@@ -68,6 +72,8 @@ async def smiles_search(body: SmilesSearchRequest):
 
         record_query("smiles_search")
 
+        from app.manifest import get_model_info
+        info = get_model_info(mid)
         result_cards = [ResultCard(**c) for c in cards]
         return SmilesSearchResponse(
             results=result_cards,
@@ -76,9 +82,13 @@ async def smiles_search(body: SmilesSearchRequest):
             limit=len(result_cards),
             query_smiles=smiles,
             query_fp=query_tensor.tolist(),
+            model_id=mid,
+            model_display_name=(info.display_name or info.id) if info else mid,
         )
     except HTTPException:
         raise
+    except (MWDataUnavailable, FormulaDataUnavailable) as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         logger.error("smiles_search error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="SMILES search failed.")

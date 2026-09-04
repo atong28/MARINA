@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _forward_lock = threading.Lock()
 
 # Canonical order matching src/modules/core/const.py INPUTS_CANONICAL_ORDER
-_INPUTS_ORDER = ["hsqc", "c_nmr", "h_nmr", "mass_spec", "mw"]
+_INPUTS_ORDER = ["hsqc", "c_nmr", "h_nmr", "mass_spec", "mass_spec_neg", "mw", "formula"]
 
 
 # ── Input preprocessing ───────────────────────────────────────────────────────
@@ -37,6 +37,13 @@ def preprocess_inputs(raw: Dict[str, Any]) -> Dict[str, torch.Tensor]:
         if mod == "mw":
             out["mw"] = torch.tensor([[float(v)]], dtype=torch.float32)
             continue
+        if mod == "formula":
+            # Hill-notation string → fixed count vector over FORMULA_ELEMENTS
+            # (unknown elements fold into '*'). A blank/unparseable formula yields
+            # an all-zero vector, which the model reads as "formula absent".
+            from src.modules.data.formula import formula_to_vector
+            out["formula"] = torch.tensor([formula_to_vector(str(v))], dtype=torch.float32)  # (1, n_elem)
+            continue
         if not isinstance(v, (list, tuple)):
             continue
         t = torch.tensor(v, dtype=torch.float32)
@@ -49,9 +56,9 @@ def preprocess_inputs(raw: Dict[str, Any]) -> Dict[str, torch.Tensor]:
             t = t.view(-1, 3)[:, [1, 0, 2]]   # reorder H,C,I → C,H,I
         elif mod in ("h_nmr", "c_nmr"):
             t = t.view(-1, 1)
-        elif mod == "mass_spec":
+        elif mod in ("mass_spec", "mass_spec_neg"):
             if t.numel() % 2 != 0:
-                raise ValueError(f"mass_spec length {t.numel()} is not divisible by 2")
+                raise ValueError(f"{mod} length {t.numel()} is not divisible by 2")
             t = t.view(-1, 2)
             # Match the model's input convention: base-peak normalize the
             # user-supplied spectrum to [0,1], drop < 1% of base, keep top-100.
@@ -153,9 +160,10 @@ def retrieve_top_k(
     k: int,
     mw_min: Optional[float] = None,
     mw_max: Optional[float] = None,
+    formula_filter: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[float], List[int], List[float]]:
     """
-    Apply sigmoid, then retrieve top-k from the (optionally MW-filtered) rankingset.
+    Apply sigmoid, then retrieve top-k from the (optionally MW/formula-filtered) rankingset.
 
     Returns:
         scores       – cosine similarities, length ≤ k
@@ -165,7 +173,7 @@ def retrieve_top_k(
     pred = torch.sigmoid(pred_logits)
     pred_prob = pred.tolist()
 
-    rs, kept = session.get_filtered_rankingset(mw_min, mw_max)
+    rs, kept = session.get_filtered_rankingset(mw_min, mw_max, formula_filter)
     n = min(k, len(kept))
     if n == 0:
         return [], [], pred_prob
@@ -187,6 +195,7 @@ def predict_from_raw(
     model_id: Optional[str] = None,
     mw_min: Optional[float] = None,
     mw_max: Optional[float] = None,
+    formula_filter: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[float], List[int], List[float]]:
     """
     Full pipeline: raw dict → preprocess → model forward → top-k retrieval.
@@ -197,7 +206,8 @@ def predict_from_raw(
 
     processed   = preprocess_inputs(raw_inputs)
     pred_logits = run_model(session, processed)
-    return retrieve_top_k(session, pred_logits, k, mw_min=mw_min, mw_max=mw_max)
+    return retrieve_top_k(session, pred_logits, k, mw_min=mw_min, mw_max=mw_max,
+                          formula_filter=formula_filter)
 
 
 def _default_model_id() -> str:

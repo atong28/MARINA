@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,22 @@ class ModelEntry:
     type:         str
     default:      bool
     display_name: Optional[str] = None
+    # Modalities the checkpoint was trained to accept, from its params.json. Used
+    # by dynamic model selection to gate eligibility (a model can only serve
+    # inputs it supports). Empty when the model ships no params.json input_types.
+    input_types:  List[str] = field(default_factory=list)
+
+
+def _read_input_types(model_root: str) -> List[str]:
+    """Read input_types from a model's params.json; [] if absent/unreadable."""
+    p = os.path.join(model_root, "params.json")
+    try:
+        with open(p) as fh:
+            params = json.load(fh)
+    except (json.JSONDecodeError, OSError):
+        return []
+    its = params.get("input_types")
+    return [m for m in its if isinstance(m, str)] if isinstance(its, list) else []
 
 
 _manifest: Optional[List[ModelEntry]] = None
@@ -104,6 +120,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
         entries.append(ModelEntry(
             id=mid, root=root_abs, root_rel=root_rel,
             type=typ, default=is_default, display_name=display_name,
+            input_types=_read_input_types(root_abs),
         ))
 
     if not entries:
@@ -115,6 +132,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
         entries[0] = ModelEntry(
             id=e.id, root=e.root, root_rel=e.root_rel,
             type=e.type, default=True, display_name=e.display_name,
+            input_types=e.input_types,
         )
     elif default_count > 1:
         logger.warning("models.json: more than one entry has default=true; keeping first")
@@ -127,6 +145,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
                 patched.append(ModelEntry(
                     id=e.id, root=e.root, root_rel=e.root_rel,
                     type=e.type, default=False, display_name=e.display_name,
+                    input_types=e.input_types,
                 ))
             else:
                 patched.append(e)

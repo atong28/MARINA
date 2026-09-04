@@ -21,22 +21,23 @@ beforeEach(() => {
 })
 
 describe('setSpectra', () => {
-  it('writes all four modalities in one update', () => {
+  it('writes all modalities in one update', () => {
     useAppStore.getState().setSpectra({
-      hsqc: [1, 2, 3], h_nmr: [4], c_nmr: [5], mass_spec: [6, 7],
+      hsqc: [1, 2, 3], h_nmr: [4], c_nmr: [5], mass_spec: [6, 7], mass_spec_neg: [8, 9],
     })
     const s = useAppStore.getState()
     expect(s.hsqc).toEqual([1, 2, 3])
     expect(s.h_nmr).toEqual([4])
     expect(s.c_nmr).toEqual([5])
     expect(s.mass_spec).toEqual([6, 7])
+    expect(s.mass_spec_neg).toEqual([8, 9])
   })
 
   it('notifies subscribers once per edit, not once per modality', () => {
     let updates = 0
     const unsub = useAppStore.subscribe(() => { updates++ })
     useAppStore.getState().setSpectra({
-      hsqc: [1], h_nmr: [2], c_nmr: [3], mass_spec: [4],
+      hsqc: [1], h_nmr: [2], c_nmr: [3], mass_spec: [4], mass_spec_neg: [5],
     })
     unsub()
     expect(updates).toBe(1)

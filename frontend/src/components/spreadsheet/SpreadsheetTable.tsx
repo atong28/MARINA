@@ -27,6 +27,7 @@ export interface ValidationSummary {
   hInvalid: number
   cInvalid: number
   msInvalid: number
+  msNegInvalid: number
   anyInvalid: boolean
 }
 
@@ -35,6 +36,7 @@ export interface SpectraArrays {
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
+  mass_spec_neg: number[]
 }
 
 interface SpreadsheetTableProps {
@@ -42,7 +44,8 @@ interface SpreadsheetTableProps {
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
-  /** Emitted as one batch so a single edit causes one store update, not four. */
+  mass_spec_neg: number[]
+  /** Emitted as one batch so a single edit causes one store update, not five. */
   onSpectraChange: (data: SpectraArrays) => void
   onValidationChange?: (summary: ValidationSummary) => void
 }
@@ -56,6 +59,10 @@ const COL_HSQC_C = 1
 const COL_HSQC_I = 2
 const COL_H_NMR = 3
 const COL_C_NMR = 4
+const COL_MS_MZ = 5
+const COL_MS_I = 6
+const COL_MSNEG_MZ = 7
+const COL_MSNEG_I = 8
 
 const COL_HEADERS = [
   'f2 — ¹H (ppm)',
@@ -65,6 +72,8 @@ const COL_HEADERS = [
   'δ (ppm)',
   'm/z',
   'Intensity',
+  'm/z',
+  'Intensity',
 ]
 
 const GROUP_HEADERS = [
@@ -72,10 +81,11 @@ const GROUP_HEADERS = [
   { label: '¹H NMR', colspan: 1 },
   { label: '¹³C NMR', colspan: 1 },
   { label: 'MS/MS (Positive)', colspan: 2 },
+  { label: 'MS/MS (Negative)', colspan: 2 },
 ]
 
 /** First column of each modality after the first — these carry the gutter. */
-const GROUP_STARTS = new Set([COL_H_NMR, COL_C_NMR, 5])
+const GROUP_STARTS = new Set([COL_H_NMR, COL_C_NMR, COL_MS_MZ, COL_MSNEG_MZ])
 
 // Height follows the data: enough rows to see everything entered, capped so a
 // long peak list does not push the rest of the page off screen.
@@ -135,7 +145,7 @@ export function visibleRowCount(lastRow: number): number {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function SpreadsheetTable({
-  hsqc, h_nmr, c_nmr, mass_spec,
+  hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg,
   onSpectraChange,
   onValidationChange,
 }: SpreadsheetTableProps) {
@@ -146,7 +156,7 @@ function SpreadsheetTable({
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const [validation, setValidation] = useState<Omit<ValidationSummary, 'anyInvalid'>>({
-    hsqcInvalid: 0, hInvalid: 0, cInvalid: 0, msInvalid: 0,
+    hsqcInvalid: 0, hInvalid: 0, cInvalid: 0, msInvalid: 0, msNegInvalid: 0,
   })
 
   // Build the 2-D table data from the flat arrays coming from the store.
@@ -161,10 +171,12 @@ function SpreadsheetTable({
         getNum(c_nmr, i),
         getNum(mass_spec, i * 2),
         getNum(mass_spec, i * 2 + 1),
+        getNum(mass_spec_neg, i * 2),
+        getNum(mass_spec_neg, i * 2 + 1),
       ])
     }
     return rows
-  }, [hsqc, h_nmr, c_nmr, mass_spec])
+  }, [hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg])
 
   const columnDefs = useMemo(() =>
     COL_HEADERS.map((_, i) => ({
@@ -191,47 +203,51 @@ function SpreadsheetTable({
     isInternalRef.current = true
     lastSyncRef.current = grid.map((r) => [...r])
 
-    const hsqcOut = new Array<number>(MAX_ROWS * 3).fill(NaN)
-    const hOut    = new Array<number>(MAX_ROWS).fill(NaN)
-    const cOut    = new Array<number>(MAX_ROWS).fill(NaN)
-    const msOut   = new Array<number>(MAX_ROWS * 2).fill(NaN)
+    const hsqcOut  = new Array<number>(MAX_ROWS * 3).fill(NaN)
+    const hOut     = new Array<number>(MAX_ROWS).fill(NaN)
+    const cOut     = new Array<number>(MAX_ROWS).fill(NaN)
+    const msOut    = new Array<number>(MAX_ROWS * 2).fill(NaN)
+    const msNegOut = new Array<number>(MAX_ROWS * 2).fill(NaN)
 
-    let hsqcInvalid = 0, hInvalid = 0, cInvalid = 0, msInvalid = 0
+    let hsqcInvalid = 0, hInvalid = 0, cInvalid = 0, msInvalid = 0, msNegInvalid = 0
 
     grid.forEach((row, i) => {
-      const h  = parseNum(row[0]), hc = parseNum(row[1]), hi = parseNum(row[2])
-      const hn = parseNum(row[3])
-      const cn = parseNum(row[4])
-      const mz = parseNum(row[5]), mi = parseNum(row[6])
+      const h  = parseNum(row[COL_HSQC_H]), hc = parseNum(row[COL_HSQC_C]), hi = parseNum(row[COL_HSQC_I])
+      const hn = parseNum(row[COL_H_NMR])
+      const cn = parseNum(row[COL_C_NMR])
+      const mz = parseNum(row[COL_MS_MZ]), mi = parseNum(row[COL_MS_I])
+      const nmz = parseNum(row[COL_MSNEG_MZ]), nmi = parseNum(row[COL_MSNEG_I])
 
-      hsqcOut[i * 3]     = h  ?? NaN
-      hsqcOut[i * 3 + 1] = hc ?? NaN
-      hsqcOut[i * 3 + 2] = hi ?? NaN
-      hOut[i]            = hn ?? NaN
-      cOut[i]            = cn ?? NaN
-      msOut[i * 2]       = mz ?? NaN
-      msOut[i * 2 + 1]   = mi ?? NaN
+      hsqcOut[i * 3]      = h  ?? NaN
+      hsqcOut[i * 3 + 1]  = hc ?? NaN
+      hsqcOut[i * 3 + 2]  = hi ?? NaN
+      hOut[i]             = hn ?? NaN
+      cOut[i]             = cn ?? NaN
+      msOut[i * 2]        = mz ?? NaN
+      msOut[i * 2 + 1]    = mi ?? NaN
+      msNegOut[i * 2]     = nmz ?? NaN
+      msNegOut[i * 2 + 1] = nmi ?? NaN
 
       // Validate: partial HSQC rows (some but not all three filled) are invalid.
       const hsqcFilled = [h, hc, hi].filter((v) => v !== null).length
       if (hsqcFilled > 0 && hsqcFilled < 3) hsqcInvalid++
 
       // Validate: partial MS rows (m/z without intensity or vice-versa) are invalid.
-      const msFilled = [mz, mi].filter((v) => v !== null).length
-      if (msFilled === 1) msInvalid++
+      if ([mz, mi].filter((v) => v !== null).length === 1) msInvalid++
+      if ([nmz, nmi].filter((v) => v !== null).length === 1) msNegInvalid++
 
       if (hn !== null && !Number.isFinite(hn)) hInvalid++
       if (cn !== null && !Number.isFinite(cn)) cInvalid++
     })
 
     const summary: ValidationSummary = {
-      hsqcInvalid, hInvalid, cInvalid, msInvalid,
-      anyInvalid: (hsqcInvalid + hInvalid + cInvalid + msInvalid) > 0,
+      hsqcInvalid, hInvalid, cInvalid, msInvalid, msNegInvalid,
+      anyInvalid: (hsqcInvalid + hInvalid + cInvalid + msInvalid + msNegInvalid) > 0,
     }
-    setValidation({ hsqcInvalid, hInvalid, cInvalid, msInvalid })
+    setValidation({ hsqcInvalid, hInvalid, cInvalid, msInvalid, msNegInvalid })
     onValidationChange?.(summary)
 
-    onSpectraChange({ hsqc: hsqcOut, h_nmr: hOut, c_nmr: cOut, mass_spec: msOut })
+    onSpectraChange({ hsqc: hsqcOut, h_nmr: hOut, c_nmr: cOut, mass_spec: msOut, mass_spec_neg: msNegOut })
 
     setTimeout(() => { isInternalRef.current = false }, 0)
   }, [onSpectraChange, onValidationChange])
@@ -318,10 +334,11 @@ function SpreadsheetTable({
       }
     }
 
-    condense([0, 1, 2])
-    condense([3])
-    condense([4])
-    condense([5, 6])
+    condense([COL_HSQC_H, COL_HSQC_C, COL_HSQC_I])
+    condense([COL_H_NMR])
+    condense([COL_C_NMR])
+    condense([COL_MS_MZ, COL_MS_I])
+    condense([COL_MSNEG_MZ, COL_MSNEG_I])
 
     commitGrid(data)
   }, [readGrid, commitGrid])
@@ -381,7 +398,7 @@ function SpreadsheetTable({
     showToast(`Pasted ${KIND_LABELS[parsed.kind]} — ${written} peaks${overflow}`, 'info')
   }, [applyMnovaPaste, showToast])
 
-  const anyInvalid = (validation.hsqcInvalid + validation.hInvalid + validation.cInvalid + validation.msInvalid) > 0
+  const anyInvalid = (validation.hsqcInvalid + validation.hInvalid + validation.cInvalid + validation.msInvalid + validation.msNegInvalid) > 0
 
   return (
     <div className="spreadsheet-table">
@@ -389,7 +406,7 @@ function SpreadsheetTable({
       <div className="spreadsheet-table__toolbar">
         {anyInvalid ? (
           <span className="spreadsheet-table__validation-error">
-            Incomplete rows — HSQC: {validation.hsqcInvalid} · H: {validation.hInvalid} · C: {validation.cInvalid} · MS: {validation.msInvalid}
+            Incomplete rows — HSQC: {validation.hsqcInvalid} · H: {validation.hInvalid} · C: {validation.cInvalid} · MS+: {validation.msInvalid} · MS−: {validation.msNegInvalid}
           </span>
         ) : (
           <span className="spreadsheet-table__validation-ok">No validation errors</span>

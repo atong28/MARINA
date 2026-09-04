@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "model_id": "marina_unifcard_full_s0",
+  "input_types": ["hsqc", "c_nmr", "h_nmr", "mass_spec", "mass_spec_neg", "mw", "formula"],
+  "generated_at": "2026-09-04T18:00:00Z",
+  "eval_provenance": {
+    "ckpt": "last.ckpt",
+    "ckpt_epoch": 804,
+    "dataset": "MARINA-DB",
+    "rankingset": "RankingEntropyMultiplicityUncapped/rankingset.pt",
+    "test_population": "test split, molecules with all 7 modalities present",
+    "benchmark_source": "benchmark-journal.pkl",
+    "eval_script": "scripts/website/build_model_metrics.py",
+    "notes": "SAMPLE PLACEHOLDER NUMBERS. Real file covers the 124 spectral-bearing subsets (exclude empty, {mw}, {formula}, {mw,formula}): benchmark (val+test+both) for every journal-coverable combo (no MS channels), simulated test (test_all7pop) for the remaining MS-containing combos. Selector uses benchmark/both first, else simulated/test, ranked on mean_cos. Only a representative handful shown here."
+  },
+  "measurements": [
+    { "modalities": ["hsqc"], "eval_set": "benchmark", "split": "val",  "n": 148, "metrics": { "mean_cos": 0.716, "strict_top1": 10.1, "strict_top5": 24.9, "strict_top10": 33.6 } },
+    { "modalities": ["hsqc"], "eval_set": "benchmark", "split": "test", "n": 152, "metrics": { "mean_cos": 0.712, "strict_top1": 9.9,  "strict_top5": 24.3, "strict_top10": 33.0 } },
+    { "modalities": ["hsqc"], "eval_set": "benchmark", "split": "both", "n": 300, "metrics": { "mean_cos": 0.714, "strict_top1": 10.0, "strict_top5": 24.6, "strict_top10": 33.3 } },
+
+    { "modalities": ["c_nmr"], "eval_set": "benchmark", "split": "val",  "n": 148, "metrics": { "mean_cos": 0.687, "strict_top1": 7.4, "strict_top5": 20.1, "strict_top10": 28.0 } },
+    { "modalities": ["c_nmr"], "eval_set": "benchmark", "split": "test", "n": 152, "metrics": { "mean_cos": 0.683, "strict_top1": 7.2, "strict_top5": 19.7, "strict_top10": 27.6 } },
+    { "modalities": ["c_nmr"], "eval_set": "benchmark", "split": "both", "n": 300, "metrics": { "mean_cos": 0.685, "strict_top1": 7.3, "strict_top5": 19.9, "strict_top10": 27.8 } },
+
+    { "modalities": ["hsqc", "formula"], "eval_set": "benchmark", "split": "val",  "n": 148, "metrics": { "mean_cos": 0.785, "strict_top1": 16.8, "strict_top5": 36.1, "strict_top10": 46.0 } },
+    { "modalities": ["hsqc", "formula"], "eval_set": "benchmark", "split": "test", "n": 152, "metrics": { "mean_cos": 0.781, "strict_top1": 16.4, "strict_top5": 35.5, "strict_top10": 45.4 } },
+    { "modalities": ["hsqc", "formula"], "eval_set": "benchmark", "split": "both", "n": 300, "metrics": { "mean_cos": 0.783, "strict_top1": 16.6, "strict_top5": 35.8, "strict_top10": 45.7 } },
+
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw"], "eval_set": "benchmark", "split": "val",  "n": 148, "metrics": { "mean_cos": 0.806, "strict_top1": 18.8, "strict_top5": 39.8, "strict_top10": 50.7 } },
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw"], "eval_set": "benchmark", "split": "test", "n": 152, "metrics": { "mean_cos": 0.802, "strict_top1": 18.4, "strict_top5": 39.2, "strict_top10": 50.1 } },
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw"], "eval_set": "benchmark", "split": "both", "n": 300, "metrics": { "mean_cos": 0.804, "strict_top1": 18.6, "strict_top5": 39.5, "strict_top10": 50.4 } },
+
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw", "formula"], "eval_set": "benchmark", "split": "val",  "n": 148, "metrics": { "mean_cos": 0.845, "strict_top1": 24.1, "strict_top5": 47.4, "strict_top10": 58.5 } },
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw", "formula"], "eval_set": "benchmark", "split": "test", "n": 152, "metrics": { "mean_cos": 0.841, "strict_top1": 23.7, "strict_top5": 46.8, "strict_top10": 57.9 } },
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mw", "formula"], "eval_set": "benchmark", "split": "both", "n": 300, "metrics": { "mean_cos": 0.843, "strict_top1": 23.9, "strict_top5": 47.1, "strict_top10": 58.2 } },
+
+    { "modalities": ["mass_spec"], "eval_set": "test", "split": "test_all7pop", "n": 1287, "metrics": { "mean_cos": 0.640, "strict_top1": 6.1, "strict_top5": 17.8, "strict_top10": 25.5 } },
+    { "modalities": ["hsqc", "mass_spec", "mass_spec_neg"], "eval_set": "test", "split": "test_all7pop", "n": 1287, "metrics": { "mean_cos": 0.849, "strict_top1": 25.9, "strict_top5": 49.7, "strict_top10": 60.6 } },
+    { "modalities": ["hsqc", "c_nmr", "h_nmr", "mass_spec", "mass_spec_neg", "mw", "formula"], "eval_set": "test", "split": "test_all7pop", "n": 1287, "metrics": { "mean_cos": 0.912, "strict_top1": 41.3, "strict_top5": 66.8, "strict_top10": 75.4 } }
+  ]
+}

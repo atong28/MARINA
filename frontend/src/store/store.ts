@@ -1,20 +1,26 @@
 import { create } from 'zustand'
-import { ModelInfo, ResultCard } from '../services/api'
+import { ResultCard } from '../services/api'
 
 type ResultSource = 'prediction' | 'smiles-search' | null
 
 interface AppState {
-  // Model selection
-  availableModels: ModelInfo[] | null
-  defaultModelId: string | null
-  selectedModelId: string | null
+  // The checkpoint the server used for the current results. The manual model
+  // picker is gone: /predict auto-selects the best model for the supplied inputs
+  // and reports which one back. Reused for follow-up bit-explain / custom-SMILES
+  // scoring so they share the fingerprint space that produced these results.
+  activeModelId: string | null
+  activeModelName: string | null
 
   // Spectral input data
   hsqc: number[]
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
+  mass_spec_neg: number[]
   mw: number | null
+  // Molecular formula (Hill notation, ASCII e.g. "C10H12N2O"). A descriptor input,
+  // not a spectrum, so it never satisfies the "at least one spectral input" rule.
+  formula: string
 
   // SMILES search
   smilesInput: string
@@ -22,6 +28,10 @@ interface AppState {
   // Retrieval MW filter
   retrievalMwMin: number | null
   retrievalMwMax: number | null
+
+  // Retrieval atom-count filter: per-element {count ± tolerance} constraints.
+  // Stored as raw input strings; converted to min/max at request time.
+  formulaFilter: FormulaFilterEntry[]
 
   // Whether result cards show the similarity-map depiction or the plain one.
   // Purely a display choice: every card carries both, so this never re-queries.
@@ -38,28 +48,30 @@ interface AppState {
   customResults: CustomResult[]
 
   // Actions
-  setAvailableModels: (models: ModelInfo[], defaultId: string) => void
-  initializeModelSelection: (models: ModelInfo[], defaultId: string) => void
-  setSelectedModelId: (id: string) => void
-
   setHSQC: (data: number[]) => void
   setHNMR: (data: number[]) => void
   setCNMR: (data: number[]) => void
   setMassSpec: (data: number[]) => void
-  /** Writes all four modalities in one update, so an edit re-renders once. */
+  setMassSpecNeg: (data: number[]) => void
+  /** Writes all spreadsheet modalities in one update, so an edit re-renders once. */
   setSpectra: (data: {
     hsqc: number[]
     h_nmr: number[]
     c_nmr: number[]
     mass_spec: number[]
+    mass_spec_neg: number[]
   }) => void
   setMW: (mw: number | null) => void
+  setFormula: (formula: string) => void
   setSmilesInput: (smiles: string) => void
   setRetrievalMwRange: (min: number | null, max: number | null) => void
+  setFormulaFilter: (entries: FormulaFilterEntry[]) => void
   setHighlightEnabled: (enabled: boolean) => void
 
-  setPredictResults: (results: ResultCard[], predictedFp: number[] | null) => void
-  setSmilesResults: (results: ResultCard[], queryFp: number[] | null) => void
+  setPredictResults: (results: ResultCard[], predictedFp: number[] | null,
+                      model?: { id?: string | null; name?: string | null }) => void
+  setSmilesResults: (results: ResultCard[], queryFp: number[] | null,
+                     model?: { id?: string | null; name?: string | null }) => void
 
   addCustomResult: (result: ResultCard) => void
   removeCustomResult: (id: string) => void
@@ -71,18 +83,16 @@ export interface CustomResult {
   card: ResultCard
 }
 
+/** One row of the atom-count filter UI (raw input strings). */
+export interface FormulaFilterEntry {
+  element: string
+  count: string
+  tolerance: string
+}
+
 let customIdSeq = 0
 
-const MODEL_STORAGE_KEY = 'marina.selectedModelId'
 const HIGHLIGHT_STORAGE_KEY = 'marina.highlightEnabled'
-
-function readStoredModelId(): string | null {
-  try { return localStorage.getItem(MODEL_STORAGE_KEY) } catch { return null }
-}
-
-function writeStoredModelId(id: string) {
-  try { localStorage.setItem(MODEL_STORAGE_KEY, id) } catch { /* ignore */ }
-}
 
 /** Defaults to on, so only an explicit "false" turns highlighting off. */
 function readStoredHighlight(): boolean {
@@ -94,20 +104,22 @@ function writeStoredHighlight(enabled: boolean) {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  availableModels: null,
-  defaultModelId: null,
-  selectedModelId: null,
+  activeModelId: null,
+  activeModelName: null,
 
   hsqc: [],
   h_nmr: [],
   c_nmr: [],
   mass_spec: [],
+  mass_spec_neg: [],
   mw: null,
+  formula: '',
 
   smilesInput: '',
 
   retrievalMwMin: null,
   retrievalMwMax: null,
+  formulaFilter: [],
 
   highlightEnabled: readStoredHighlight(),
 
@@ -118,41 +130,34 @@ export const useAppStore = create<AppState>((set) => ({
 
   customResults: [],
 
-  setAvailableModels: (models, defaultId) =>
-    set({ availableModels: models, defaultModelId: defaultId }),
-
-  initializeModelSelection: (models, defaultId) => {
-    const stored = readStoredModelId()
-    const knownIds = new Set(models.map((m) => m.id))
-    const selected = stored && knownIds.has(stored) ? stored : defaultId
-    writeStoredModelId(selected)
-    set({ availableModels: models, defaultModelId: defaultId, selectedModelId: selected })
-  },
-
-  setSelectedModelId: (id) => {
-    writeStoredModelId(id)
-    set({ selectedModelId: id })
-  },
-
   setHSQC: (data) => set({ hsqc: data }),
   setHNMR: (data) => set({ h_nmr: data }),
   setCNMR: (data) => set({ c_nmr: data }),
   setMassSpec: (data) => set({ mass_spec: data }),
+  setMassSpecNeg: (data) => set({ mass_spec_neg: data }),
   setSpectra: (data) => set(data),
   setMW: (mw) => set({ mw }),
+  setFormula: (formula) => set({ formula }),
   setSmilesInput: (smiles) => set({ smilesInput: smiles }),
   setRetrievalMwRange: (min, max) => set({ retrievalMwMin: min, retrievalMwMax: max }),
+  setFormulaFilter: (formulaFilter) => set({ formulaFilter }),
 
   setHighlightEnabled: (enabled) => {
     writeStoredHighlight(enabled)
     set({ highlightEnabled: enabled })
   },
 
-  setPredictResults: (results, predictedFp) =>
-    set({ results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [] }),
+  setPredictResults: (results, predictedFp, model) =>
+    set({
+      results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [],
+      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
+    }),
 
-  setSmilesResults: (results, queryFp) =>
-    set({ results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [] }),
+  setSmilesResults: (results, queryFp, model) =>
+    set({
+      results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [],
+      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
+    }),
 
   addCustomResult: (result) =>
     set((state) => ({

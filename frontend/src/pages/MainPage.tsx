@@ -5,10 +5,12 @@ import {
 } from '../services/api'
 import { useAppStore } from '../store/store'
 import { getAvailableExamples, loadExample, type ExampleMeta } from '../services/exampleLoader'
-import ModelSelector from '../components/common/ModelSelector'
 import StatusIndicator from '../components/common/StatusIndicator'
 import HighlightToggle from '../components/common/HighlightToggle'
 import HelpButton from '../components/common/HelpButton'
+import FormulaInput from '../components/common/FormulaInput'
+import FormulaFilter from '../components/common/FormulaFilter'
+import { validateFormula, buildFormulaConstraints, formulaFilterEntryError } from '../services/formula'
 import QueueStatus from '../components/common/QueueStatus'
 import UsageCounter from '../components/common/UsageCounter'
 import SpreadsheetTable, { type ValidationSummary } from '../components/spreadsheet/SpreadsheetTable'
@@ -51,14 +53,14 @@ function MainPage() {
   const [isLoadingExample, setIsLoadingExample] = useState(false)
 
   const {
-    selectedModelId,
-    hsqc, h_nmr, c_nmr, mass_spec, mw,
+    activeModelId, activeModelName,
+    hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg, mw, formula,
     smilesInput,
-    retrievalMwMin, retrievalMwMax,
+    retrievalMwMin, retrievalMwMax, formulaFilter,
     results, predictedFp, queryFp, resultSource,
     customResults,
     setPredictResults, setSmilesResults,
-    setHSQC, setHNMR, setCNMR, setMassSpec, setSpectra, setMW,
+    setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setSpectra, setMW,
     setSmilesInput,
     setRetrievalMwRange,
     addCustomResult, removeCustomResult,
@@ -74,7 +76,8 @@ function MainPage() {
   const predictMutation = usePredict({
     onSuccess: (data) => {
       if (predSeq.current !== seqRef.current) return
-      setPredictResults(data.results, data.pred_fp ?? null)
+      setPredictResults(data.results, data.pred_fp ?? null,
+        { id: data.model_id, name: data.model_display_name })
       setCustomError(null)
     },
     // Stop polling for a place in line once the request is no longer in flight.
@@ -84,7 +87,8 @@ function MainPage() {
   const smilesSearchMutation = useSmilesSearch({
     onSuccess: (data) => {
       if (smilesSeq.current !== seqRef.current) return
-      setSmilesResults(data.results, data.query_fp ?? null)
+      setSmilesResults(data.results, data.query_fp ?? null,
+        { id: data.model_id, name: data.model_display_name })
       setCustomError(null)
     },
   })
@@ -103,6 +107,16 @@ function MainPage() {
     (isFiniteNum(retrievalMwMax) && retrievalMwMax < 0) ||
     (isFiniteNum(retrievalMwMin) && isFiniteNum(retrievalMwMax) && retrievalMwMin > retrievalMwMax)
 
+  // A prediction needs at least one spectral modality; MW/formula alone are only
+  // descriptors and retrieve nothing meaningful (the backend rejects it too).
+  const hasSpectralInput =
+    filterValid(hsqc).length > 0 || filterValid(h_nmr).length > 0 ||
+    filterValid(c_nmr).length > 0 || filterValid(mass_spec).length > 0 ||
+    filterValid(mass_spec_neg).length > 0
+
+  const formulaInvalid = formula.trim() !== '' && !validateFormula(formula).valid
+  const formulaFilterInvalid = formulaFilter.some((e) => formulaFilterEntryError(e) !== null)
+
   const handlePredict = useCallback(() => {
     cancelInFlight('smilesSearch')
     cancelInFlight('predict')
@@ -116,20 +130,25 @@ function MainPage() {
     const validHSQC = filterValid(hsqc)
     const validHNMR = filterValid(h_nmr)
     const validCNMR = filterValid(c_nmr)
-    const validMS   = filterValid(mass_spec)
-    if (validHSQC.length) raw.hsqc      = validHSQC
-    if (validHNMR.length) raw.h_nmr     = validHNMR
-    if (validCNMR.length) raw.c_nmr     = validCNMR
-    if (validMS.length)   raw.mass_spec = validMS
-    if (isFiniteNum(mw))  raw.mw        = mw
+    const validMS    = filterValid(mass_spec)
+    const validMSNeg = filterValid(mass_spec_neg)
+    if (validHSQC.length)  raw.hsqc          = validHSQC
+    if (validHNMR.length)  raw.h_nmr         = validHNMR
+    if (validCNMR.length)  raw.c_nmr         = validCNMR
+    if (validMS.length)    raw.mass_spec     = validMS
+    if (validMSNeg.length) raw.mass_spec_neg = validMSNeg
+    if (isFiniteNum(mw))   raw.mw            = mw
+    if (formula.trim() && validateFormula(formula).valid) raw.formula = formula.trim()
 
+    // No model_id: the server auto-selects the best checkpoint for these inputs.
     const payload: PredictRequest = { raw, k, request_id: requestId }
-    if (selectedModelId) payload.model_id = selectedModelId
     if (isFiniteNum(retrievalMwMin)) payload.mw_min = retrievalMwMin
     if (isFiniteNum(retrievalMwMax)) payload.mw_max = retrievalMwMax
+    const constraints = buildFormulaConstraints(formulaFilter)
+    if (constraints.length) payload.formula_filter = constraints
 
     predictMutation.mutate(payload)
-  }, [hsqc, h_nmr, c_nmr, mass_spec, mw, k, selectedModelId, retrievalMwMin, retrievalMwMax, predictMutation])
+  }, [hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg, mw, formula, k, retrievalMwMin, retrievalMwMax, formulaFilter, predictMutation])
 
   const handleSmilesSearch = useCallback(() => {
     const trimmed = smilesInput.trim()
@@ -140,12 +159,13 @@ function MainPage() {
     smilesSeq.current = seqRef.current
 
     const payload: SmilesSearchRequest = { smiles: trimmed, k }
-    if (selectedModelId) payload.model_id = selectedModelId
     if (isFiniteNum(retrievalMwMin)) payload.mw_min = retrievalMwMin
     if (isFiniteNum(retrievalMwMax)) payload.mw_max = retrievalMwMax
+    const constraints = buildFormulaConstraints(formulaFilter)
+    if (constraints.length) payload.formula_filter = constraints
 
     smilesSearchMutation.mutate(payload)
-  }, [smilesInput, k, selectedModelId, retrievalMwMin, retrievalMwMax, smilesSearchMutation])
+  }, [smilesInput, k, retrievalMwMin, retrievalMwMax, formulaFilter, smilesSearchMutation])
 
   const handleAddCustom = useCallback(() => {
     const trimmed = customSmilesInput.trim()
@@ -162,9 +182,10 @@ function MainPage() {
     customCardMutation.mutate({
       smiles: trimmed,
       reference_fp: refFp,
-      model_id: selectedModelId ?? undefined,
+      // Score against the same checkpoint that produced the current results.
+      model_id: activeModelId ?? undefined,
     })
-  }, [customSmilesInput, resultSource, predictedFp, queryFp, selectedModelId, customCardMutation])
+  }, [customSmilesInput, resultSource, predictedFp, queryFp, activeModelId, customCardMutation])
 
   // Stable identity: SpreadsheetTable memoises its emit callback on this.
   const handleValidationChange = useCallback(
@@ -186,13 +207,14 @@ function MainPage() {
       setHNMR(data.h_nmr ?? [])
       setCNMR(data.c_nmr ?? [])
       setMassSpec(data.mass_spec ?? [])
+      setMassSpecNeg(data.mass_spec_neg ?? [])
       setMW(data.mw ?? null)
     } catch (err) {
       console.error('Failed to load example:', err)
     } finally {
       setIsLoadingExample(false)
     }
-  }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMW])
+  }, [selectedExampleStem, setHSQC, setHNMR, setCNMR, setMassSpec, setMassSpecNeg, setMW])
 
   const isPending = predictMutation.isPending || smilesSearchMutation.isPending
   // A cancelled request is not a failure worth showing — see isAbortError.
@@ -206,7 +228,9 @@ function MainPage() {
       <header className="main-page__header">
         <div className="main-page__header-row">
           <div className="main-page__header-controls">
-            <ModelSelector />
+            <span className="main-page__model-indicator">
+              Model: {activeModelName ?? 'auto'}
+            </span>
             <HelpButton content={HELP.controls.model} placement="bottom" />
             <StatusIndicator health={health} />
             <HelpButton content={HELP.controls.status} placement="bottom" />
@@ -259,11 +283,12 @@ function MainPage() {
             h_nmr={h_nmr}
             c_nmr={c_nmr}
             mass_spec={mass_spec}
+            mass_spec_neg={mass_spec_neg}
             onSpectraChange={setSpectra}
             onValidationChange={handleValidationChange}
           />
 
-          <SpectraPreview hsqc={hsqc} h_nmr={h_nmr} c_nmr={c_nmr} mass_spec={mass_spec} />
+          <SpectraPreview hsqc={hsqc} h_nmr={h_nmr} c_nmr={c_nmr} mass_spec={mass_spec} mass_spec_neg={mass_spec_neg} />
 
           <div className="main-page__mw-row">
             <label className="main-page__label">
@@ -281,12 +306,16 @@ function MainPage() {
             </label>
           </div>
 
+          <FormulaInput />
+
           <MWRangeFilter
             min={retrievalMwMin}
             max={retrievalMwMax}
             onChange={setRetrievalMwRange}
             invalid={mwRangeInvalid}
           />
+
+          <FormulaFilter />
 
           <div className="main-page__action-row">
             <label className="main-page__label main-page__label--inline">
@@ -307,13 +336,22 @@ function MainPage() {
                 predictMutation.isPending ||
                 !health?.model_loaded ||
                 hasInvalidSpreadsheet ||
-                mwRangeInvalid
+                mwRangeInvalid ||
+                formulaInvalid ||
+                formulaFilterInvalid ||
+                !hasSpectralInput
               }
               title={
                 hasInvalidSpreadsheet
                   ? 'Fix incomplete rows in the spreadsheet first.'
                   : mwRangeInvalid
                   ? 'MW filter range is invalid.'
+                  : formulaInvalid
+                  ? 'Fix the molecular formula first.'
+                  : formulaFilterInvalid
+                  ? 'Fix the formula filter first.'
+                  : !hasSpectralInput
+                  ? 'Enter at least one spectral input (HSQC, ¹H, ¹³C, or MS).'
                   : undefined
               }
             >
@@ -381,6 +419,8 @@ function MainPage() {
             invalid={mwRangeInvalid}
           />
 
+          <FormulaFilter />
+
           <div className="main-page__action-row">
             <label className="main-page__label main-page__label--inline">
               Results
@@ -400,7 +440,8 @@ function MainPage() {
                 smilesSearchMutation.isPending ||
                 !health?.model_loaded ||
                 !smilesInput.trim() ||
-                mwRangeInvalid
+                mwRangeInvalid ||
+                formulaFilterInvalid
               }
             >
               {smilesSearchMutation.isPending ? 'Searching…' : 'Search by SMILES'}
@@ -473,7 +514,7 @@ function MainPage() {
         // every present bit is exactly 1.0 — there is no confidence to report,
         // and the calibration curve was fitted on predicted probabilities.
         predFp={resultSource === 'prediction' ? predictedFp : null}
-        modelId={selectedModelId ?? undefined}
+        modelId={activeModelId ?? undefined}
         resultSource={resultSource}
       />
     </div>

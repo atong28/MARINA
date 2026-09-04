@@ -9,6 +9,8 @@ export interface ExampleData {
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
+  /** Optional negative-mode MS/MS; absent in older example files. */
+  mass_spec_neg?: number[]
   mw: number | null
 }
 

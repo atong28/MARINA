@@ -106,6 +106,7 @@ def _worker_loop(req_q: mp.Queue, res_q: mp.Queue, marina_root: str) -> None:
                     model_id=payload.get("model_id"),
                     mw_min=payload.get("mw_min"),
                     mw_max=payload.get("mw_max"),
+                    formula_filter=payload.get("formula_filter"),
                 )
             else:
                 raise ValueError(f"Unknown op {op!r}")

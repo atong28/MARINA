@@ -13,9 +13,10 @@ export const HELP = {
   controls: {
     model:
       'The neural network model used to embed spectral data and SMILES strings ' +
-      'into a shared fingerprint space. Different models may have been trained on ' +
-      'different datasets or architectures. The default model is selected automatically ' +
-      'and works well for most queries.',
+      'into a shared fingerprint space. The server automatically picks the model ' +
+      'that performs best on the exact combination of inputs you provide — so the ' +
+      'checkpoint shown here can change as you add or remove modalities. It also ' +
+      'restricts to models trained to accept those inputs.',
 
     status:
       'Shows whether the backend server is reachable and whether a model is fully ' +
@@ -55,13 +56,19 @@ export const HELP = {
 
   spectral: {
     spreadsheet:
-      'The spreadsheet accepts four types of spectral data:\n\n' +
+      'The spreadsheet accepts five types of spectral data:\n\n' +
       '• HSQC — three columns per row: ¹H shift (ppm), ¹³C shift (ppm), intensity. ' +
-      'All three values are required per row.\n' +
+      'All three values are required per row. Only the SIGN of the intensity is used ' +
+      '(positive vs negative / edited-phase cross-peak), so the exact magnitude does not matter — ' +
+      'enter a positive or negative number to convey the phase.\n' +
       '• ¹H NMR — one column: chemical shift (ppm).\n' +
       '• ¹³C NMR — one column: chemical shift (ppm).\n' +
-      '• Mass Spec — two columns: m/z and intensity. Both values required per row.\n\n' +
-      'Leave any section empty if you don\'t have that data type. ' +
+      '• MS/MS (Positive) — two columns: m/z and intensity. For best results provide an ' +
+      '[M+H]⁺ precursor at 20 eV collision energy (what the model was trained on).\n' +
+      '• MS/MS (Negative) — two columns: m/z and intensity. For best results provide an ' +
+      '[M−H]⁻ precursor at 20 eV.\n\n' +
+      'All intensities are relative and are normalized automatically to the base peak, so any ' +
+      'scale works. Leave any section empty if you don\'t have that data type. ' +
       'You can paste data directly from Excel or a spreadsheet app.\n\n' +
       '"Paste NMR Table from MestreNova" reads a peak table copied out of Mnova ' +
       '(with its header row) and works out whether it is ¹H, ¹³C or HSQC, ' +
@@ -91,6 +98,13 @@ export const HELP = {
       'This value is passed to the neural network as an additional input feature ' +
       'to improve the fingerprint — it does not filter results. Leave blank if unknown.',
 
+    formula:
+      'The molecular formula in Hill notation (e.g. C10H12N2O). Like molecular ' +
+      'weight, it is passed to the neural network as an additional input feature ' +
+      'to sharpen the fingerprint — it does not filter results. Type element ' +
+      'symbols and counts; the preview shows the parsed formula and flags typos. ' +
+      'Leave blank if unknown. Only works with models trained to accept a formula.',
+
     mwFilter:
       'Restricts retrieved results to compounds whose monoisotopic mass falls ' +
       'within this range — the same value shown as "Exact mass" on each result ' +
@@ -100,6 +114,14 @@ export const HELP = {
       'fingerprint itself.\n\n' +
       'The few compounds whose structure cannot be parsed carry no mass and are ' +
       'kept rather than filtered out, so an unparseable entry cannot be hidden.',
+
+    formulaFilter:
+      'Restricts retrieved results to compounds whose molecular formula matches ' +
+      'the atom counts you specify, per element, as count ± tolerance (e.g. C = 40 ' +
+      '± 5 keeps candidates with 35–45 carbons; tolerance 0 or blank means exactly ' +
+      '40). Add a row per element; all rows must be satisfied. Applied after neural ' +
+      'network retrieval — like the MW filter, it narrows candidates and does not ' +
+      'change the fingerprint. Candidates whose structure cannot be parsed are kept.',
 
     resultsCount:
       'How many top-ranked compounds to retrieve from the database (1–50). ' +

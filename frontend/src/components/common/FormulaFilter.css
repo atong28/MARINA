@@ -1,0 +1,74 @@
+.formula-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.formula-filter__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.formula-filter__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.formula-filter__row input {
+  height: 30px;
+}
+
+.formula-filter__el {
+  width: 3.5em;
+  text-align: center;
+}
+
+.formula-filter__row input[type='number'] {
+  width: 5em;
+}
+
+.formula-filter__pm {
+  color: #6b7280;
+}
+
+.formula-filter__remove {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 5px;
+  width: 26px;
+  height: 30px;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+}
+
+.formula-filter__remove:hover {
+  background: #f3f4f6;
+  color: #dc2626;
+}
+
+.formula-filter__error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.formula-filter__add {
+  align-self: flex-start;
+  border: 1px dashed #d1d5db;
+  background: #fff;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.formula-filter__add:hover {
+  background: #f9fafb;
+}

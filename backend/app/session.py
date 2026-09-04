@@ -39,6 +39,9 @@ MAX_FILTERED_CACHE = 4
 # where the structure could not be parsed). Written on first use; precomputable
 # with scripts/website/build_mw_index.py.
 MW_INDEX_FILENAME = "mw_index.json"
+# Per-row element-count index (row i → {element: count} or null), aligned to the
+# rankingset like mw_index.json. Built by scripts/website/build_formula_index.py.
+FORMULA_INDEX_FILENAME = "formula_index.json"
 
 # Morgan radius the entropy fingerprints are built at. Matches the project-wide
 # default in src/modules/data/fp_loader.make_fp_loader.
@@ -47,6 +50,10 @@ MAX_RADIUS = 6
 
 class MWDataUnavailable(RuntimeError):
     """Raised when a MW filter is requested but no masses could be derived."""
+
+
+class FormulaDataUnavailable(RuntimeError):
+    """Raised when a formula/atom-count filter is requested but no counts are available."""
 
 
 # ── Lazy imports from MARINA src ─────────────────────────────────────────────
@@ -337,6 +344,9 @@ class ModelSession:
     _mw_values:          Optional[List[float]]           = field(default=None, repr=False)
     _no_mw:              Optional[List[int]]             = field(default=None, repr=False)
     _all_indices:        Optional[List[int]]             = field(default=None, repr=False)
+    # Per-row element counts for the atom-count filter. [] once loaded but absent
+    # (distinct from None = not yet loaded); each present row is {element: count} or None.
+    _formula_index:      Optional[List[Optional[Dict[str, int]]]] = field(default=None, repr=False)
     _num_rows:           Optional[int]                   = field(default=None, repr=False)
     _lock:               threading.RLock                 = field(default_factory=threading.RLock, repr=False)
 
@@ -616,6 +626,73 @@ class ModelSession:
         # sparse metadata field cannot silently hide candidates.
         return sorted(in_range + self._no_mw)
 
+    # ── Atom-count (molecular-formula) filter ────────────────────────────────
+
+    def _ensure_formula_index(self) -> None:
+        """Load formula_index.json (row → {element: count} or null), aligned to rows."""
+        self._ensure_store()
+        with self._lock:
+            if self._formula_index is not None:
+                return
+            n = self._num_rows
+            path = os.path.join(self.model_root, FORMULA_INDEX_FILENAME)
+            data = None
+            if os.path.isfile(path):
+                try:
+                    with open(path) as fh:
+                        data = json.load(fh)
+                except (json.JSONDecodeError, OSError) as exc:
+                    logger.warning("Failed to read %s: %s", path, exc)
+            if not isinstance(data, list) or len(data) != n:
+                if data is not None:
+                    logger.error(
+                        "%s has %s rows but the rankingset has %s — atom-count filtering disabled.",
+                        FORMULA_INDEX_FILENAME, len(data) if isinstance(data, list) else "?", n)
+                self._formula_index = []          # sentinel: unavailable
+                return
+            self._formula_index = data
+
+    def indices_matching_formula(
+        self,
+        constraints: Dict[str, Tuple[Optional[int], Optional[int]]],
+    ) -> List[int]:
+        """
+        Global indices whose per-element atom counts satisfy every constraint
+        {element: (min, max)} (either bound may be None). Rows whose formula could
+        not be parsed (null) are kept rather than dropped, mirroring the MW filter,
+        so a sparse index cannot silently hide candidates.
+        """
+        self._ensure_store()
+        assert self._num_rows is not None
+        n = self._num_rows
+        if not constraints:
+            if self._all_indices is None:
+                self._all_indices = list(range(n))
+            return self._all_indices
+
+        self._ensure_formula_index()
+        if not self._formula_index:
+            raise FormulaDataUnavailable(
+                f"No atom-count data is available for the model at {self.model_root!r}, "
+                "so the molecular-formula filter cannot be applied.")
+
+        items = list(constraints.items())
+        kept: List[int] = []
+        for i in range(n):
+            counts = self._formula_index[i]
+            if counts is None:
+                kept.append(i)                     # unparseable formula → keep
+                continue
+            ok = True
+            for el, (lo, hi) in items:
+                c = counts.get(el, 0)
+                if (lo is not None and c < lo) or (hi is not None and c > hi):
+                    ok = False
+                    break
+            if ok:
+                kept.append(i)
+        return kept
+
     # ── RankingSet access ────────────────────────────────────────────────────
 
     def get_rankingset(self) -> RankingSet:
@@ -630,34 +707,49 @@ class ModelSession:
         self,
         mw_min: Optional[float],
         mw_max: Optional[float],
+        formula_filter: Optional[Dict[str, Tuple[Optional[int], Optional[int]]]] = None,
     ) -> Tuple[RankingSet, List[int]]:
         """
-        Return a (RankingSet, kept_indices) pair filtered by MW range.
-        The kept_indices list maps local row positions back to global indices.
+        Return a (RankingSet, kept_indices) pair filtered by MW range and/or an
+        atom-count (molecular-formula) constraint. kept_indices maps local row
+        positions back to global indices.
 
-        Cached per (mw_min, mw_max), bounded by MAX_FILTERED_CACHE. The bound
-        matters: the key comes straight from user input and each entry holds a
-        full copy of the rankingset, so an unbounded cache lets anyone exhaust
-        memory just by varying the MW filter.
+        Cached per (mw_min, mw_max, formula_key), bounded by MAX_FILTERED_CACHE.
+        The bound matters: the key comes straight from user input and each entry
+        holds a full copy of the rankingset, so an unbounded cache lets anyone
+        exhaust memory just by varying the filter.
         """
-        if mw_min is None and mw_max is None:
+        has_mw = mw_min is not None or mw_max is not None
+        has_formula = bool(formula_filter)
+        if not has_mw and not has_formula:
             return self.get_rankingset(), self.indices_in_mw_range(None, None)
 
-        key = (mw_min, mw_max)
+        formula_key = (
+            tuple(sorted((el, lo, hi) for el, (lo, hi) in formula_filter.items()))
+            if has_formula else None
+        )
+        key = (mw_min, mw_max, formula_key)
         with self._lock:
             cached = self._filtered_cache.get(key)
             if cached is not None:
                 self._filtered_cache.move_to_end(key)
                 return cached
 
-            kept  = self.indices_in_mw_range(mw_min, mw_max)
+            if has_mw and has_formula:
+                kept = sorted(set(self.indices_in_mw_range(mw_min, mw_max))
+                              & set(self.indices_matching_formula(formula_filter)))
+            elif has_mw:
+                kept = self.indices_in_mw_range(mw_min, mw_max)
+            else:
+                kept = self.indices_matching_formula(formula_filter)
+
             base  = self.get_rankingset().data
             store = _filter_csr_rows(base, kept)
             rs    = RankingSet(store=store, metric="cosine")
             self._filtered_cache[key] = (rs, kept)
             while len(self._filtered_cache) > MAX_FILTERED_CACHE:
                 evicted, _ = self._filtered_cache.popitem(last=False)
-                logger.debug("Evicted MW-filter cache entry %s", (evicted,))
+                logger.debug("Evicted filter cache entry %s", (evicted,))
             return rs, kept
 
     # ── Fingerprint helpers ──────────────────────────────────────────────────

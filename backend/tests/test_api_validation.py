@@ -29,6 +29,30 @@ def test_predict_requires_at_least_one_modality(client):
     assert r.status_code == 400
 
 
+def test_predict_rejects_descriptor_only_input(client):
+    # MW alone is a descriptor, not a spectrum: it retrieves nothing meaningful,
+    # so a request with no spectral modality is rejected before any model work.
+    r = client.post("/api/predict", json={"raw": {"mw": 300.0}, "k": 5})
+    assert r.status_code == 400
+    assert "spectral" in r.json()["detail"].lower()
+
+
+def test_formula_filter_rejects_min_greater_than_max(client):
+    r = client.post("/api/predict", json={
+        "raw": {"hsqc": [1.0, 2.0, 3.0]}, "k": 5,
+        "formula_filter": [{"element": "C", "min": 45, "max": 40}],
+    })
+    assert r.status_code == 422
+
+
+def test_formula_filter_requires_a_bound(client):
+    r = client.post("/api/predict", json={
+        "raw": {"hsqc": [1.0, 2.0, 3.0]}, "k": 5,
+        "formula_filter": [{"element": "C"}],
+    })
+    assert r.status_code == 422
+
+
 def test_hsqc_must_come_in_triplets(client):
     r = client.post("/api/predict", json={"raw": {"hsqc": [1.0, 2.0]}, "k": 5})
     assert r.status_code == 422

@@ -9,7 +9,17 @@ export interface SpectralInput {
   h_nmr?: number[]
   c_nmr?: number[]
   mass_spec?: number[]
+  mass_spec_neg?: number[]
   mw?: number
+  /** Molecular formula, Hill notation (e.g. C10H12N2O). */
+  formula?: string
+}
+
+/** Per-element atom-count constraint on retrieved candidates (e.g. C in [35,45]). */
+export interface FormulaConstraint {
+  element: string
+  min?: number
+  max?: number
 }
 
 export interface PredictRequest {
@@ -17,6 +27,7 @@ export interface PredictRequest {
   k?: number
   mw_min?: number
   mw_max?: number
+  formula_filter?: FormulaConstraint[]
   model_id?: string
   /** Client-generated id used to poll this request's queue position. */
   request_id?: string
@@ -86,6 +97,11 @@ export interface PredictResponse {
   offset: number
   limit: number
   pred_fp?: number[]
+  /** Checkpoint that served this request (the picker is gone; the server chooses). */
+  model_id?: string
+  model_display_name?: string
+  /** False when the client pinned model_id explicitly. */
+  auto_selected?: boolean
 }
 
 export interface SmilesSearchRequest {
@@ -93,6 +109,7 @@ export interface SmilesSearchRequest {
   k?: number
   mw_min?: number
   mw_max?: number
+  formula_filter?: FormulaConstraint[]
   model_id?: string
 }
 
@@ -103,6 +120,9 @@ export interface SmilesSearchResponse {
   limit: number
   query_smiles: string
   query_fp?: number[]
+  /** Checkpoint whose fingerprint space this query was scored in. */
+  model_id?: string
+  model_display_name?: string
 }
 
 export interface HealthResponse {
@@ -321,15 +341,6 @@ export function useUsageStats(options?: Partial<UseQueryOptions<UsageStatsRespon
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     retry: false,
-    ...options,
-  })
-}
-
-export function useModels(options?: Partial<UseQueryOptions<ModelsResponse>>) {
-  return useQuery<ModelsResponse>({
-    queryKey: ['models'],
-    queryFn: api.models,
-    staleTime: 5 * 60 * 1000,
     ...options,
   })
 }

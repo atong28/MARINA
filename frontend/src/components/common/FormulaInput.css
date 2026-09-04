@@ -1,0 +1,21 @@
+.formula-input--invalid {
+  border-color: #dc2626;
+}
+
+.formula-input__feedback {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.formula-input__preview {
+  color: #374151;
+  font-variant-ligatures: none;
+}
+
+.formula-input__preview sub {
+  font-size: 0.75em;
+}
+
+.formula-input__error {
+  color: #dc2626;
+}

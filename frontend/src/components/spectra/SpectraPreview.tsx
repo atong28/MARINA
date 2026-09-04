@@ -600,7 +600,7 @@ interface MSPeak {
   intensity: number
 }
 
-function MassSpecPlot({ peaks }: { peaks: MSPeak[] }) {
+function MassSpecPlot({ peaks, title }: { peaks: MSPeak[]; title: string }) {
   const [hover, setHover] = useState<Hover | null>(null)
   const clipId = useId()
 
@@ -654,7 +654,7 @@ function MassSpecPlot({ peaks }: { peaks: MSPeak[] }) {
   return (
     <figure className="spectra__card">
       <figcaption className="spectra__title">
-        MS/MS (Positive) <span className="spectra__count">{peaks.length} peaks</span>
+        {title} <span className="spectra__count">{peaks.length} peaks</span>
         {!plot.isDefault && <ResetButton onClick={plot.reset} />}
       </figcaption>
       <div className="spectra__plot">
@@ -715,9 +715,19 @@ interface SpectraPreviewProps {
   h_nmr: number[]
   c_nmr: number[]
   mass_spec: number[]
+  mass_spec_neg: number[]
 }
 
-function SpectraPreview({ hsqc, h_nmr, c_nmr, mass_spec }: SpectraPreviewProps) {
+function parseMsPeaks(flat: number[]): MSPeak[] {
+  const out: MSPeak[] = []
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const [mz, v] = [flat[i], flat[i + 1]]
+    if (Number.isFinite(mz) && Number.isFinite(v)) out.push({ mz, intensity: v })
+  }
+  return out
+}
+
+function SpectraPreview({ hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg }: SpectraPreviewProps) {
   // The store arrays are NaN-padded to preserve spreadsheet row positions;
   // a row only counts once every column it needs is filled.
   const hsqcPoints = useMemo(() => {
@@ -729,20 +739,14 @@ function SpectraPreview({ hsqc, h_nmr, c_nmr, mass_spec }: SpectraPreviewProps) 
     return out
   }, [hsqc])
 
-  const msPeaks = useMemo(() => {
-    const out: MSPeak[] = []
-    for (let i = 0; i + 1 < mass_spec.length; i += 2) {
-      const [mz, v] = [mass_spec[i], mass_spec[i + 1]]
-      if (Number.isFinite(mz) && Number.isFinite(v)) out.push({ mz, intensity: v })
-    }
-    return out
-  }, [mass_spec])
+  const msPeaks = useMemo(() => parseMsPeaks(mass_spec), [mass_spec])
+  const msNegPeaks = useMemo(() => parseMsPeaks(mass_spec_neg), [mass_spec_neg])
 
   const hShifts = useMemo(() => h_nmr.filter(Number.isFinite), [h_nmr])
   const cShifts = useMemo(() => c_nmr.filter(Number.isFinite), [c_nmr])
 
   const hasHSQC = hsqcPoints.length > 0
-  const hasWide = hShifts.length > 0 || cShifts.length > 0 || msPeaks.length > 0
+  const hasWide = hShifts.length > 0 || cShifts.length > 0 || msPeaks.length > 0 || msNegPeaks.length > 0
   if (!hasHSQC && !hasWide) return null
 
   // HSQC is near-square and the rest are wide and short, so they get their own
@@ -759,7 +763,8 @@ function SpectraPreview({ hsqc, h_nmr, c_nmr, mass_spec }: SpectraPreviewProps) 
           <div className="spectra__stack">
             {hShifts.length > 0 && <PeakListPlot title="¹H NMR" shifts={hShifts} />}
             {cShifts.length > 0 && <PeakListPlot title="¹³C NMR" shifts={cShifts} />}
-            {msPeaks.length > 0 && <MassSpecPlot peaks={msPeaks} />}
+            {msPeaks.length > 0 && <MassSpecPlot peaks={msPeaks} title="MS/MS (Positive)" />}
+            {msNegPeaks.length > 0 && <MassSpecPlot peaks={msNegPeaks} title="MS/MS (Negative)" />}
           </div>
         )}
       </div>

@@ -27,6 +27,16 @@
   gap: 16px;
 }
 
+/* Read-only indicator of the auto-selected model (replaces the old picker). */
+.main-page__model-indicator {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
 .main-page__api-link {
   font-size: 12px;
   color: #6b7280;
