@@ -1,30 +1,52 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { api, BitExplanation, BitGroup, BitExplainResponse, BucketPrediction } from '../../services/api'
 import './BitPanel.css'
 
 /**
- * Multiplicity thermometer: one bar per cumulative level (≥1×, ≥2×, …), bar height
- * = predicted confidence for that count. Levels the candidate actually reaches
- * (≤ true_count) are filled solid; the true_count boundary is marked. Non-monotonic
- * predictions (≥1, ≥2, ≥4 high but ≥3 low) show as-is — each bar stands alone.
+ * Multiplicity thermometer: one confidence bar per cumulative level (≥1×, ≥2×, …).
+ * Bar height = predicted confidence; the bar is GREEN when the prediction agrees
+ * with the candidate (present ⇔ confidence > 0.5) and RED when it doesn't (over- or
+ * under-predicted). The level number under each bar is highlighted green when the
+ * candidate actually reaches that count, and underlined at the true count. If there
+ * are many levels the strip scrolls sideways, centred on the true count.
  */
 function BucketBars({ buckets, trueCount }: { buckets: BucketPrediction[]; trueCount: number }) {
+  const stripRef = useRef<HTMLSpanElement>(null)
+  const trueRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const strip = stripRef.current
+    const mark = trueRef.current
+    if (strip && mark && strip.scrollWidth > strip.clientWidth) {
+      strip.scrollLeft = mark.offsetLeft - strip.clientWidth / 2 + mark.clientWidth / 2
+    }
+  }, [trueCount, buckets.length])
+
   return (
-    <span className="bit-panel__thermo" title={`Contained ${trueCount}× in this candidate`}>
-      {buckets.map((b) => (
-        <span key={b.level} className="bit-panel__thermo-col">
-          <span className="bit-panel__thermo-bar">
+    <span className="bit-panel__thermo" ref={stripRef}>
+      {buckets.map((b) => {
+        const correct = (b.confidence > 0.5) === b.present
+        return (
+          <span
+            key={b.level}
+            className="bit-panel__thermo-col"
+            ref={b.level === trueCount ? trueRef : undefined}
+          >
+            <span className="bit-panel__thermo-bar">
+              <span
+                className={`bit-panel__thermo-fill ${correct ? 'is-correct' : 'is-wrong'}`}
+                style={{ height: `${Math.max(3, Math.round(b.confidence * 100))}%` }}
+                title={`≥${b.level}×: ${formatPct(b.confidence)} — ${b.present ? 'present' : 'absent'}, ${correct ? 'correct' : 'wrong'}`}
+              />
+            </span>
             <span
-              className={`bit-panel__thermo-fill${b.present ? ' is-present' : ''}`}
-              style={{ height: `${Math.max(2, Math.round(b.confidence * 100))}%` }}
-              title={`≥${b.level}×: ${formatPct(b.confidence)}${b.present ? ' — present' : ''}`}
-            />
+              className={`bit-panel__thermo-label${b.present ? ' is-present' : ''}${b.level === trueCount ? ' is-truecount' : ''}`}
+            >
+              {b.level}
+            </span>
           </span>
-          <span className={`bit-panel__thermo-label${b.level === trueCount ? ' is-truecount' : ''}`}>
-            {b.level}
-          </span>
-        </span>
-      ))}
+        )
+      })}
     </span>
   )
 }
@@ -148,6 +170,45 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
   }
 
   const hidden = data.total_available - data.total_shown
+  // Multiplicity vocabularies collapse to one row per fragment (each carrying a
+  // bucket thermometer) and are ordered by radius then entropy, so they render as
+  // one flat list rather than the disagreement groups.
+  const isMultiplicity = data.bits.some((b) => b.buckets != null)
+
+  const renderRow = (bit: BitExplanation) => (
+    <li key={bit.index}>
+      <button
+        type="button"
+        className={`bit-panel__row${selectedIndex === bit.index ? ' bit-panel__row--selected' : ''}`}
+        onClick={() => toggle(bit)}
+        // A bit this structure lacks has nowhere to be highlighted.
+        disabled={!bit.present}
+        title={bitTitle(bit)}
+      >
+        {bit.fragment_svg ? (
+          <img
+            className="bit-panel__thumb"
+            src={`data:image/svg+xml,${encodeURIComponent(bit.fragment_svg)}`}
+            alt={bitLabel(bit)}
+          />
+        ) : (
+          <span className="bit-panel__thumb bit-panel__thumb--empty" />
+        )}
+        <span className="bit-panel__labels">
+          <code className="bit-panel__frag">{bitLabel(bit)}</code>
+          <span className="bit-panel__meta">{bitMeta(bit)}</span>
+        </span>
+        {bit.buckets && bit.buckets.length > 0 ? (
+          <BucketBars buckets={bit.buckets} trueCount={bit.true_count ?? 0} />
+        ) : (
+          <>
+            <span className="bit-panel__band">{bit.band}</span>
+            <span className="bit-panel__pct">{formatPct(bit.confidence)}</span>
+          </>
+        )}
+      </button>
+    </li>
+  )
 
   return (
     <div className="bit-panel">
@@ -158,60 +219,33 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
         {data.calibrated ? 'Calibrated confidence' : 'Uncalibrated — confidences overstate presence'}
       </div>
 
-      {GROUP_ORDER.map((group) => {
-        const bits = data.bits.filter((b) => b.group === group)
-        if (bits.length === 0) return null
-        return (
-          <section key={group} className={`bit-panel__group bit-panel__group--${group}`}>
-            <h4 className="bit-panel__group-title" title={GROUP_HINT[group]}>
-              {GROUP_LABEL[group]}
-              <span className="bit-panel__group-count">{data.totals[group]}</span>
-            </h4>
-            <ul className="bit-panel__list">
-              {bits.map((bit) => (
-                <li key={bit.index}>
-                  <button
-                    type="button"
-                    className={`bit-panel__row${selectedIndex === bit.index ? ' bit-panel__row--selected' : ''}`}
-                    onClick={() => toggle(bit)}
-                    // A bit this structure lacks has nowhere to be highlighted.
-                    disabled={!bit.present}
-                    title={bitTitle(bit)}
-                  >
-                    {bit.fragment_svg ? (
-                      <img
-                        className="bit-panel__thumb"
-                        src={`data:image/svg+xml,${encodeURIComponent(bit.fragment_svg)}`}
-                        alt={bitLabel(bit)}
-                      />
-                    ) : (
-                      <span className="bit-panel__thumb bit-panel__thumb--empty" />
-                    )}
-                    <span className="bit-panel__labels">
-                      <code className="bit-panel__frag">{bitLabel(bit)}</code>
-                      <span className="bit-panel__meta">{bitMeta(bit)}</span>
-                    </span>
-                    {bit.buckets && bit.buckets.length > 0 ? (
-                      <BucketBars buckets={bit.buckets} trueCount={bit.true_count ?? 0} />
-                    ) : (
-                      <>
-                        <span className="bit-panel__band">{bit.band}</span>
-                        <span className="bit-panel__pct">{formatPct(bit.confidence)}</span>
-                      </>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )
-      })}
-
-      {hidden > 0 && (
-        <div className="bit-panel__truncated">
-          + {hidden} more not shown
-        </div>
+      {isMultiplicity ? (
+        <section className="bit-panel__group">
+          <h4 className="bit-panel__group-title" title="Each fragment's cumulative counts (≥1×, ≥2×, …). Bars are predicted confidence — green where the prediction agrees with the candidate, red where it over- or under-predicts. Ordered by radius, then vocabulary (entropy) order.">
+            Fragment multiplicities
+            <span className="bit-panel__group-count">{data.total_shown}</span>
+          </h4>
+          <ul className="bit-panel__list">{data.bits.map(renderRow)}</ul>
+        </section>
+      ) : (
+        GROUP_ORDER.map((group) => {
+          const bits = data.bits.filter((b) => b.group === group)
+          if (bits.length === 0) return null
+          return (
+            <section key={group} className={`bit-panel__group bit-panel__group--${group}`}>
+              <h4 className="bit-panel__group-title" title={GROUP_HINT[group]}>
+                {GROUP_LABEL[group]}
+                <span className="bit-panel__group-count">{data.totals[group]}</span>
+              </h4>
+              <ul className="bit-panel__list">{bits.map(renderRow)}</ul>
+            </section>
+          )
+        })
       )}
+
+      <div className="bit-panel__truncated">
+        {hidden > 0 ? `+ ${hidden} more not shown` : `All ${data.total_shown} shown`}
+      </div>
 
       {/*
         36 distinct bits carry the label "CCCCC", so the same string can appear

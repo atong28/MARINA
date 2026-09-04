@@ -114,16 +114,18 @@ def test_rows_collapse_buckets_into_one_thermometer_per_fragment(mult_session):
         assert r["true_count"] == (max(present_levels) if present_levels else 0)
 
 
-def test_absent_features_report_an_unknown_radius(mult_session):
+def test_multiplicity_rows_carry_a_sortable_radius(mult_session):
     """
-    A multiplicity feature carries no radius, so one this structure lacks has none to
-    report. -1 is the "unknown" sentinel; the UI must not render it as a real radius.
+    A multiplicity feature has no radius in its key, so one is recovered from the
+    fragment SMILES (graph radius) for *every* fragment — present or absent — so the
+    panel can order small fragments before large ones. Single-atom fragments are r0.
     """
     n = mult_session.fp_loader.out_dim
     fp = [0.99] * n
 
     rows = explain_bits(mult_session, ASPIRIN, fp, limit=500)["bits"]
-    absent = [r for r in rows if not r["present"]]
-    assert absent, "predicting every bit should leave some absent from aspirin"
-    assert all(r["radius"] == -1 for r in absent)
-    assert all(r["radius"] >= 0 for r in rows if r["present"])
+    assert any(not r["present"] for r in rows), "predicting every bit should leave some absent"
+    assert all(r["radius"] >= 0 for r in rows), "every fragment reports a computed radius"
+    # rows come back ordered by radius ascending
+    radii = [r["radius"] for r in rows]
+    assert radii == sorted(radii)

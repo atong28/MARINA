@@ -1,12 +1,9 @@
 .formula-input__field {
-  /* Wide enough for the placeholder hint and typical formulas. */
-  width: 240px !important;
-  /* Unicode subscripts are ~0.6em and sit low; a larger font + generous vertical
-     room keeps them legible and stops the descenders being clipped at the bottom. */
-  font-size: 16px !important;
-  line-height: 1.5 !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+  /* Back to a normal-height field. A small font bump (13 -> 14.5px) makes the
+     Unicode subscripts a touch more legible without enlarging the box; the
+     default padding keeps the leading glyph from being clipped at the start. */
+  width: 190px !important;
+  font-size: 14.5px !important;
   font-variant-ligatures: none;
 }
 

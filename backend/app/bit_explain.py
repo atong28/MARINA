@@ -93,6 +93,24 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
 _MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped")
 
 
+def _fragment_radius(frag: str) -> int:
+    """
+    Approximate Morgan radius of a substructure from its fragment SMILES: the graph
+    radius (min over atoms of the eccentricity). A multiplicity feature carries no
+    radius in its key, so this recovers a stable one for ordering small→large, and
+    it agrees with the Morgan radius for the symmetric environments Morgan emits.
+    """
+    if not frag:
+        return 0
+    from rdkit import Chem
+    mol = Chem.MolFromSmiles(frag, sanitize=False)
+    if mol is None or mol.GetNumAtoms() <= 1:
+        return 0
+    dm = Chem.GetDistanceMatrix(mol)
+    n = mol.GetNumAtoms()
+    return int(min(max(dm[i][j] for j in range(n)) for i in range(n)))
+
+
 def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo, calibrator):
     """
     Collapse a multiplicity vocabulary's per-bucket bits into one row per fragment.
@@ -150,10 +168,13 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
                  else (GROUP_UNEXPECTED if is_present else GROUP_UNCERTAIN))
         rows.append({
             "index": one_col, "fragment_smiles": frag or "", "atom_symbol": "",
-            "radius": rep_radius, "multiplicity": None,
+            "radius": _fragment_radius(frag), "multiplicity": None,
             "raw_confidence": one_raw, "confidence": one_conf, "band": band(one_conf),
             "present": is_present, "group": group, "atoms": rep_atoms, "bonds": rep_bonds,
             "buckets": buckets, "true_count": true_count,
+            # entropy rank within a radius = the vocabulary column order (lower = higher
+            # entropy), taken from the fragment's ≥1× bucket.
+            "entropy_rank": frag_buckets.get(frag, [(0, one_col)])[0][1],
         })
     return rows
 
@@ -225,7 +246,11 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
                 "bonds": bonds,
             })
 
-    rows.sort(key=lambda r: (_GROUP_RANK[r["group"]], -r["confidence"], r["index"]))
+    if feature_kind in _MULTIPLICITY_KINDS:
+        # Small fragments first, then by vocabulary (entropy) order within a radius.
+        rows.sort(key=lambda r: (r["radius"], r.get("entropy_rank", r["index"])))
+    else:
+        rows.sort(key=lambda r: (_GROUP_RANK[r["group"]], -r["confidence"], r["index"]))
 
     if include_fragment_svg:
         from app.renderer import render_fragment_svg

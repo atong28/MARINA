@@ -179,6 +179,10 @@
   gap: 3px;
   margin-left: auto;
   padding-left: 8px;
+  /* Scroll sideways when a fragment has many cumulative levels. */
+  max-width: 300px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .bit-panel__thermo-col {
@@ -198,15 +202,18 @@
   overflow: hidden;
 }
 
-/* Bar height = predicted confidence for this cumulative level. */
+/* Bar height = predicted confidence; colour = whether the prediction is right. */
 .bit-panel__thermo-fill {
   width: 100%;
-  background: #93b4f5;         /* predicted only */
   border-radius: 2px 2px 0 0;
 }
 
-.bit-panel__thermo-fill.is-present {
-  background: #16a34a;         /* candidate actually reaches this count */
+.bit-panel__thermo-fill.is-correct {
+  background: #16a34a;         /* prediction agrees with the candidate */
+}
+
+.bit-panel__thermo-fill.is-wrong {
+  background: #dc2626;         /* over- or under-predicted */
 }
 
 .bit-panel__thermo-label {
@@ -215,9 +222,13 @@
   color: #9ca3af;
 }
 
-/* The count the candidate actually contains. */
-.bit-panel__thermo-label.is-truecount {
+/* A count the candidate actually reaches. */
+.bit-panel__thermo-label.is-present {
   color: #16a34a;
   font-weight: 700;
+}
+
+/* The exact count the candidate contains. */
+.bit-panel__thermo-label.is-truecount {
   text-decoration: underline;
 }
