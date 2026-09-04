@@ -336,16 +336,12 @@ class MARINA(pl.LightningModule):
                     self._val_mm, feat, input_type, sync_on_compute=True)
                 v = mm.compute().item()
                 di[f"val/mean_{feat}/{input_type}"] = v
+                if input_type == "all_inputs":
+                    di[f"val/mean_{feat}"] = v
                 vals_for_avg.append(v)
-            # Always emit the bare val/mean_{feat} key so EarlyStopping has a stable
-            # metric to monitor even when 'all_inputs' isn't present in _val_mm.
-            # Prefer the 'all_inputs' value when available (preserves formula-arm
-            # semantics); otherwise fall back to the mean across input_types
-            # (SPECTRE-style, see spectre/model.py:217).
-            if "all_inputs" in input_types:
-                di[f"val/mean_{feat}"] = di[f"val/mean_{feat}/all_inputs"]
-            else:
-                di[f"val/mean_{feat}"] = sum(vals_for_avg) / len(vals_for_avg)
+        if "all_inputs" not in input_types:
+            _trace(f"WARNING all_inputs missing from input_types={input_types}; "
+                   f"bare val/mean_* keys will not be emitted")
         _trace(f"logging {len(di)} metrics: sample={sorted(di.keys())[:6]}")
         logger.info(
             f"[MARINA][rank {self.global_rank}] on_validation_epoch_end logging "
