@@ -172,15 +172,11 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
         is_present = true_count >= 1
 
         # Drop a fragment that is neither present nor predicted above the floor — an
-        # all-zero thermometer carries no information.
+        # all-zero thermometer carries no information. All buckets of a kept fragment
+        # are shown (the full thermometer); only whole dead fragments are removed.
         max_conf = max((b["confidence"] for b in buckets), default=0.0)
         if not is_present and max_conf < BUCKET_FLOOR:
             continue
-        # Trim trailing buckets that are neither present nor predicted, so the strip
-        # shows only the meaningful range (up to the true count or the last prediction).
-        kmax = max((b["level"] for b in buckets if b["present"] or b["confidence"] >= BUCKET_FLOOR),
-                   default=1)
-        buckets = [b for b in buckets if b["level"] <= kmax]
 
         group = ((GROUP_MATCH if is_present else GROUP_MISSING) if one_conf >= CONFIDENT
                  else (GROUP_UNEXPECTED if is_present else GROUP_UNCERTAIN))

@@ -1,10 +1,33 @@
+/* contentEditable styled like the app's text inputs. Real <sub> renders at a
+   proper size and position, so subscripts are legible and never clipped. */
 .formula-input__field {
-  /* Back to a normal-height field. A small font bump (13 -> 14.5px) makes the
-     Unicode subscripts a touch more legible without enlarging the box; the
-     default padding keeps the leading glyph from being clipped at the start. */
-  width: 190px !important;
-  font-size: 14.5px !important;
-  font-variant-ligatures: none;
+  width: 240px;
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+  overflow-x: auto;
+  cursor: text;
+}
+
+.formula-input__field:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.formula-input__field:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+}
+
+.formula-input__field sub {
+  font-size: 0.72em;
 }
 
 .formula-input--invalid {
