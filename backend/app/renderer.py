@@ -182,10 +182,20 @@ def render_bit_svg(
         hl_atoms = [int(a) for a in atoms if 0 <= int(a) < n_atoms]
         hl_bonds = [int(b) for b in bonds if 0 <= int(b) < n_bonds]
 
-        half = img_size // 2
-        drawer = rdMolDraw2D.MolDraw2DSVG(half, half)
+        # Same size as the plain/enhanced depiction it replaces — drawing at half
+        # size scaled the molecule up ~2x in the same box and thickened every bond.
+        drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
+        opts = drawer.drawOptions()
+        # A clear, saturated red that reads through the black skeleton: a wider atom
+        # circle and bond band peek out from under the bond lines instead of hiding.
+        red = (0.90, 0.16, 0.16)
+        opts.setHighlightColour(red)
+        opts.highlightRadius = 0.42
+        opts.highlightBondWidthMultiplier = 16
         rdMolDraw2D.PrepareAndDrawMolecule(
             drawer, mol, highlightAtoms=hl_atoms, highlightBonds=hl_bonds,
+            highlightAtomColors={a: red for a in hl_atoms},
+            highlightBondColors={b: red for b in hl_bonds},
         )
         drawer.FinishDrawing()
         return drawer.GetDrawingText()
