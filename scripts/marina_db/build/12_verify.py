@@ -103,14 +103,18 @@ def main():
 
     bench_missing(BENCH_JOURNAL, "journal")
 
-    # ---- 2c. journal input tensors are well-formed ----
-    # Every modality tensor in a journal entry's input dict must be 2D with the
-    # canonical last-dim, and non-empty when it claims to carry data. A 1D empty
-    # tensor (has-modality-but-no-peaks stored as torch.tensor([])) slips past
-    # the runtime "all None -> skip" check but crashes forward with StopIteration
-    # inside the eval callback -- which Lightning's eval_loop.run silently
-    # absorbs (evaluation_loop.py:147 `except StopIteration`), losing the whole
-    # module.on_validation_epoch_end pass and any EarlyStopping metric with it.
+    # ---- 2c. journal input tensors are well-formed AND non-empty ----
+    # Every modality tensor in a journal entry's input dict must be 2D, have the
+    # canonical last-dim, and hold at least one peak. An empty tensor (numel==0)
+    # or a 1D one is the fingerprint of a header-only curation CSV that got
+    # serialized as `torch.tensor([])` -- "we claim this modality but have no
+    # data". At runtime this slips past collate's "all None -> skip" check;
+    # a 1D empty case crashes on next(x.shape[1] ...) with StopIteration, which
+    # Lightning's eval_loop silently absorbs (evaluation_loop.py:147:
+    # `except StopIteration`), losing module.on_validation_epoch_end and any
+    # EarlyStopping metric monitored there. The right response is to drop the
+    # entry entirely (see Benchmark/dropped/README.txt), not to silently
+    # in-fill; this lint enforces that policy at build time.
     def check_journal_input_tensors(path, label):
         if not Path(path).exists():
             print(f"[skip] {label} input-tensor lint: not present ({path})")
@@ -135,9 +139,9 @@ def main():
                     bad.append((k, sp, mod, tuple(v.shape), "ndim!=2"))
                 elif expected_d is not None and v.shape[1] != expected_d:
                     bad.append((k, sp, mod, tuple(v.shape), f"shape[1]!={expected_d}"))
-                elif v.shape[1] == 0:
-                    bad.append((k, sp, mod, tuple(v.shape), "shape[1]==0"))
-        check(f"{label} input tensors well-formed ({len(data)} entries)",
+                elif v.numel() == 0:
+                    bad.append((k, sp, mod, tuple(v.shape), "empty (numel==0)"))
+        check(f"{label} input tensors non-empty and well-formed ({len(data)} entries)",
               not bad,
               f"{len(bad)} bad tensors; first: {bad[:5]}")
 
