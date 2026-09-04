@@ -185,6 +185,19 @@ export interface BitExplanation {
   bonds: number[]
   /** Drawing of the substructure, present only when requested. */
   fragment_svg?: string | null
+  /** Multiplicity vocabularies only: the fragment's ≥1×, ≥2×, … thermometer. */
+  buckets?: BucketPrediction[] | null
+  /** Multiplicity vocabularies only: how many times the candidate contains the fragment. */
+  true_count?: number | null
+}
+
+export interface BucketPrediction {
+  level: number
+  index: number
+  raw_confidence: number
+  confidence: number
+  band: string
+  present: boolean
 }
 
 export interface BitExplainRequest {

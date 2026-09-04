@@ -117,6 +117,16 @@ class BitExplainRequest(BaseModel):
     include_fragment_svg: bool = Field(False, description="Attach a drawing of each substructure")
 
 
+class BucketPrediction(BaseModel):
+    """One cumulative-occurrence level of a multiplicity fragment (≥level×)."""
+    level:          int   = Field(..., description="Cumulative bucket: fragment appears ≥level times")
+    index:          int   = Field(..., description="Fingerprint column for this bucket")
+    raw_confidence: float = Field(..., ge=0.0, le=1.0)
+    confidence:     float = Field(..., ge=0.0, le=1.0)
+    band:           str
+    present:        bool  = Field(..., description="Whether the candidate reaches this count")
+
+
 class BitExplanation(BaseModel):
     index:           int
     fragment_smiles: str   = Field(..., description="Substructure SMILES ('' for radius-0 bits)")
@@ -136,6 +146,11 @@ class BitExplanation(BaseModel):
     atoms:           List[int] = Field(default_factory=list, description="Atom indices to highlight")
     bonds:           List[int] = Field(default_factory=list, description="Bond indices to highlight")
     fragment_svg:    Optional[str] = Field(None, description="Drawing of the substructure, when requested")
+    # Multiplicity vocabularies only: the fragment's whole thermometer collapsed into one
+    # row. buckets are all vocabulary levels (≥1, ≥2, …) with their predicted confidence;
+    # true_count is how many times the candidate actually contains the fragment.
+    buckets:         Optional[List[BucketPrediction]] = None
+    true_count:      Optional[int] = None
 
 
 class BitHighlightRequest(BaseModel):

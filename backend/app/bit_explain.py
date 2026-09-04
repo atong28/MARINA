@@ -90,6 +90,74 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
     return {c: (sorted(a), sorted(b), r) for c, (a, b, r) in out.items()}
 
 
+_MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped")
+
+
+def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo, calibrator):
+    """
+    Collapse a multiplicity vocabulary's per-bucket bits into one row per fragment.
+
+    A fragment's cumulative buckets (≥1×, ≥2×, …) are separate columns; here they
+    become one row carrying the whole thermometer in `buckets` (every vocabulary
+    level with its predicted confidence, monotonic or not) plus `true_count`, the
+    count the candidate actually reaches. The row's own confidence is the ≥1×
+    bucket — "does this fragment appear at all" — which is what sorting/grouping key on.
+    """
+    frag_buckets: Dict[str, List[Tuple[int, int]]] = {}
+    for col, info in index_to_bitinfo.items():
+        if isinstance(info, tuple) and len(info) == 2:
+            frag_buckets.setdefault(info[0], []).append((int(info[1]), col))
+    for lst in frag_buckets.values():
+        lst.sort()
+
+    frags, seen = [], set()
+    for col in considered:
+        info = index_to_bitinfo.get(col)
+        if isinstance(info, tuple) and len(info) == 2 and info[0] not in seen:
+            seen.add(info[0])
+            frags.append(info[0])
+
+    def conf_of(col):
+        raw = float(pred_fp[col]) if col < len(pred_fp) else 0.0
+        return raw, (calibrator(raw) if calibrator else raw)
+
+    rows = []
+    for frag in frags:
+        buckets, present_levels = [], []
+        rep_atoms, rep_bonds, rep_radius = [], [], -1
+        one_raw = one_conf = 0.0
+        one_col = -1
+        for lvl, col in frag_buckets.get(frag, []):
+            raw, conf = conf_of(col)
+            in_mol = col in present
+            atoms, bonds, r = locs.get(col, ([], [], -1))
+            if in_mol:
+                present_levels.append(lvl)
+                if not rep_atoms:                       # first present bucket = fragment location
+                    rep_atoms, rep_bonds, rep_radius = list(atoms), list(bonds), r
+            if lvl == 1:
+                one_raw, one_conf, one_col = raw, conf, col
+            buckets.append({"level": lvl, "index": col, "raw_confidence": raw,
+                            "confidence": conf, "band": band(conf), "present": in_mol})
+        if not buckets:
+            continue
+        if one_col == -1:                                # no explicit ≥1 bucket → lowest level
+            b0 = buckets[0]
+            one_raw, one_conf, one_col = b0["raw_confidence"], b0["confidence"], b0["index"]
+        true_count = max(present_levels) if present_levels else 0
+        is_present = true_count >= 1
+        group = ((GROUP_MATCH if is_present else GROUP_MISSING) if one_conf >= CONFIDENT
+                 else (GROUP_UNEXPECTED if is_present else GROUP_UNCERTAIN))
+        rows.append({
+            "index": one_col, "fragment_smiles": frag or "", "atom_symbol": "",
+            "radius": rep_radius, "multiplicity": None,
+            "raw_confidence": one_raw, "confidence": one_conf, "band": band(one_conf),
+            "present": is_present, "group": group, "atoms": rep_atoms, "bonds": rep_bonds,
+            "buckets": buckets, "true_count": true_count,
+        })
+    return rows
+
+
 def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
                  calibrator=None, include_fragment_svg: bool = False) -> dict:
     """
@@ -116,49 +184,46 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
         i for i, p in enumerate(pred_fp) if p >= MIN_CONFIDENCE
     }
 
-    rows = []
-    for col in considered:
-        raw = float(pred_fp[col]) if col < len(pred_fp) else 0.0
-        conf = calibrator(raw) if calibrator else raw
-        in_mol = col in present
-        if conf >= CONFIDENT:
-            group = GROUP_MATCH if in_mol else GROUP_MISSING
-        else:
-            group = GROUP_UNEXPECTED if in_mol else GROUP_UNCERTAIN
+    if feature_kind in _MULTIPLICITY_KINDS:
+        # One row per fragment, carrying its whole ≥1×, ≥2×, … thermometer.
+        rows = _collapse_multiplicity(pred_fp, considered, present, locs,
+                                      index_to_bitinfo, calibrator)
+    else:
+        rows = []
+        for col in considered:
+            raw = float(pred_fp[col]) if col < len(pred_fp) else 0.0
+            conf = calibrator(raw) if calibrator else raw
+            in_mol = col in present
+            if conf >= CONFIDENT:
+                group = GROUP_MATCH if in_mol else GROUP_MISSING
+            else:
+                group = GROUP_UNEXPECTED if in_mol else GROUP_UNCERTAIN
 
-        atoms, bonds, found_radius = locs.get(col, ([], [], -1))
-        info = index_to_bitinfo.get(col)
-        multiplicity = None
-        if isinstance(info, str):
-            # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
-            # centre-atom symbol, and the radius is only known from where it was found --
-            # so a feature this structure lacks reports -1 rather than a made-up radius.
-            frag_smiles, atom_symbol, radius = info, "", found_radius
-        elif isinstance(info, tuple) and len(info) == 2:
-            # Multiplicity vocabulary: (fragment SMILES, cumulative occurrence bucket).
-            # Same shape as substructure plus the bucket, so the same radius caveat holds.
-            # Buckets are cumulative, so several columns share one fragment and are only
-            # told apart by this number -- it has to reach the UI or the rows look identical.
-            frag_smiles, multiplicity = info
-            atom_symbol, radius = "", found_radius
-        elif info:
-            _bit_id, atom_symbol, frag_smiles, radius = info
-        else:
-            frag_smiles, atom_symbol, radius = None, None, None
-        rows.append({
-            "index": col,
-            "fragment_smiles": frag_smiles or "",
-            "atom_symbol": atom_symbol or "",
-            "radius": radius if radius is not None else -1,
-            "multiplicity": multiplicity,
-            "raw_confidence": raw,
-            "confidence": conf,
-            "band": band(conf),
-            "present": in_mol,
-            "group": group,
-            "atoms": atoms,
-            "bonds": bonds,
-        })
+            atoms, bonds, found_radius = locs.get(col, ([], [], -1))
+            info = index_to_bitinfo.get(col)
+            if isinstance(info, str):
+                # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
+                # centre-atom symbol, and the radius is only known from where it was found --
+                # so a feature this structure lacks reports -1 rather than a made-up radius.
+                frag_smiles, atom_symbol, radius = info, "", found_radius
+            elif info:
+                _bit_id, atom_symbol, frag_smiles, radius = info
+            else:
+                frag_smiles, atom_symbol, radius = None, None, None
+            rows.append({
+                "index": col,
+                "fragment_smiles": frag_smiles or "",
+                "atom_symbol": atom_symbol or "",
+                "radius": radius if radius is not None else -1,
+                "multiplicity": None,
+                "raw_confidence": raw,
+                "confidence": conf,
+                "band": band(conf),
+                "present": in_mol,
+                "group": group,
+                "atoms": atoms,
+                "bonds": bonds,
+            })
 
     rows.sort(key=lambda r: (_GROUP_RANK[r["group"]], -r["confidence"], r["index"]))
 

@@ -88,26 +88,30 @@ def test_cumulative_buckets_share_a_fragment_across_columns(mult_session):
     )
 
 
-def test_rows_report_the_occurrence_bucket(mult_session):
-    """Cumulative buckets are the only thing telling two columns of one fragment apart."""
+def test_rows_collapse_buckets_into_one_thermometer_per_fragment(mult_session):
+    """Multiplicity rows collapse a fragment's cumulative buckets into a single row
+    carrying the whole ≥1×, ≥2×, … thermometer (buckets) plus its true_count."""
     n = mult_session.fp_loader.out_dim
     fp = [0.99] * n
 
     rows = explain_bits(mult_session, CHAIN, fp, limit=500)["bits"]
     assert rows
-    assert all(r["multiplicity"] is not None for r in rows), (
-        "every multiplicity row must carry its bucket"
-    )
+    # Collapsed: one row per fragment, the bare per-bit bucket gone, thermometer present.
+    assert all(r["multiplicity"] is None for r in rows)
+    assert all(r["buckets"] is not None and r["true_count"] is not None for r in rows)
+    frags = [r["fragment_smiles"] for r in rows]
+    assert len(frags) == len(set(frags)), "each fragment appears once (collapsed)"
 
-    by_frag: dict = {}
-    for r in rows:
-        by_frag.setdefault(r["fragment_smiles"], set()).add(r["multiplicity"])
-    shared = {f: b for f, b in by_frag.items() if len(b) > 1}
-    assert shared, "a recurring fragment should appear at several buckets"
-    for frag, buckets in shared.items():
-        assert buckets == set(range(1, max(buckets) + 1)), (
-            f"buckets for {frag!r} should be cumulative from 1, got {sorted(buckets)}"
+    multi = [r for r in rows if len(r["buckets"]) > 1]
+    assert multi, "a recurring fragment should carry several buckets in one row"
+    for r in multi:
+        levels = sorted(b["level"] for b in r["buckets"])
+        assert levels == list(range(1, max(levels) + 1)), (
+            f"buckets for {r['fragment_smiles']!r} should be cumulative from 1, got {levels}"
         )
+        # true_count is how far up the thermometer the candidate actually reaches.
+        present_levels = [b["level"] for b in r["buckets"] if b["present"]]
+        assert r["true_count"] == (max(present_levels) if present_levels else 0)
 
 
 def test_absent_features_report_an_unknown_radius(mult_session):

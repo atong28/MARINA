@@ -1,6 +1,12 @@
 .formula-input__field {
   /* Wide enough for the placeholder hint and typical formulas. */
   width: 240px !important;
+  /* Unicode subscripts are ~0.6em and sit low; a larger font + generous vertical
+     room keeps them legible and stops the descenders being clipped at the bottom. */
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
   font-variant-ligatures: none;
 }
 

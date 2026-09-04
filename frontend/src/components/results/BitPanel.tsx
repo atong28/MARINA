@@ -1,6 +1,33 @@
 import { memo, useCallback, useEffect, useState } from 'react'
-import { api, BitExplanation, BitGroup, BitExplainResponse } from '../../services/api'
+import { api, BitExplanation, BitGroup, BitExplainResponse, BucketPrediction } from '../../services/api'
 import './BitPanel.css'
+
+/**
+ * Multiplicity thermometer: one bar per cumulative level (≥1×, ≥2×, …), bar height
+ * = predicted confidence for that count. Levels the candidate actually reaches
+ * (≤ true_count) are filled solid; the true_count boundary is marked. Non-monotonic
+ * predictions (≥1, ≥2, ≥4 high but ≥3 low) show as-is — each bar stands alone.
+ */
+function BucketBars({ buckets, trueCount }: { buckets: BucketPrediction[]; trueCount: number }) {
+  return (
+    <span className="bit-panel__thermo" title={`Contained ${trueCount}× in this candidate`}>
+      {buckets.map((b) => (
+        <span key={b.level} className="bit-panel__thermo-col">
+          <span className="bit-panel__thermo-bar">
+            <span
+              className={`bit-panel__thermo-fill${b.present ? ' is-present' : ''}`}
+              style={{ height: `${Math.max(2, Math.round(b.confidence * 100))}%` }}
+              title={`≥${b.level}×: ${formatPct(b.confidence)}${b.present ? ' — present' : ''}`}
+            />
+          </span>
+          <span className={`bit-panel__thermo-label${b.level === trueCount ? ' is-truecount' : ''}`}>
+            {b.level}
+          </span>
+        </span>
+      ))}
+    </span>
+  )
+}
 
 /**
  * Per-bit substructure breakdown for one candidate structure.
@@ -164,8 +191,14 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
                       <code className="bit-panel__frag">{bitLabel(bit)}</code>
                       <span className="bit-panel__meta">{bitMeta(bit)}</span>
                     </span>
-                    <span className="bit-panel__band">{bit.band}</span>
-                    <span className="bit-panel__pct">{formatPct(bit.confidence)}</span>
+                    {bit.buckets && bit.buckets.length > 0 ? (
+                      <BucketBars buckets={bit.buckets} trueCount={bit.true_count ?? 0} />
+                    ) : (
+                      <>
+                        <span className="bit-panel__band">{bit.band}</span>
+                        <span className="bit-panel__pct">{formatPct(bit.confidence)}</span>
+                      </>
+                    )}
                   </button>
                 </li>
               ))}

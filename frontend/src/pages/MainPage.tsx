@@ -356,7 +356,7 @@ function MainPage() {
                   : undefined
               }
             >
-              {predictMutation.isPending ? 'Predicting…' : 'Predict Structure'}
+              {predictMutation.isPending ? 'Running…' : 'Run Retrievals'}
             </button>
             <HelpButton content={HELP.spectral.predict} placement="top" />
             {hasInvalidSpreadsheet && (
