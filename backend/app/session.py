@@ -18,9 +18,11 @@ Optional (feature is simply off when absent):
 from __future__ import annotations
 
 import bisect
+import glob
 import json
 import logging
 import os
+import re
 import tempfile
 import threading
 from collections import OrderedDict
@@ -43,9 +45,26 @@ MW_INDEX_FILENAME = "mw_index.json"
 # rankingset like mw_index.json. Built by scripts/website/build_formula_index.py.
 FORMULA_INDEX_FILENAME = "formula_index.json"
 
-# Morgan radius the entropy fingerprints are built at. Matches the project-wide
-# default in src/modules/data/fp_loader.make_fp_loader.
-MAX_RADIUS = 6
+# Fallback Morgan radius, used only when a model dir carries no count file to infer
+# from. 10 is the project-wide default (src.modules.data.fp_loader.DEFAULT_FP_RADIUS,
+# same FP_RADIUS env).
+FP_RADIUS_DEFAULT = int(os.environ.get("FP_RADIUS", "10"))
+
+
+def _infer_fp_radius(model_root: str) -> int:
+    """
+    Radius the stored fingerprints were built at, read from the count filename
+    (count_<kind>_under_radius_<R>.pkl) in the model dir. This MUST match the radius
+    used to build rankingset.pt: query FPs are extracted at this radius, so a stale
+    value builds them at the wrong radius and the same molecule fails to self-retrieve
+    at 1.0. A radius-6 constant serving a radius-10 model is exactly that bug.
+    """
+    radii = [
+        int(m.group(1))
+        for p in glob.glob(os.path.join(model_root, "count_*_under_radius_*.pkl"))
+        if (m := re.search(r"under_radius_(\d+)\.pkl$", os.path.basename(p)))
+    ]
+    return max(radii) if radii else FP_RADIUS_DEFAULT
 
 
 class MWDataUnavailable(RuntimeError):
@@ -410,7 +429,7 @@ class ModelSession:
 
         FPLoaderClass = _import_fp_loader(fp_type)
         fp_loader = FPLoaderClass(dataset_root=model_root, retrieval_path=retrieval_path)
-        fp_loader.setup(args.out_dim, MAX_RADIUS, fp_type=fp_type,
+        fp_loader.setup(args.out_dim, _infer_fp_radius(model_root), fp_type=fp_type,
                         retrieval_path=retrieval_path)
 
         # The model's output layer is sized from args.out_dim while retrieval
