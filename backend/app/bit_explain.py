@@ -97,7 +97,7 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
     return {c: (sorted(a), sorted(b), r, sorted(ct)) for c, (a, b, r, ct) in out.items()}
 
 
-_MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped")
+_MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped", "unique_multiplicity")
 
 
 def _fragment_radius(frag: str) -> int:

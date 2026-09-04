@@ -32,6 +32,14 @@ MORGAN = "morgan"
 SUBSTRUCTURE = "substructure"
 MULTIPLICITY = "multiplicity"
 MULTIPLICITY_UNCAPPED = "multiplicity_uncapped"
+# Like multiplicity_uncapped, but occurrences are deduplicated by their exact atom set and
+# the fragment SMILES is re-canonicalised (context-free) first. An environment centred on a
+# different atom, or reached at a different radius, that spans the SAME atoms and is the SAME
+# fragment counts once, not once per centre. This removes both the per-atom over-counting of
+# symmetric groups (e.g. an isopropyl counted 3x, or an amide counted twice from the O@r2 and
+# C@r1 centres) and the split of one fragment across two spellings (CC(N)=O vs CC(=O)N).
+# See _substructure_occurrences(dedup=True).
+UNIQUE_MULTIPLICITY = "unique_multiplicity"
 
 # Buckets for the multiplicity vocabulary: a fragment occurring n times lands in
 # min(n, MULTIPLICITY_CAP), so the top bucket means "n or more". 5 is where the measured
@@ -48,7 +56,7 @@ def _multiplicity_cap(kind: str) -> int:
     hydrogens etc. outright, letting the vocabulary encode molecular-formula constraints."""
     if kind == MULTIPLICITY:
         return MULTIPLICITY_CAP
-    if kind == MULTIPLICITY_UNCAPPED:
+    if kind in (MULTIPLICITY_UNCAPPED, UNIQUE_MULTIPLICITY):
         return 1 << 30  # effectively unbounded; keeps min(n, cap) integer
     raise ValueError(f"Not a multiplicity kind: {kind}")
 
@@ -217,7 +225,8 @@ def count_circular_substructures(
 # ---------------------------
 # Substructures
 # ---------------------------
-def _substructure_occurrences(mol, radius: int, ignore_atoms: Iterable[int] = ()):
+def _substructure_occurrences(mol, radius: int, ignore_atoms: Iterable[int] = (),
+                              dedup: bool = False):
     """
     Yield (atom_idx, fragment_smiles, env_radius) for every atom environment.
 
@@ -225,8 +234,15 @@ def _substructure_occurrences(mol, radius: int, ignore_atoms: Iterable[int] = ()
     match the vocabulary, which is built from SMILES already stripped of stereo by
     canonicalize_smiles. Without it, the backend would silently miss every bit on any
     candidate drawn with stereochemistry.
+
+    dedup: when True, an environment that spans the same atom set and yields the same
+    fragment SMILES as one already emitted is skipped -- the UNIQUE_MULTIPLICITY vocabulary counts
+    distinct (fragment, atom-set) occurrences, not per-atom-centre environments. The atom
+    set plus the SMILES uniquely identifies the induced subgraph, so this cannot merge two
+    genuinely different occurrences.
     """
     ignore = set(ignore_atoms or ())
+    seen: set = set()
     for atom_idx in range(mol.GetNumAtoms()):
         if atom_idx in ignore:
             continue
@@ -242,6 +258,19 @@ def _substructure_occurrences(mol, radius: int, ignore_atoms: Iterable[int] = ()
             frag = Chem.MolFragmentToSmiles(
                 mol, atomsToUse=sorted(atoms), bondsToUse=list(env),
                 canonical=True, isomericSmiles=False)
+            if dedup:
+                # MolFragmentToSmiles is context-dependent -- it spells the same fragment
+                # differently from different centres (e.g. an amide as CC(N)=O or CC(=O)N),
+                # which would split one substructure across two bits and defeat the atom-set
+                # dedup. Re-canonicalise to a context-free key so both collapse to one.
+                try:
+                    frag = Chem.CanonSmiles(frag)
+                except Exception:
+                    pass
+                key = (frag, frozenset(atoms))
+                if key in seen:
+                    continue
+                seen.add(key)
             yield atom_idx, frag, r
 
 
@@ -274,13 +303,15 @@ def get_feature_locations(
             out[atom_idx].append((frag, r))
         return dict(out) or None
 
-    if kind in (MULTIPLICITY, MULTIPLICITY_UNCAPPED):
+    if kind in (MULTIPLICITY, MULTIPLICITY_UNCAPPED, UNIQUE_MULTIPLICITY):
         # The bucket is a property of the whole molecule, not of one occurrence, so the
         # occurrences have to be counted before any atom can be assigned its feature keys.
         # Buckets are cumulative, so an atom in a fragment occurring 3 times belongs to the
         # >=1, >=2 and >=3 columns alike -- the backend highlights the same atoms for each.
+        # UNIQUE_MULTIPLICITY dedups by atom set, so symmetric per-atom environments count once.
         cap = _multiplicity_cap(kind)
-        occurrences = list(_substructure_occurrences(mol, radius, ignore_atoms or ()))
+        dedup = kind == UNIQUE_MULTIPLICITY
+        occurrences = list(_substructure_occurrences(mol, radius, ignore_atoms or (), dedup=dedup))
         counts = Counter(frag for _, frag, _ in occurrences)
         out = defaultdict(list)
         for atom_idx, frag, r in occurrences:
@@ -329,7 +360,7 @@ def count_substructures(
 
 def count_substructure_multiplicities(
     smiles: str, radius: int, ignore_atoms: Optional[Iterable[int]] = None,
-    cap: int = MULTIPLICITY_CAP,
+    cap: int = MULTIPLICITY_CAP, dedup: bool = False,
 ) -> Dict[Multiplicity, int]:
     """
     Presence map keyed on (fragment SMILES, multiplicity bucket).
@@ -364,7 +395,7 @@ def count_substructure_multiplicities(
     if mol is None:
         return {}
     occurrences = Counter(
-        frag for _, frag, _ in _substructure_occurrences(mol, radius, ignore_atoms or ())
+        frag for _, frag, _ in _substructure_occurrences(mol, radius, ignore_atoms or (), dedup=dedup)
     )
     return {
         (frag, k): 1
@@ -409,6 +440,9 @@ def extract_features(
     if kind in (MULTIPLICITY, MULTIPLICITY_UNCAPPED):
         return count_substructure_multiplicities(
             smiles, radius, ignore_atoms, cap=_multiplicity_cap(kind))
+    if kind == UNIQUE_MULTIPLICITY:
+        return count_substructure_multiplicities(
+            smiles, radius, ignore_atoms, cap=_multiplicity_cap(kind), dedup=True)
     raise ValueError(f"Unknown feature kind: {kind}")
 
 

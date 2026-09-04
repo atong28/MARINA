@@ -19,6 +19,7 @@ from .fp_utils import (
     SUBSTRUCTURE,
     MULTIPLICITY,
     MULTIPLICITY_UNCAPPED,
+    UNIQUE_MULTIPLICITY,
     compute_entropy,
     load_smiles_index,
     count_fragments_over_retrieval,
@@ -343,11 +344,29 @@ class MultiplicityUncappedEntropyFPLoader(MultiplicityEntropyFPLoader):
     COUNTS_PREFIX = "count_multiplicity_uncapped_under_radius"
 
 
+class UniqueMultiplicityEntropyFPLoader(MultiplicityUncappedEntropyFPLoader):
+    """Uncapped multiplicity, but occurrences are deduplicated by atom set.
+
+    Identical to the uncapped variant except the per-molecule count of a fragment is the
+    number of DISTINCT (canonical fragment, atom-set) occurrences, not the number of
+    atom-centred environments. This removes the per-atom over-counting of symmetric groups
+    (an isopropyl the uncapped variant counts 3x is one here; an amide counted twice from the
+    O@radius-2 and C@radius-1 centres is one) and, via re-canonicalising each fragment, the
+    split of one substructure across two spellings (CC(N)=O vs CC(=O)N). Artifacts are
+    namespaced separately so it coexists on disk with the other vocabularies.
+    """
+
+    FEATURE_KIND = UNIQUE_MULTIPLICITY
+    FRAGIDX_FILENAME = "FragIdxUniqueMultiplicity.parquet"
+    COUNTS_PREFIX = "count_unique_multiplicity_under_radius"
+
+
 FP_LOADERS = {
     "RankingEntropy": EntropyFPLoader,
     "RankingEntropySubstructure": SubstructureEntropyFPLoader,
     "RankingEntropyMultiplicity": MultiplicityEntropyFPLoader,
     "RankingEntropyMultiplicityUncapped": MultiplicityUncappedEntropyFPLoader,
+    "RankingEntropyUniqueMultiplicity": UniqueMultiplicityEntropyFPLoader,
 }
 
 
