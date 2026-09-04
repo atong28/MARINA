@@ -83,11 +83,12 @@ describe('visibleRowCount', () => {
     expect(visibleRowCount(-1)).toBe(10)
   })
 
-  it('leaves one spare row under the data', () => {
-    expect(visibleRowCount(14)).toBe(16)
+  it('shows a fixed 10 rows regardless of data', () => {
+    expect(visibleRowCount(2)).toBe(10)
+    expect(visibleRowCount(14)).toBe(10)
   })
 
-  it('caps at 30 rows for a long peak list', () => {
-    expect(visibleRowCount(399)).toBe(30)
+  it('caps at 10 rows for a long peak list', () => {
+    expect(visibleRowCount(399)).toBe(10)
   })
 })

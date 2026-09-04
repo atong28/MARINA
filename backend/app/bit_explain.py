@@ -74,13 +74,14 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
     if not atom_to_feats:
         return None
 
-    out: Dict[int, Tuple[set, set, int]] = {}
+    out: Dict[int, Tuple[set, set, int, set]] = {}
     for atom_idx, feats in atom_to_feats.items():
         for feat, radius in feats:
             col = bitinfo_to_col.get(feat)
             if col is None:
                 continue
-            atoms, bonds, seen_r = out.setdefault(col, (set(), set(), radius))
+            atoms, bonds, seen_r, centers = out.setdefault(col, (set(), set(), radius, set()))
+            centers.add(atom_idx)               # this occurrence's centre atom
             env = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, atom_idx)
             for bond_idx in env:
                 bond = mol.GetBondWithIdx(bond_idx)
@@ -92,8 +93,8 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
                 atoms.add(atom_idx)
             # Keep the smallest radius that produced this feature: the substructure
             # enumeration re-emits a saturated environment at every larger radius.
-            out[col] = (atoms, bonds, min(seen_r, radius))
-    return {c: (sorted(a), sorted(b), r) for c, (a, b, r) in out.items()}
+            out[col] = (atoms, bonds, min(seen_r, radius), centers)
+    return {c: (sorted(a), sorted(b), r, sorted(ct)) for c, (a, b, r, ct) in out.items()}
 
 
 _MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped")
@@ -148,17 +149,23 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
     rows = []
     for frag in frags:
         buckets, present_levels = [], []
-        rep_atoms, rep_bonds, rep_radius = [], [], -1
+        # Each cumulative bucket (frag, k) locates a DIFFERENT occurrence, so highlight
+        # the union across all present buckets — otherwise a fragment counted 3× would
+        # light only one instance and the count would look wrong.
+        rep_atoms, rep_bonds, rep_centers = set(), set(), set()
+        rep_radius = -1
         one_raw = one_conf = 0.0
         one_col = -1
         for lvl, col in frag_buckets.get(frag, []):
             raw, conf = conf_of(col)
             in_mol = col in present
-            atoms, bonds, r = locs.get(col, ([], [], -1))
+            atoms, bonds, r, centers = locs.get(col, ([], [], -1, []))
             if in_mol:
                 present_levels.append(lvl)
-                if not rep_atoms:                       # first present bucket = fragment location
-                    rep_atoms, rep_bonds, rep_radius = list(atoms), list(bonds), r
+                rep_atoms |= set(atoms)
+                rep_bonds |= set(bonds)
+                rep_centers |= set(centers)
+                rep_radius = r if rep_radius < 0 else min(rep_radius, r)
             if lvl == 1:
                 one_raw, one_conf, one_col = raw, conf, col
             buckets.append({"level": lvl, "index": col, "raw_confidence": raw,
@@ -184,7 +191,9 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
             "index": one_col, "fragment_smiles": frag or "", "atom_symbol": "",
             "radius": _fragment_radius(frag), "multiplicity": None,
             "raw_confidence": one_raw, "confidence": one_conf, "band": band(one_conf),
-            "present": is_present, "group": group, "atoms": rep_atoms, "bonds": rep_bonds,
+            "present": is_present, "group": group,
+            "atoms": sorted(rep_atoms), "bonds": sorted(rep_bonds),
+            "centers": sorted(rep_centers),
             "buckets": buckets, "true_count": true_count,
             # entropy rank within a radius = the vocabulary column order (lower = higher
             # entropy), taken from the fragment's ≥1× bucket.
@@ -234,7 +243,7 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
             else:
                 group = GROUP_UNEXPECTED if in_mol else GROUP_UNCERTAIN
 
-            atoms, bonds, found_radius = locs.get(col, ([], [], -1))
+            atoms, bonds, found_radius, centers = locs.get(col, ([], [], -1, []))
             info = index_to_bitinfo.get(col)
             if isinstance(info, str):
                 # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
@@ -258,6 +267,7 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
                 "group": group,
                 "atoms": atoms,
                 "bonds": bonds,
+                "centers": centers,
             })
 
     if feature_kind in _MULTIPLICITY_KINDS:

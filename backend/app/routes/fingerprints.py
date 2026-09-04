@@ -119,6 +119,6 @@ async def fingerprints_highlight(body: BitHighlightRequest) -> BitHighlightRespo
     import asyncio
 
     svg = await asyncio.to_thread(
-        render_bit_svg, body.smiles.strip(), body.atoms, body.bonds, MOLECULE_IMG_SIZE,
+        render_bit_svg, body.smiles.strip(), body.atoms, body.bonds, body.centers, MOLECULE_IMG_SIZE,
     )
     return BitHighlightResponse(smiles=body.smiles, svg=svg)

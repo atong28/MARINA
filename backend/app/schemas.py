@@ -145,6 +145,8 @@ class BitExplanation(BaseModel):
     group:           str   = Field(..., description="missing / match / unexpected / uncertain")
     atoms:           List[int] = Field(default_factory=list, description="Atom indices to highlight")
     bonds:           List[int] = Field(default_factory=list, description="Bond indices to highlight")
+    centers:         List[int] = Field(default_factory=list,
+                                       description="Occurrence centre atoms, numbered on the depiction")
     fragment_svg:    Optional[str] = Field(None, description="Drawing of the substructure, when requested")
     # Multiplicity vocabularies only: the fragment's whole thermometer collapsed into one
     # row. buckets are all vocabulary levels (≥1, ≥2, …) with their predicted confidence;
@@ -159,6 +161,8 @@ class BitHighlightRequest(BaseModel):
                               description="Atom indices to highlight")
     bonds:  List[int] = Field(default_factory=list, max_length=1000,
                               description="Bond indices to highlight")
+    centers: List[int] = Field(default_factory=list, max_length=1000,
+                               description="Occurrence centre atoms to number on the depiction")
 
 
 class BitHighlightResponse(BaseModel):

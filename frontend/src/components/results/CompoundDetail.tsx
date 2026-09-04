@@ -83,7 +83,7 @@ function CompoundDetail({
     }
     let cancelled = false
     api
-      .highlightBit({ smiles: result.smiles, atoms: selected.atoms, bonds: selected.bonds })
+      .highlightBit({ smiles: result.smiles, atoms: selected.atoms, bonds: selected.bonds, centers: selected.centers })
       .then((res) => { if (!cancelled) setHighlightSvg(res.svg ?? null) })
       .catch(() => { if (!cancelled) setHighlightSvg(null) })
     return () => { cancelled = true }

@@ -90,7 +90,7 @@ const GROUP_STARTS = new Set([COL_H_NMR, COL_C_NMR, COL_MS_MZ, COL_MSNEG_MZ])
 // Height follows the data: enough rows to see everything entered, capped so a
 // long peak list does not push the rest of the page off screen.
 const MIN_VISIBLE_ROWS = 10
-const MAX_VISIBLE_ROWS = 30
+const MAX_VISIBLE_ROWS = 10
 // Measured against ht-theme-main; 2px of slack keeps the last row clear of a
 // scrollbar if a theme update shifts these by a pixel.
 const ROW_HEIGHT = 29

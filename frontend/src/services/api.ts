@@ -183,6 +183,8 @@ export interface BitExplanation {
   group: BitGroup
   atoms: number[]
   bonds: number[]
+  /** Occurrence centre atoms, numbered on the depiction so the count is countable. */
+  centers?: number[]
   /** Drawing of the substructure, present only when requested. */
   fragment_svg?: string | null
   /** Multiplicity vocabularies only: the fragment's ≥1×, ≥2×, … thermometer. */
@@ -222,6 +224,7 @@ export interface BitHighlightRequest {
   smiles: string
   atoms: number[]
   bonds: number[]
+  centers?: number[]
 }
 
 export interface BitHighlightResponse {

@@ -158,6 +158,7 @@ def render_bit_svg(
     smiles: str,
     atoms: list,
     bonds: list,
+    centers: Optional[list] = None,
     img_size: int = 300,
 ) -> Optional[str]:
     """
@@ -181,6 +182,11 @@ def render_bit_svg(
         n_atoms, n_bonds = mol.GetNumAtoms(), mol.GetNumBonds()
         hl_atoms = [int(a) for a in atoms if 0 <= int(a) < n_atoms]
         hl_bonds = [int(b) for b in bonds if 0 <= int(b) < n_bonds]
+
+        # Number each occurrence's centre atom (1, 2, 3, …) so the count is countable
+        # on the depiction — a multiplicity of 3 shows three numbered centres.
+        for i, c in enumerate(sorted({int(x) for x in (centers or []) if 0 <= int(x) < n_atoms}), 1):
+            mol.GetAtomWithIdx(c).SetProp("atomNote", str(i))
 
         # Same size as the plain/enhanced depiction it replaces — drawing at half
         # size scaled the molecule up ~2x in the same box and thickened every bond.
