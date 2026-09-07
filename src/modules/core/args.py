@@ -101,7 +101,8 @@ class SMARTArgs:
     # with the proper formatting.
     fp_type: Literal['RankingEntropy', 'RankingEntropySubstructure',
                      'RankingEntropyMultiplicity',
-                     'RankingEntropyMultiplicityUncapped'] = 'RankingEntropy'
+                     'RankingEntropyMultiplicityUncapped',
+                     'RankingEntropyUniqueMultiplicity'] = 'RankingEntropy'
     
     # additional test types to be used for testing, always will test on all inputs
     additional_test_types: list[list[str]] = field(default_factory=lambda: [
