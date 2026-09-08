@@ -230,6 +230,15 @@ def _journal_subsets(base: List) -> dict:
     for a, b in (('hsqc', 'c_nmr'), ('hsqc', 'h_nmr'), ('c_nmr', 'h_nmr')):
         if a in base and b in base:
             subs[f'{a}_{b}'] = [a, b]
+    # NMR + MS/MS spectra (Table 1/S1 "NMR+MS/MS*" base) — the only combo that needs the
+    # sim journal (real NMR + simulated MS/MS); present only if the model has MS/MS encoders.
+    if nmr and msms:
+        subs['nmr_msms'] = nmr + msms
+    # "full NMR + formula" (Table 2 combo): NMR + MW + formula, MS/MS explicitly WITHHELD so
+    # it is well-defined even when run on the sim journal (on the plain journal it equals
+    # 'all'). `mw`/`formula` included only if the model was trained with them.
+    if nmr:
+        subs['nmr_mw_formula'] = nmr + [m for m in ('mw', 'formula') if m in base]
     return subs
 
 
