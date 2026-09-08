@@ -18,6 +18,7 @@ from .spectre import SPECTREArgs, SPECTREDataModule, SPECTRE
 from .log import get_logger
 from .core.const import BENCHMARK_ROOT, INPUT_TYPES
 from .data.fp_loader import EntropyFPLoader
+from .data.fp_utils import load_smiles_index
 from .data.formula import formula_to_vector
 
 logger = get_logger(__file__)
@@ -92,6 +93,57 @@ def _rank_conventions(pred: torch.Tensor, sfp: torch.Tensor, ranker) -> tuple[in
     return rank_strict, rank_tie
 
 
+# Annotation success rate (SPECTRE-paper definition): a query is a "hit" at k if any of its
+# top-k retrieved structures has ECFP4 (Morgan r=2, 2048-bit; get_mfp) cosine >= 0.8 to the
+# true structure. Distinct from dereplication (exact-structure rank).
+ANN_TOPK = 10       # deepest retrieval rank the @1/5/10 columns need
+ANN_THRESH = 0.8    # ECFP4 cosine threshold for an annotation hit
+
+
+def _retrieval_smiles(fp_loader, ranker):
+    """idx->SMILES list aligned with the ranker's bank rows, for the annotation metric.
+    Returns None (annotation disabled) if the retrieval index is unavailable or its length
+    does not match the bank (e.g. an augmented SPECTRE bank)."""
+    path = getattr(fp_loader, 'retrieval_path', None)
+    if not path or not os.path.exists(path):
+        logger.warning('[annotation] no retrieval_path on fp_loader; annotation disabled')
+        return None
+    try:
+        idx2smi = load_smiles_index(path)
+    except Exception as e:
+        logger.warning(f'[annotation] could not load retrieval index: {e!r}; disabled')
+        return None
+    smiles = [idx2smi.get(i) for i in range(len(idx2smi))]
+    bank = ranker.data.size(0)
+    if len(smiles) != bank:
+        logger.warning(f'[annotation] retrieval size {len(smiles)} != bank {bank}; '
+                       'annotation disabled (augmented/mismatched bank)')
+        return None
+    return smiles
+
+
+def _annotation_rank(gold_smiles: str, pred: torch.Tensor, ranker, retr_smiles, ecfp_cache) -> int:
+    """0-based rank of the first top-ANN_TOPK retrieval whose ECFP4 cosine to the gold
+    structure >= ANN_THRESH; returns ANN_TOPK if none (so it fails @1/5/10). ECFP4 of
+    retrieved rows is cached by bank index across queries."""
+    try:
+        gold = get_mfp(gold_smiles)
+    except Exception:
+        return ANN_TOPK
+    idxs = ranker.retrieve_idx(pred, ANN_TOPK).tolist()
+    for r, idx in enumerate(idxs):
+        if idx not in ecfp_cache:
+            smi = retr_smiles[idx] if 0 <= idx < len(retr_smiles) else None
+            try:
+                ecfp_cache[idx] = get_mfp(smi) if smi else None
+            except Exception:
+                ecfp_cache[idx] = None
+        fp = ecfp_cache[idx]
+        if fp is not None and cos_sim(gold, fp).item() >= ANN_THRESH:
+            return r
+    return ANN_TOPK
+
+
 def _run_benchmark_loop(
     benchmark_data: dict,
     data_module: MARINADataModule | SPECTREDataModule,
@@ -101,9 +153,12 @@ def _run_benchmark_loop(
     desc: str = 'Benchmarking',
 ) -> list[dict]:
     """One forward pass per entry under `restrictions`; return per-entry records
-    [{cos, rank_strict, rank_tie}]. Entries with no spectral modality left after the
-    restriction (e.g. an NMR-only compound under the MS/MS-only subset) are skipped."""
+    [{cos, rank_strict, rank_tie[, ann_rank]}]. `ann_rank` (annotation success) is added
+    when a retrieval-index SMILES map is available (disabled for augmented banks). Entries
+    with no spectral modality left after the restriction are skipped."""
     recs = []
+    ann_smiles = _retrieval_smiles(fp_loader, model.ranker)
+    ecfp_cache: dict = {}
     for entry in tqdm(benchmark_data.values(), desc=desc):
         raw_input = entry['input']
         if 'formula' in restrictions:
@@ -118,7 +173,11 @@ def _run_benchmark_loop(
         sfp = fp_loader.build_mfp_for_smiles(entry['smiles'])
         sfp = (sfp / torch.norm(sfp)).to(pred.device)
         rs, rt = _rank_conventions(pred, sfp, model.ranker)
-        recs.append({'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt})
+        rec = {'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt}
+        if ann_smiles is not None:
+            rec['ann_rank'] = _annotation_rank(
+                entry['smiles'], pred, model.ranker, ann_smiles, ecfp_cache)
+        recs.append(rec)
     return recs
 
 
@@ -134,19 +193,28 @@ def _summarise(recs: list[dict], prefix: str, wandb_metrics: dict) -> None:
     for k in (1, 5, 10):
         m[f"{prefix}/rank_strict_top{k}_pct"] = 100.0 * sum(r['rank_strict'] < k for r in recs) / n
         m[f"{prefix}/rank_tie_top{k}_pct"] = 100.0 * sum(r['rank_tie'] < k for r in recs) / n
+    ann = [r['ann_rank'] for r in recs if 'ann_rank' in r]
+    if ann:
+        na = len(ann)
+        for k in (1, 5, 10):
+            m[f"{prefix}/ann_top{k}_pct"] = 100.0 * sum(a < k for a in ann) / na
     logger.info(
         f"[{prefix}] n={n} mean_cos={mean_cos:.4f} | strict @1/5/10 = "
         f"{m[f'{prefix}/rank_strict_top1_pct']:.2f}/{m[f'{prefix}/rank_strict_top5_pct']:.2f}/"
         f"{m[f'{prefix}/rank_strict_top10_pct']:.2f} | tie @1/5/10 = "
         f"{m[f'{prefix}/rank_tie_top1_pct']:.2f}/{m[f'{prefix}/rank_tie_top5_pct']:.2f}/"
         f"{m[f'{prefix}/rank_tie_top10_pct']:.2f}"
+        + (f" | ann @1/5/10 = {m[f'{prefix}/ann_top1_pct']:.2f}/"
+           f"{m[f'{prefix}/ann_top5_pct']:.2f}/{m[f'{prefix}/ann_top10_pct']:.2f}" if ann else "")
     )
     wandb_metrics.update(m)
 
 
 def _journal_subsets(base: List) -> dict:
-    """Journal modality subsets: 'all' = the model's own inputs; 'nmr' = the three NMR
-    modalities; 'msms' = positive + negative MS/MS. Each restricts what is fed to the model."""
+    """Journal modality subsets fed to the model. 'all' = the model's own inputs; 'nmr' =
+    the three NMR modalities; 'msms' = positive + negative MS/MS; plus each spectral modality
+    on its own and the pairwise NMR combinations (for the per-combo results tables). Every
+    subset is intersected with `base` so a model only gets modalities it was trained with."""
     subs = {'all': list(base)}
     nmr = [m for m in ('hsqc', 'c_nmr', 'h_nmr') if m in base]
     msms = [m for m in ('mass_spec', 'mass_spec_neg') if m in base]
@@ -154,6 +222,14 @@ def _journal_subsets(base: List) -> dict:
         subs['nmr'] = nmr
     if msms:
         subs['msms'] = msms
+    # single-modality ablations (Tables 1/3/S1 combos: HSQC / 13C / 1H / MS+ / MS-)
+    for m in ('hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg'):
+        if m in base:
+            subs[m] = [m]
+    # pairwise NMR combinations (Table S1 combos 6-8)
+    for a, b in (('hsqc', 'c_nmr'), ('hsqc', 'h_nmr'), ('c_nmr', 'h_nmr')):
+        if a in base and b in base:
+            subs[f'{a}_{b}'] = [a, b]
     return subs
 
 

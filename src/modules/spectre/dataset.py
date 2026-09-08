@@ -23,7 +23,7 @@ logger = get_logger(__file__)
 
 
 class SPECTREDataset(Dataset):
-    def __init__(self, args: SPECTREArgs, fp_loader: FPLoader, split: str = 'train', override_input_types: Optional[list[str]] = None):
+    def __init__(self, args: SPECTREArgs, fp_loader: FPLoader, split: str = 'train', override_input_types: Optional[list[str]] = None, inference_only: bool = False):
         try:
             self.args = args
             self.split = split
@@ -33,6 +33,15 @@ class SPECTREDataset(Dataset):
                 f'[MARINADataset] Initializing {split} dataset with input types {args.input_types} and required inputs {args.requires}')
             self.input_types = args.input_types if override_input_types is None else override_input_types
             self.requires = args.requires if override_input_types is None else override_input_types
+
+            if inference_only:
+                # The journal benchmark only calls _pad_and_stack_input, which is
+                # data-independent (uses INPUT_MAP/MW_TYPE globals). Skip loading the
+                # training index/spectra so SPECTRE can be benchmarked on the journal
+                # without the full preprocessed SPECTRE dataset present at DATASET_ROOT.
+                self.data = []
+                logger.debug('[MARINADataset] inference-only construction; dataset load skipped')
+                return
 
             with open(os.path.join(DATASET_ROOT, 'index.pkl'), 'rb') as f:
                 data: dict[int, Any] = pickle.load(f)
@@ -253,8 +262,11 @@ class SPECTREDataModule(pl.LightningDataModule):
         >>> inputs = data_module.format_inference_data(data)
         >>> output = model(**inputs)
         '''
-        if not self._test_is_setup:
-            self.setup(stage='test')
+        # A lightweight, data-free dataset instance is enough to reach _pad_and_stack_input;
+        # avoid setup('test'), which would require the full preprocessed SPECTRE dataset.
+        if getattr(self, '_infer_ds', None) is None:
+            self._infer_ds = SPECTREDataset(
+                self.args, self.fp_loader, split='test', inference_only=True)
         if 'mw' in data:
             data['mw'] = torch.tensor(data['mw'])
         if 'c_nmr' in data:
@@ -265,7 +277,7 @@ class SPECTREDataModule(pl.LightningDataModule):
             data['mass_spec'] = F.pad(data['mass_spec'].view(-1, 1), (0, 1), "constant", 0)
         if 'mass_spec_neg' in data:
             data['mass_spec_neg'] = F.pad(data['mass_spec_neg'].view(-1, 1), (0, 1), "constant", 0)
-        inputs, type_indicators = self.test[0]._pad_and_stack_input(data)
+        inputs, type_indicators = self._infer_ds._pad_and_stack_input(data)
         inputs, _, type_indicators = self._collate_fn([(inputs, torch.tensor([0.0]), type_indicators)])
         return {'inputs': inputs, 'type_indicator': type_indicators}
         

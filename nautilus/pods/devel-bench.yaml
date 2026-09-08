@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: devel-atong
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-TITAN-RTX
+                  - NVIDIA-A40
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-RTX-A6000
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-RTX-A4000
+                  - NVIDIA-A10
+                  - NVIDIA-GeForce-RTX-4090
+  containers:
+    - name: pod-container
+      image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+      command: ["sh"]
+      args:
+      - "-c"
+      # clone exp/marina-db-runs + pixi via startup (small MARINA1.zip only), then overlay
+      # ONLY the MARINA-DB rankingsets/retrieval needed for the journal benchmark (~1.2 GB;
+      # arrow/packed are for training/sim and are NOT unzipped, keeping under 30Gi ephemeral).
+      - >-
+        bash /root/gurusmart/startup.sh MARINA1.zip exp/marina-db-runs &&
+        unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropy/*' 'RankingEntropyMultiplicity/*' 'retrieval.pkl' -d /workspace &&
+        echo "[bench] rankingsets staged" &&
+        sleep infinity
+      volumeMounts:
+        - mountPath: "/root/gurusmart"
+          name: atong-spectre
+        - mountPath: "/root/datasets"
+          name: smart-datasets
+        - mountPath: "/workspace"
+          name: data-unzip
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /code
+          name: code-workdir
+      resources:
+        limits:
+          memory: 32Gi
+          cpu: 8
+          nvidia.com/gpu: 1
+          ephemeral-storage: 30Gi
+        requests:
+          memory: 32Gi
+          cpu: 8
+          nvidia.com/gpu: 1
+          ephemeral-storage: 30Gi
+  volumes:
+    - name: atong-spectre
+      persistentVolumeClaim:
+        claimName: atong-spectre
+    - name: smart-datasets
+      persistentVolumeClaim:
+        claimName: smart-datasets
+    - name: dshm
+      emptyDir:
+        medium: Memory
+    - name: data-unzip
+      emptyDir: {}
+    - name: code-workdir
+      emptyDir: {}
