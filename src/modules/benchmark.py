@@ -201,44 +201,72 @@ def build_bank_ecfp(fp_loader, ranker, cache_path: str | None = None):
 
 
 @torch.no_grad()
-def sim_annotation(model, data_module, combos: list, batch_size: int, bank_ecfp) -> dict:
-    """Batched annotation success (ann@1/5/10) on the simulated MARINA-DB test split for each
-    combo. The gold structure of a test item is its own library row (`data_idx`, since the
-    test molecule is in the retrieval bank); a query hits @k if any of its top-ANN_TOPK
-    retrievals has ECFP4 (Morgan r=2, 2048-bit) cosine >= ANN_THRESH to the gold — the same
-    definition as the experimental side. Returns {combo_name: {1: frac, 5: frac, 10: frac}}
-    (fractions, matching the test/mean_rank_k scale)."""
+def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
+             on_combo=None) -> dict:
+    """Memory-light simulated MARINA-DB test eval — one combo's test dataset at a time (so
+    all combos' datasets are never built at once, unlike trainer.test which OOMs at ~24
+    combos). Per combo computes, matching the trainer.test metrics exactly:
+      test/mean_rank_{1,5,10}/{combo} : rank_res = batched_rank(sigmoid(logits), gold_fp);
+                                        fraction with rank < k  (strict, self-discounted)
+      test/mean_cos/{combo}           : cosine(gold_fp, (logits>=0))  [binarized preds, cm]
+    and, when `bank_ecfp` is given, annotation success (same definition as the exp side):
+      test/mean_ann_{1,5,10}/{combo}  : a top-ANN_TOPK retrieval has ECFP4 cos >= ANN_THRESH
+                                        to the gold (the test molecule's own library row).
+    `on_combo(metrics)` is called after each combo for incremental checkpointing (resumable
+    across pod loss). Returns a flat {metric_key: value} dict."""
+    import gc
     from .marina.dataset import MARINADataset  # local import avoids a module cycle
     nrm = torch.nn.functional.normalize
+    do_cos = torch.nn.CosineSimilarity(dim=1)
     dev = next(model.parameters()).device
-    bank = bank_ecfp  # keep fp16 (N,2048) on CPU; normalize only the small gathered slices
-    out = {}
+    metrics: dict = {}
     for combo in combos:
         name = '_'.join(combo)
         ds = MARINADataset(model.args, data_module.fp_loader, split='test',
                            override_input_types=list(combo))
         data_idx = torch.tensor([d[0] for d in ds.data])   # library idx per item, ds order
         n = len(ds)
-        hit = {1: 0, 5: 0, 10: 0}
-        for start in tqdm(range(0, n, batch_size), desc=f'sim-ann/{name}'):
+        rk = {1: 0, 5: 0, 10: 0}
+        cos_sum = 0.0
+        ann = {1: 0, 5: 0, 10: 0}
+        for start in tqdm(range(0, n, batch_size), desc=f'sim-eval/{name}'):
             sl = list(range(start, min(start + batch_size, n)))
-            batch_inputs, _ = data_module._collate_fn([ds[i] for i in sl])
+            batch_inputs, mfps = data_module._collate_fn([ds[i] for i in sl])
             batch_inputs = _to_device({'batch': batch_inputs}, dev)
-            queries = torch.sigmoid(model(**batch_inputs))            # (B, D)
-            top = model.ranker.retrieve_idx(queries, ANN_TOPK)        # (k, B) or (k,)
-            if top.dim() == 1:
-                top = top.unsqueeze(1)
-            top = top.T.contiguous().cpu()                            # (B, k)
-            gold = nrm(bank[data_idx[sl]].float(), dim=1)             # (B, 2048)
-            retr = nrm(bank[top].float(), dim=2)                      # (B, k, 2048)
-            cos = (retr * gold.unsqueeze(1)).sum(-1)                  # (B, k)
-            good = cos >= ANN_THRESH
+            mfps = mfps.to(dev)
+            logits = model(**batch_inputs)                            # (B, D)
+            # rank/cos (matches core.metrics.cm: cos on binarized preds, rank on sigmoid)
+            fp_pred = (logits >= 0.0).float()
+            cos_sum += float(do_cos(mfps, fp_pred).sum().item())
+            rank_res = model.ranker.batched_rank(torch.sigmoid(logits), mfps)  # (B,) strict
             for k in (1, 5, 10):
-                hit[k] += int(good[:, :k].any(dim=1).sum().item())
-        out[name] = {k: hit[k] / n for k in (1, 5, 10)}
-        logger.info(f'[sim-ann/{name}] n={n} ann@1/5/10='
-                    f'{100*out[name][1]:.2f}/{100*out[name][5]:.2f}/{100*out[name][10]:.2f}')
-    return out
+                rk[k] += int((rank_res < k).sum().item())
+            # annotation (optional)
+            if bank_ecfp is not None:
+                top = model.ranker.retrieve_idx(torch.sigmoid(logits), ANN_TOPK)  # (k,B)/(k,)
+                if top.dim() == 1:
+                    top = top.unsqueeze(1)
+                top = top.T.contiguous().cpu()                        # (B, k)
+                gold = nrm(bank_ecfp[data_idx[sl]].float(), dim=1)    # (B, 2048)
+                retr = nrm(bank_ecfp[top].float(), dim=2)             # (B, k, 2048)
+                good = (retr * gold.unsqueeze(1)).sum(-1) >= ANN_THRESH  # (B, k)
+                for k in (1, 5, 10):
+                    ann[k] += int(good[:, :k].any(dim=1).sum().item())
+        for k in (1, 5, 10):
+            metrics[f'test/mean_rank_{k}/{name}'] = rk[k] / n
+        metrics[f'test/mean_cos/{name}'] = cos_sum / n
+        msg = (f"[sim-eval/{name}] n={n} rank@1/5/10="
+               f"{100*rk[1]/n:.2f}/{100*rk[5]/n:.2f}/{100*rk[10]/n:.2f} cos={cos_sum/n:.4f}")
+        if bank_ecfp is not None:
+            for k in (1, 5, 10):
+                metrics[f'test/mean_ann_{k}/{name}'] = ann[k] / n
+            msg += f" ann@1/5/10={100*ann[1]/n:.2f}/{100*ann[5]/n:.2f}/{100*ann[10]/n:.2f}"
+        logger.info(msg)
+        del ds, data_idx
+        gc.collect()
+        if on_combo is not None:
+            on_combo(metrics)
+    return metrics
 
 
 def _run_benchmark_loop(

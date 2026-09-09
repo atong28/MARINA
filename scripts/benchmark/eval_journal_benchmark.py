@@ -104,7 +104,7 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     adds test/mean_ann_{1,5,10} per combo (Table S1b sim side).
     Requires the test-split arrow shards + index.pkl staged under DATASET_ROOT."""
     import pytorch_lightning as pl
-    from src.modules.benchmark import build_bank_ecfp, sim_annotation
+    from src.modules.benchmark import build_bank_ecfp, sim_eval
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
@@ -117,29 +117,29 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     model = modelcls(args, fp_loader)
     data_module = dmcls(args, fp_loader)
     load_model(args, model)  # load_state_dict(strict) + setup_ranker + eval
-    trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
-    raw = trainer.test(model, data_module)[0]
-    metrics = {k: v for k, v in raw.items() if k.startswith("test/mean_")}
     out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_results.json")
-    stypes = list(getattr(model, 'spectral_types', []))
 
-    def _dump():
-        with open(out, "w") as f:
-            json.dump({"ckpt": ckpt, "spectral_types": stypes, "metrics": metrics}, f, indent=2)
-
-    _dump()  # persist rank/cos BEFORE the (heavier) annotation pass so it is never lost
     if deltas:
-        # annotation success on the sim test (batched); cache the bank ECFP4 across seeds
+        # Memory-light path: sim_eval builds one combo's test dataset at a time (trainer.test
+        # OOMs building all 24 combos' datasets at once) and computes rank/cos + annotation,
+        # checkpointing the json after every combo so a pod loss is resumable.
+        combos = sim_combos(True)
+        stypes = ['_'.join(c) for c in combos]
         bank, _ = build_bank_ecfp(
             fp_loader, model.ranker,
             cache_path=os.path.join(DATASET_ROOT, "ecfp_bank_2048.pt"))
-        if bank is not None:
-            ann = sim_annotation(model, data_module, sim_combos(True),
-                                 args.batch_size, bank)
-            for combo, d in ann.items():
-                for k, v in d.items():
-                    metrics[f"test/mean_ann_{k}/{combo}"] = v
-            _dump()  # rewrite with annotation merged
+        def _dump(m):
+            with open(out, "w") as f:
+                json.dump({"ckpt": ckpt, "spectral_types": stypes, "metrics": m}, f, indent=2)
+        metrics = sim_eval(model, data_module, combos, args.batch_size, bank, on_combo=_dump)
+        _dump(metrics)
+    else:
+        trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
+        raw = trainer.test(model, data_module)[0]
+        metrics = {k: v for k, v in raw.items() if k.startswith("test/mean_")}
+        with open(out, "w") as f:
+            json.dump({"ckpt": ckpt, "spectral_types": list(getattr(model, 'spectral_types', [])),
+                       "metrics": metrics}, f, indent=2)
     del model, data_module, fp_loader
     torch.cuda.empty_cache()
     return out
