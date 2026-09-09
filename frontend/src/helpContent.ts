@@ -26,12 +26,12 @@ export const HELP = {
       '• Offline — the backend is not responding; check that the containers are running.',
 
     highlight:
-      'Draws each result as a similarity map instead of a plain structure.\n\n' +
+      'Shades each structure with a similarity map.\n\n' +
       'Every atom is scored by how much removing it would change the match ' +
       'between that compound\'s fingerprint and your query fingerprint. Green ' +
       'shading marks atoms that support the match, pink marks atoms that argue ' +
       'against it, and stronger colour means a larger contribution.\n\n' +
-      'This is a display setting only — both depictions are sent with every ' +
+      'This is a display setting only — the shading is sent with every ' +
       'result, so switching it does not re-run the search. It is remembered ' +
       'between visits.',
   },

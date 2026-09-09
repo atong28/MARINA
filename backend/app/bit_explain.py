@@ -50,14 +50,28 @@ def band(p: float) -> str:
     return "Unlikely"
 
 
+def _merge_occurrences(into: List[dict], new: List[dict]) -> None:
+    """Append occurrences whose atom set is not already listed."""
+    seen = {frozenset(o["atoms"]) for o in into}
+    for occ in new:
+        key = frozenset(occ["atoms"])
+        if key not in seen:
+            seen.add(key)
+            into.append(occ)
+
+
 def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
                feature_kind: str = "morgan"
-               ) -> Optional[Dict[int, Tuple[List[int], List[int], int]]]:
+               ) -> Optional[Dict[int, Tuple[List[int], List[int], int, List[dict]]]]:
     """
-    Map fingerprint column -> (atom indices, bond indices, radius) in this molecule.
+    Map fingerprint column -> (atom indices, bond indices, radius, occurrences).
 
-    A bit may fire at several centres (aspirin's C=O bit hits both carbonyls),
-    so the footprints of all occurrences are unioned.
+    A bit may fire at several centres (aspirin's C=O bit hits both carbonyls):
+    `atoms`/`bonds` are the union of every footprint, and `occurrences` keeps each
+    footprint separately ({"atoms": [...], "bonds": [...]}) so the client can tell
+    overlapping instances apart. Occurrences with the same atom set are one — the
+    substructure enumeration re-emits a saturated environment at every larger
+    radius, and unique-multiplicity fragments dedup by atom set anyway.
 
     The radius is carried out because a substructure feature is keyed on the fragment
     SMILES alone and has no radius in its key, unlike a Morgan BitInfo tuple.
@@ -74,27 +88,30 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
     if not atom_to_feats:
         return None
 
-    out: Dict[int, Tuple[set, set, int, set]] = {}
+    out: Dict[int, Tuple[set, set, int, List[dict]]] = {}
     for atom_idx, feats in atom_to_feats.items():
         for feat, radius in feats:
             col = bitinfo_to_col.get(feat)
             if col is None:
                 continue
-            atoms, bonds, seen_r, centers = out.setdefault(col, (set(), set(), radius, set()))
-            centers.add(atom_idx)               # this occurrence's centre atom
+            atoms, bonds, seen_r, occurrences = out.setdefault(col, (set(), set(), radius, []))
             env = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, atom_idx)
+            occ_atoms, occ_bonds = set(), set()
             for bond_idx in env:
                 bond = mol.GetBondWithIdx(bond_idx)
-                bonds.add(bond_idx)
-                atoms.add(bond.GetBeginAtomIdx())
-                atoms.add(bond.GetEndAtomIdx())
+                occ_bonds.add(bond_idx)
+                occ_atoms.add(bond.GetBeginAtomIdx())
+                occ_atoms.add(bond.GetEndAtomIdx())
             if not env:
                 # Radius-0 bit: the centre atom itself, no bonds.
-                atoms.add(atom_idx)
-            # Keep the smallest radius that produced this feature: the substructure
-            # enumeration re-emits a saturated environment at every larger radius.
-            out[col] = (atoms, bonds, min(seen_r, radius), centers)
-    return {c: (sorted(a), sorted(b), r, sorted(ct)) for c, (a, b, r, ct) in out.items()}
+                occ_atoms.add(atom_idx)
+            atoms |= occ_atoms
+            bonds |= occ_bonds
+            _merge_occurrences(
+                occurrences, [{"atoms": sorted(occ_atoms), "bonds": sorted(occ_bonds)}])
+            # Keep the smallest radius that produced this feature.
+            out[col] = (atoms, bonds, min(seen_r, radius), occurrences)
+    return {c: (sorted(a), sorted(b), r, occ) for c, (a, b, r, occ) in out.items()}
 
 
 _MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped", "unique_multiplicity")
@@ -152,19 +169,19 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
         # Each cumulative bucket (frag, k) locates a DIFFERENT occurrence, so highlight
         # the union across all present buckets — otherwise a fragment counted 3× would
         # light only one instance and the count would look wrong.
-        rep_atoms, rep_bonds, rep_centers = set(), set(), set()
+        rep_atoms, rep_bonds, rep_occurrences = set(), set(), []
         rep_radius = -1
         one_raw = one_conf = 0.0
         one_col = -1
         for lvl, col in frag_buckets.get(frag, []):
             raw, conf = conf_of(col)
             in_mol = col in present
-            atoms, bonds, r, centers = locs.get(col, ([], [], -1, []))
+            atoms, bonds, r, occurrences = locs.get(col, ([], [], -1, []))
             if in_mol:
                 present_levels.append(lvl)
                 rep_atoms |= set(atoms)
                 rep_bonds |= set(bonds)
-                rep_centers |= set(centers)
+                _merge_occurrences(rep_occurrences, occurrences)
                 rep_radius = r if rep_radius < 0 else min(rep_radius, r)
             if lvl == 1:
                 one_raw, one_conf, one_col = raw, conf, col
@@ -193,7 +210,7 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
             "raw_confidence": one_raw, "confidence": one_conf, "band": band(one_conf),
             "present": is_present, "group": group,
             "atoms": sorted(rep_atoms), "bonds": sorted(rep_bonds),
-            "centers": sorted(rep_centers),
+            "occurrences": rep_occurrences,
             "buckets": buckets, "true_count": true_count,
             # entropy rank within a radius = the vocabulary column order (lower = higher
             # entropy), taken from the fragment's ≥1× bucket.
@@ -243,7 +260,7 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
             else:
                 group = GROUP_UNEXPECTED if in_mol else GROUP_UNCERTAIN
 
-            atoms, bonds, found_radius, centers = locs.get(col, ([], [], -1, []))
+            atoms, bonds, found_radius, occurrences = locs.get(col, ([], [], -1, []))
             info = index_to_bitinfo.get(col)
             if isinstance(info, str):
                 # Substructure vocabulary: the feature *is* the fragment SMILES. There is no
@@ -267,7 +284,7 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
                 "group": group,
                 "atoms": atoms,
                 "bonds": bonds,
-                "centers": centers,
+                "occurrences": occurrences,
             })
 
     if feature_kind in _MULTIPLICITY_KINDS:

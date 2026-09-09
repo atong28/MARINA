@@ -127,6 +127,12 @@ class BucketPrediction(BaseModel):
     present:        bool  = Field(..., description="Whether the candidate reaches this count")
 
 
+class FragmentOccurrence(BaseModel):
+    """One instance of a substructure in the candidate: its own atom and bond footprint."""
+    atoms: List[int] = Field(default_factory=list)
+    bonds: List[int] = Field(default_factory=list)
+
+
 class BitExplanation(BaseModel):
     index:           int
     fragment_smiles: str   = Field(..., description="Substructure SMILES ('' for radius-0 bits)")
@@ -145,8 +151,9 @@ class BitExplanation(BaseModel):
     group:           str   = Field(..., description="missing / match / unexpected / uncertain")
     atoms:           List[int] = Field(default_factory=list, description="Atom indices to highlight")
     bonds:           List[int] = Field(default_factory=list, description="Bond indices to highlight")
-    centers:         List[int] = Field(default_factory=list,
-                                       description="Occurrence centre atoms, numbered on the depiction")
+    occurrences:     List[FragmentOccurrence] = Field(
+        default_factory=list,
+        description="Each instance of the substructure separately; atoms/bonds are their union")
     fragment_svg:    Optional[str] = Field(None, description="Drawing of the substructure, when requested")
     # Multiplicity vocabularies only: the fragment's whole thermometer collapsed into one
     # row. buckets are all vocabulary levels (≥1, ≥2, …) with their predicted confidence;
@@ -155,23 +162,20 @@ class BitExplanation(BaseModel):
     true_count:      Optional[int] = None
 
 
-class BitHighlightRequest(BaseModel):
-    smiles: str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH)
-    atoms:  List[int] = Field(default_factory=list, max_length=1000,
-                              description="Atom indices to highlight")
-    bonds:  List[int] = Field(default_factory=list, max_length=1000,
-                              description="Bond indices to highlight")
-    centers: List[int] = Field(default_factory=list, max_length=1000,
-                               description="Occurrence centre atoms to number on the depiction")
-
-
-class BitHighlightResponse(BaseModel):
-    smiles: str
-    svg:    Optional[str] = Field(None, description="SVG markup, or null if rendering is unavailable")
+class DepictionGeometry(BaseModel):
+    """
+    Where the candidate's atoms land on its depictions, so a client can draw
+    highlights over the plain drawing or the similarity map alike.
+    """
+    size:  int               = Field(..., description="Square canvas size the coordinates refer to")
+    atoms: List[List[float]] = Field(..., description="[x, y] per atom index, in canvas pixels")
+    bonds: List[List[int]]   = Field(..., description="[begin atom, end atom] per bond index")
 
 
 class BitExplainResponse(BaseModel):
     smiles:          str
+    depiction:       Optional[DepictionGeometry] = Field(
+        None, description="Atom positions on the depiction, or null if rendering is unavailable")
     calibrated:      bool = Field(..., description="False when the model ships no calibration curve")
     bits:            List[BitExplanation]
     totals:          Dict[str, int] = Field(..., description="Row count per group before truncation")
@@ -202,8 +206,10 @@ class ResultCard(BaseModel):
     similarity:                   float = Field(ge=0.0, le=1.0)
     cosine_similarity:            Optional[float] = Field(None, ge=0.0, le=1.0)
     tanimoto_similarity:          Optional[float] = Field(None, ge=0.0, le=1.0)
-    svg:                          Optional[str]   = None
-    plain_svg:                    Optional[str]   = None
+    svg:                          Optional[str]   = Field(
+        None, description="Similarity-map colour wash (PNG data URI, transparent), to be layered under plain_svg")
+    plain_svg:                    Optional[str]   = Field(
+        None, description="Line drawing (SVG markup, transparent background)")
     name:                         Optional[str]   = None
     primary_link:                 Optional[str]   = None
     database_links:               DatabaseLinks   = Field(default_factory=DatabaseLinks)

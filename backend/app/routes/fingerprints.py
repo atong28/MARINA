@@ -8,7 +8,6 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.schemas import (
     BitExplainRequest, BitExplainResponse,
-    BitHighlightRequest, BitHighlightResponse,
     FingerprintIndicesRequest, FingerprintIndicesResponse,
 )
 
@@ -62,12 +61,15 @@ async def fingerprints_explain(body: BitExplainRequest) -> BitExplainResponse:
     Describe the predicted fingerprint bits against a candidate structure: what
     substructure each bit encodes, how likely it is to be present, and where it
     sits in the candidate. Ordered by disagreement — confident bits the
-    candidate lacks come first.
+    candidate lacks come first. Also carries the depiction geometry, so the
+    client can draw a bit's atoms over the candidate's image itself.
     """
     from app.manifest import resolve_model_id
     from app.registry import ensure_loaded
     from app.calibration import load_calibrator
     from app.bit_explain import explain_bits
+    from app.config import MOLECULE_IMG_SIZE
+    from app.renderer import depiction_geometry
     import asyncio
 
     mid, err = resolve_model_id(body.model_id)
@@ -100,25 +102,7 @@ async def fingerprints_explain(body: BitExplainRequest) -> BitExplainResponse:
         logger.error("fingerprints_explain error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Bit explanation failed.")
 
-    return BitExplainResponse(**result)
-
-
-@router.post(
-    "/fingerprints/highlight",
-    response_model=BitHighlightResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def fingerprints_highlight(body: BitHighlightRequest) -> BitHighlightResponse:
-    """
-    Render a structure with one bit's environment picked out. Takes the atom and
-    bond indices from /fingerprints/explain; needs no model, so it does not
-    resolve or load one.
-    """
-    from app.config import MOLECULE_IMG_SIZE
-    from app.renderer import render_bit_svg
-    import asyncio
-
-    svg = await asyncio.to_thread(
-        render_bit_svg, body.smiles.strip(), body.atoms, body.bonds, body.centers, MOLECULE_IMG_SIZE,
+    result["depiction"] = await asyncio.to_thread(
+        depiction_geometry, body.smiles.strip(), MOLECULE_IMG_SIZE,
     )
-    return BitHighlightResponse(smiles=body.smiles, svg=svg)
+    return BitExplainResponse(**result)

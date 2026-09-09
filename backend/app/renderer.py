@@ -67,25 +67,122 @@ def highlighting_available() -> bool:
     return HIGHLIGHT_ENABLED and _check_rdkit()
 
 
+# Margin around the molecule's bounding box, in molecule coordinate units (~Å),
+# applied identically to every depiction mode.
+_FIT_PADDING = 0.9
+
+_BOND_WIDTH = 2.0
+
+# Similarity-map wash. sigma is a fraction of a bond length: 0.45 blends
+# neighbouring atoms into regions rather than a dot per atom. The gamma lifts
+# the weaker contributions, which standardising to the single strongest atom
+# otherwise leaves nearly invisible on a large molecule; it is monotone, so a
+# stronger colour still means a larger contribution.
+_MAP_SIGMA = 0.45
+_MAP_GAMMA = 0.7
+_MAP_GRID = 0.05
+
+
+def _prepare_mol(smiles: str):
+    """
+    Parse a SMILES into a molecule ready to draw, or None.
+
+    Stereochemistry is stripped first: MARINA's fingerprints are 2-D, so a wedge
+    or E/Z geometry on the depiction would claim information the model never saw.
+    The 2-D layout is computed here, once, so every depiction of the molecule
+    shares the same coordinates.
+    """
+    from rdkit import Chem
+    from rdkit.Chem.Draw import rdMolDraw2D
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    Chem.RemoveStereochemistry(mol)
+    return rdMolDraw2D.PrepareMolForDrawing(mol)
+
+
+def _fit(drawer, mol, canvas: int) -> None:
+    """
+    Pin the drawing transform to the molecule's bounding box plus a fixed margin.
+
+    RDKit otherwise picks a scale per call — the similarity map fits its contour
+    grid, a plain drawing fits the atoms — so the same molecule landed at
+    different sizes and positions depending on the view mode. With one explicit
+    fit, the skeleton sits in the same place in every depiction and an overlay
+    drawn from `depiction_geometry` lines up with all of them.
+    """
+    from rdkit.Geometry import Point2D
+
+    conf = mol.GetConformer()
+    pts = [conf.GetAtomPosition(i) for i in range(mol.GetNumAtoms())]
+    xs, ys = [p.x for p in pts], [p.y for p in pts]
+    drawer.SetScale(
+        canvas, canvas,
+        Point2D(min(xs) - _FIT_PADDING, min(ys) - _FIT_PADDING),
+        Point2D(max(xs) + _FIT_PADDING, max(ys) + _FIT_PADDING),
+    )
+
+
 def render_plain_svg(smiles: str, img_size: int = 300) -> Optional[str]:
     """
-    Render a plain molecule depiction (no fingerprint highlighting).
+    Render the molecule as a line drawing, with a transparent background.
 
-    Returns an SVG string: line drawings have no contour fill, so they are a
-    few kilobytes and stay vector. Only the highlighted view is rasterised.
+    Returns an SVG string: a few kilobytes, and vector, so it stays crisp at
+    any size. This is the top layer in every view mode — the similarity map is
+    a colour wash the client places underneath it — which is why it carries no
+    background of its own.
     """
     if not _check_rdkit():
         return None
     try:
-        from rdkit import Chem
-        from rdkit.Chem import Draw
-        mol = Chem.MolFromSmiles(smiles)
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        mol = _prepare_mol(smiles)
         if mol is None:
             return None
-        half = img_size // 2
-        return Draw.MolToSVG(mol, width=half, height=half)
+        drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
+        opts = drawer.drawOptions()
+        opts.bondLineWidth = _BOND_WIDTH
+        opts.clearBackground = False
+        _fit(drawer, mol, img_size)
+        drawer.DrawMolecule(mol)
+        drawer.FinishDrawing()
+        return drawer.GetDrawingText()
     except Exception as exc:
         logger.debug("render_plain_svg failed for %r: %s", smiles, exc)
+        return None
+
+
+def depiction_geometry(smiles: str, img_size: int = 300) -> Optional[dict]:
+    """
+    Where each atom lands on the depiction, in canvas pixels, plus the bond list.
+
+    Uses the same preparation and fit as the depictions themselves, so a client
+    can draw its own highlights over any of them. Coordinates are for a square
+    canvas of `img_size`; an overlay scaled to the displayed image needs no
+    other correction.
+    """
+    if not _check_rdkit():
+        return None
+    try:
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        mol = _prepare_mol(smiles)
+        if mol is None:
+            return None
+        drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
+        _fit(drawer, mol, img_size)
+        drawer.DrawMolecule(mol)
+        drawer.FinishDrawing()
+        atoms = []
+        for i in range(mol.GetNumAtoms()):
+            p = drawer.GetDrawCoords(i)
+            atoms.append([round(p.x, 2), round(p.y, 2)])
+        bonds = [[b.GetBeginAtomIdx(), b.GetEndAtomIdx()] for b in mol.GetBonds()]
+        return {"size": img_size, "atoms": atoms, "bonds": bonds}
+    except Exception as exc:
+        logger.debug("depiction_geometry failed for %r: %s", smiles, exc)
         return None
 
 
@@ -154,62 +251,6 @@ def render_fragment_svg(
         return None
 
 
-def render_bit_svg(
-    smiles: str,
-    atoms: list,
-    bonds: list,
-    centers: Optional[list] = None,
-    img_size: int = 300,
-) -> Optional[str]:
-    """
-    Render a depiction with one fingerprint bit's environment picked out.
-
-    Stays vector: unlike the similarity map there is no contour fill, so the
-    payload is a few kilobytes and the atom highlights are crisp at any zoom.
-    Out-of-range indices are dropped rather than raising — the client may hold
-    a bit list from a previous molecule while a new one is loading.
-    """
-    if not _check_rdkit():
-        return None
-    try:
-        from rdkit import Chem
-        from rdkit.Chem.Draw import rdMolDraw2D
-
-        mol = Chem.MolFromSmiles(smiles)
-        if mol is None:
-            return None
-
-        n_atoms, n_bonds = mol.GetNumAtoms(), mol.GetNumBonds()
-        hl_atoms = [int(a) for a in atoms if 0 <= int(a) < n_atoms]
-        hl_bonds = [int(b) for b in bonds if 0 <= int(b) < n_bonds]
-
-        # Number each occurrence's centre atom (1, 2, 3, …) so the count is countable
-        # on the depiction — a multiplicity of 3 shows three numbered centres.
-        for i, c in enumerate(sorted({int(x) for x in (centers or []) if 0 <= int(x) < n_atoms}), 1):
-            mol.GetAtomWithIdx(c).SetProp("atomNote", str(i))
-
-        # Same size as the plain/enhanced depiction it replaces — drawing at half
-        # size scaled the molecule up ~2x in the same box and thickened every bond.
-        drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
-        opts = drawer.drawOptions()
-        # A clear, saturated red that reads through the black skeleton: a wider atom
-        # circle and bond band peek out from under the bond lines instead of hiding.
-        red = (0.90, 0.16, 0.16)
-        opts.setHighlightColour(red)
-        opts.highlightRadius = 0.42
-        opts.highlightBondWidthMultiplier = 16
-        rdMolDraw2D.PrepareAndDrawMolecule(
-            drawer, mol, highlightAtoms=hl_atoms, highlightBonds=hl_bonds,
-            highlightAtomColors={a: red for a in hl_atoms},
-            highlightBondColors={b: red for b in hl_bonds},
-        )
-        drawer.FinishDrawing()
-        return drawer.GetDrawingText()
-    except Exception as exc:
-        logger.debug("render_bit_svg failed for %r: %s", smiles, exc)
-        return None
-
-
 def render_enhanced_svg(
     smiles: str,
     predicted_fp: torch.Tensor,
@@ -217,27 +258,30 @@ def render_enhanced_svg(
     img_size: int = 400,
 ) -> Optional[str]:
     """
-    Render an SVG with fingerprint-based atom highlighting using the
-    similarity map approach from RDKit SimilarityMaps.
-    Falls back to plain SVG on any error.
+    Render the similarity-map colour wash for a molecule: the Gaussian fill of
+    RDKit's SimilarityMaps, on a transparent background, with no molecule
+    drawn in it. The client layers `render_plain_svg` on top, so the skeleton
+    stays vector-crisp and lands in exactly the same place as in the plain
+    view (both use `_fit`), instead of this being a second, rasterised
+    picture of the molecule at its own scale.
 
     Weights are signed (see _atom_weights), so RDKit's PiWG colour map renders
     supporting atoms green and contradicting atoms pink.
 
-    Returns None when highlighting is switched off (HIGHLIGHT_ENABLED=false)
-    rather than a duplicate of the plain depiction: callers pair this with
-    `plain_svg`, so a copy would double the payload for no visible difference.
+    Returns None when highlighting is switched off (HIGHLIGHT_ENABLED=false),
+    when RDKit is unavailable, or when the molecule cannot be weighted: the
+    card carries `plain_svg` regardless, and a wash without weights would be
+    an empty image.
     """
     from app.config import HIGHLIGHT_ENABLED
-    if not HIGHLIGHT_ENABLED:
+    if not HIGHLIGHT_ENABLED or not _check_rdkit():
         return None
-    if not _check_rdkit():
-        return render_plain_svg(smiles, img_size)
     try:
-        from rdkit import Chem
+        from rdkit.Chem import Draw
         from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
+        from rdkit.Geometry import Point2D
 
-        mol = Chem.MolFromSmiles(smiles)
+        mol = _prepare_mol(smiles)
         if mol is None:
             return None
 
@@ -246,33 +290,50 @@ def render_enhanced_svg(
         # renumber the atoms and shift every highlight.
         weights = _atom_weights(mol, smiles, predicted_fp, fp_loader)
         if weights is None:
-            return render_plain_svg(smiles, img_size)
+            return None
 
         weights, _ = SimilarityMaps.GetStandardizedWeights(weights)
+        weights = [(1 if w >= 0 else -1) * abs(w) ** _MAP_GAMMA for w in weights]
 
-        # Rasterise, like SPECTRE does. The contour fill turns into one <rect>
-        # per grid cell in SVG — ~1 MB per card at the default resolution and
-        # 2.7 MB at SPECTRE's 0.06 — where the PNG is ~100 KB at the finer grid.
-        # It also keeps this payload out of dangerouslySetInnerHTML on the client.
-        if _check_cairo():
-            drawer = rdMolDraw2D.MolDraw2DCairo(img_size, img_size)
-            SimilarityMaps.GetSimilarityMapFromWeights(
-                mol, weights, draw2d=drawer,
-                contourLines=0, gridResolution=0.06, extraGridPadding=0.5,
+        # SimilarityMaps.GetSimilarityMapFromWeights lets the contour grid set the
+        # scale, which is what made the map sit at a different size from the plain
+        # drawing. This is the same Gaussian fill with the shared fit instead.
+        conf = mol.GetConformer()
+        locs = [Point2D(conf.GetAtomPosition(i).x, conf.GetAtomPosition(i).y)
+                for i in range(mol.GetNumAtoms())]
+        bond = mol.GetBondWithIdx(0) if mol.GetNumBonds() else None
+        a, b = (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()) if bond else (0, 1)
+        sigma = round(_MAP_SIGMA * (conf.GetAtomPosition(a) - conf.GetAtomPosition(b)).Length(), 2)
+        params = Draw.ContourParams()
+        params.fillGrid = True
+        params.gridResolution = _MAP_GRID
+        params.extraGridPadding = 0.5
+        params.setScale = False
+
+        def draw(drawer):
+            drawer.drawOptions().setBackgroundColour((1.0, 1.0, 1.0, 0.0))
+            _fit(drawer, mol, img_size)
+            drawer.ClearDrawing()
+            Draw.ContourAndDrawGaussians(
+                drawer, locs, weights, [sigma] * len(locs), nContours=0, params=params,
             )
             drawer.FinishDrawing()
+
+        # Rasterise, like SPECTRE does. The fill is one <rect> per grid cell in
+        # SVG — megabytes per card — where the PNG stays around 100 KB. It also
+        # keeps this payload out of dangerouslySetInnerHTML on the client.
+        if _check_cairo():
+            drawer = rdMolDraw2D.MolDraw2DCairo(img_size, img_size)
+            draw(drawer)
             png = base64.b64encode(drawer.GetDrawingText()).decode("ascii")
             return f"data:image/png;base64,{png}"
 
         drawer = rdMolDraw2D.MolDraw2DSVG(img_size, img_size)
-        SimilarityMaps.GetSimilarityMapFromWeights(
-            mol, weights, draw2d=drawer, contourLines=0,
-        )
-        drawer.FinishDrawing()
+        draw(drawer)
         return drawer.GetDrawingText()
     except Exception as exc:
         logger.debug("render_enhanced_svg failed for %r: %s", smiles, exc)
-        return render_plain_svg(smiles, img_size)
+        return None
 
 
 def _mfp_from_bitinfo(atom_to_bits: dict, bitinfo_map: dict, out_dim: int,

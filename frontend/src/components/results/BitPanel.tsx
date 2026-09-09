@@ -1,5 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { api, BitExplanation, BitGroup, BitExplainResponse, BucketPrediction } from '../../services/api'
+import {
+  api, BitExplanation, BitGroup, BitExplainResponse, BucketPrediction, DepictionGeometry,
+} from '../../services/api'
 import './BitPanel.css'
 
 /**
@@ -136,10 +138,12 @@ interface BitPanelProps {
   modelId?: string
   /** Called with the atoms/bonds to light up, or null to clear the highlight. */
   onSelect: (bit: BitExplanation | null) => void
+  /** Where the candidate's atoms sit on its depiction, once the analysis arrives. */
+  onGeometry?: (geometry: DepictionGeometry | null) => void
   selectedIndex: number | null
 }
 
-function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanelProps) {
+function BitPanel({ smiles, predFp, modelId, onSelect, onGeometry, selectedIndex }: BitPanelProps) {
   const [data, setData] = useState<BitExplainResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -151,11 +155,15 @@ function BitPanel({ smiles, predFp, modelId, onSelect, selectedIndex }: BitPanel
     api
       // No practical limit: show every substructure, never a truncated "+k more".
       .explainBits({ smiles, pred_fp: predFp, model_id: modelId, limit: 100000, include_fragment_svg: true })
-      .then((res) => { if (!cancelled) setData(res) })
+      .then((res) => {
+        if (cancelled) return
+        setData(res)
+        onGeometry?.(res.depiction ?? null)
+      })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [smiles, predFp, modelId])
+  }, [smiles, predFp, modelId, onGeometry])
 
   const toggle = useCallback(
     (bit: BitExplanation) => {

@@ -115,6 +115,10 @@ def test_multi_occurrence_bit_unions_all_sites(session):
     by_index = {b["index"]: b for b in out["bits"]}
     for c in multi:
         assert len(by_index[c]["atoms"]) >= len(counts[c])
+        # Each site is also kept apart, so overlapping instances can be told apart.
+        occ = by_index[c]["occurrences"]
+        assert len(occ) >= 2
+        assert set().union(*(set(o["atoms"]) for o in occ)) == set(by_index[c]["atoms"])
 
 
 # ── Grouping and ordering ─────────────────────────────────────────────────────

@@ -12,19 +12,26 @@ const TANIMOTO_HINT =
   'probabilities rather than 0/1 bits, so this is not the usual binary Tanimoto ' +
   'coefficient and is not comparable to one.'
 
+export interface DepictionLayers {
+  /** The line drawing; always shown when the server rendered one. */
+  plain?: string
+  /** The similarity-map underlay; only with highlighting on, and never a substitute for the drawing. */
+  map?: string
+}
+
 /**
- * Which of the two depictions a card should show.
+ * Which layers a card should show.
  *
- * With highlighting on, `svg` is the similarity map and `plain_svg` covers the
- * molecules RDKit could not weight. With it off we show the plain drawing only
- * and never fall back to `svg` — that image *is* the highlighted one, so
- * showing it would contradict the toggle.
+ * `svg` is the similarity-map colour wash and `plain_svg` the line drawing it
+ * sits under. With highlighting off the map is dropped, never the other way
+ * round — the map on its own is a wash with no molecule in it, and showing it
+ * with the toggle off would contradict the toggle.
  */
 export function pickDepiction(
   result: Pick<ResultCardType, 'svg' | 'plain_svg'>,
   highlight: boolean,
-): string | undefined {
-  return highlight ? result.svg || result.plain_svg : result.plain_svg
+): DepictionLayers {
+  return { plain: result.plain_svg, map: highlight ? result.svg : undefined }
 }
 
 interface ResultCardProps {
@@ -52,6 +59,8 @@ function ResultCard({
   const canExplain = Boolean(predFp && predFp.length > 0)
   const open = useCallback(() => setExpanded(true), [])
   const close = useCallback(() => setExpanded(false), [])
+
+  const layers = pickDepiction(result, highlightEnabled)
 
   const hasLinks = !isCustom && Boolean(
     database_links?.coconut || database_links?.lotus || database_links?.npmrd
@@ -115,11 +124,11 @@ function ResultCard({
           onClick={open}
           title="Expand this compound to see its substructures"
         >
-          <MoleculeViewer svg={pickDepiction(result, highlightEnabled)} smiles={result.smiles} />
+          <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles} />
           <span className="result-card__expand-hint">Expand ↗</span>
         </button>
       ) : (
-        <MoleculeViewer svg={pickDepiction(result, highlightEnabled)} smiles={result.smiles} />
+        <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles} />
       )}
 
       {expanded && canExplain && (

@@ -90,24 +90,11 @@
   overflow-y: auto;
 }
 
-.compound-detail__img {
+.compound-detail__figure {
   width: 100%;
-  aspect-ratio: 1;
-  object-fit: contain;
-  background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
-}
-
-.compound-detail__img--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: #6b7280;
-  word-break: break-all;
+  overflow: hidden;
 }
 
 .compound-detail__caption {

@@ -124,8 +124,8 @@ def test_enhanced_render_shows_both_polarities(stub_loader, predicted_fp):
 
     out = render_enhanced_svg(RETRIEVED, predicted_fp, stub_loader, img_size=300)
     raw = base64.b64decode(out.split(",", 1)[1])
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
-    pixels = list(img.getdata()) if not hasattr(img, "get_flattened_data") else list(img.get_flattened_data())
+    img = Image.open(io.BytesIO(raw)).convert("RGBA")
+    pixels = [(r, g, b) for r, g, b, a in _pixels(img) if a > 0]
 
     pink = sum(1 for r, g, b in pixels if r > g + 20 and b > g + 10)
     green = sum(1 for r, g, b in pixels if g > r + 20 and g > b + 20)
@@ -136,7 +136,7 @@ def test_enhanced_render_shows_both_polarities(stub_loader, predicted_fp):
 def test_enhanced_render_payload_stays_small(stub_loader, predicted_fp):
     """
     The contour fill is one rect per grid cell in SVG (~1 MB/card); rasterising
-    keeps it around 100 KB. Guard against a silent revert to vector output.
+    keeps it in the low hundreds of KB. Guard against a silent revert to vector output.
     """
     out = render_enhanced_svg(RETRIEVED, predicted_fp, stub_loader, img_size=400)
     assert len(out) < 400_000
@@ -156,44 +156,101 @@ def test_plain_render_returns_none_for_invalid_smiles():
     assert render_plain_svg("not-a-smiles") is None
 
 
-# ── Single-bit highlighting ───────────────────────────────────────────────────
+# ── Depiction geometry ────────────────────────────────────────────────────────
 
-def test_render_bit_svg_marks_the_requested_atoms():
-    """The highlight view stays vector — no contour fill, so no rasterisation."""
-    from app.renderer import render_bit_svg
-
-    svg = render_bit_svg(RETRIEVED, atoms=[0, 1, 2], bonds=[0, 1], img_size=300)
-    assert svg is not None
-    assert svg.lstrip().startswith("<?xml") or "<svg" in svg
-    assert not svg.startswith("data:image")
+CHIRAL = "C[C@H](O)/C=C/c1ccccc1"
 
 
-def test_render_bit_svg_tolerates_out_of_range_indices():
-    """The client can hold a bit list from the previous molecule mid-swap."""
-    from app.renderer import render_bit_svg
+def test_geometry_covers_every_atom_and_bond():
+    from app.renderer import depiction_geometry
 
-    assert render_bit_svg(RETRIEVED, atoms=[9999], bonds=[9999], img_size=300) is not None
-
-
-def test_render_bit_svg_with_no_highlight_still_renders():
-    from app.renderer import render_bit_svg
-
-    assert render_bit_svg(RETRIEVED, atoms=[], bonds=[], img_size=300) is not None
-
-
-def test_render_bit_svg_returns_none_for_bad_smiles():
-    from app.renderer import render_bit_svg
-
-    assert render_bit_svg("not-a-smiles", atoms=[0], bonds=[], img_size=300) is None
+    mol = _mol(RETRIEVED)
+    geo = depiction_geometry(RETRIEVED, 400)
+    assert geo["size"] == 400
+    assert len(geo["atoms"]) == mol.GetNumAtoms()
+    assert len(geo["bonds"]) == mol.GetNumBonds()
+    for x, y in geo["atoms"]:
+        assert 0 <= x <= 400 and 0 <= y <= 400
 
 
-def test_render_bit_svg_differs_when_highlighting():
-    """Guards against silently returning the plain depiction."""
-    from app.renderer import render_bit_svg
+def test_geometry_matches_the_plain_depiction():
+    """The overlay is drawn from these coordinates over the plain SVG, so the
+    atom positions must be the ones that drawing actually used."""
+    import re
+    from app.renderer import depiction_geometry, render_plain_svg
 
-    plain = render_bit_svg(RETRIEVED, atoms=[], bonds=[], img_size=300)
-    marked = render_bit_svg(RETRIEVED, atoms=[0, 1, 2], bonds=[0, 1], img_size=300)
-    assert plain != marked
+    svg = render_plain_svg(RETRIEVED, 400)
+    geo = depiction_geometry(RETRIEVED, 400)
+    # Every bond line in the SVG starts or ends at a drawn atom position; check a
+    # sample of atom coordinates appear (to the pixel) among the path endpoints.
+    coords = {(round(float(x)), round(float(y)))
+              for x, y in re.findall(r"([\d.]+),([\d.]+)", svg)}
+    hits = sum((round(x), round(y)) in coords for x, y in geo["atoms"])
+    assert hits >= len(geo["atoms"]) // 2
+
+
+def test_geometry_returns_none_for_bad_smiles():
+    from app.renderer import depiction_geometry
+
+    assert depiction_geometry("not-a-smiles", 400) is None
+
+
+def test_depictions_drop_stereochemistry():
+    """MARINA is 2-D: no wedges or E/Z geometry may be drawn."""
+    from app.renderer import render_plain_svg
+
+    svg = render_plain_svg(CHIRAL, 400)
+    assert "wedge" not in svg.lower()
+    assert "<polygon" not in svg          # RDKit draws wedges as filled polygons
+
+
+def test_plain_and_map_share_one_scale():
+    """The whole point of the shared fit: the raster (map) drawer must place
+    atoms exactly where the vector (plain) drawer does."""
+    from rdkit.Chem.Draw import rdMolDraw2D
+    from app.renderer import _fit, _prepare_mol
+
+    mol = _prepare_mol(RETRIEVED)
+    a = rdMolDraw2D.MolDraw2DSVG(400, 400)
+    _fit(a, mol, 400)
+    a.DrawMolecule(mol); a.FinishDrawing()
+    b = rdMolDraw2D.MolDraw2DCairo(400, 400)
+    _fit(b, mol, 400)
+    b.DrawMolecule(mol); b.FinishDrawing()
+    for i in range(mol.GetNumAtoms()):
+        pa, pb = a.GetDrawCoords(i), b.GetDrawCoords(i)
+        assert abs(pa.x - pb.x) < 0.05 and abs(pa.y - pb.y) < 0.05
+
+
+def test_plain_drawing_has_no_background():
+    """It is the top layer over the map wash, so it must not paint one."""
+    from app.renderer import render_plain_svg
+
+    svg = render_plain_svg(RETRIEVED, 400)
+    assert "fill:#FFFFFF" not in svg and "fill:#ffffff" not in svg
+
+
+def test_map_is_a_transparent_wash_without_the_molecule(stub_loader, predicted_fp):
+    """The map is an underlay: transparent where nothing is weighted, and no
+    black skeleton of its own (the client draws the plain SVG over it)."""
+    from PIL import Image
+
+    out = render_enhanced_svg(RETRIEVED, predicted_fp, stub_loader, img_size=300)
+    img = Image.open(io.BytesIO(base64.b64decode(out.split(",", 1)[1])))
+    assert img.mode == "RGBA"
+    assert img.getpixel((1, 1))[3] == 0
+    assert not any(r < 40 and g < 40 and b < 40 and a > 200 for r, g, b, a in _pixels(img))
+
+
+def _pixels(img):
+    return list(img.get_flattened_data()) if hasattr(img, "get_flattened_data") else list(img.getdata())
+
+
+def test_map_is_none_when_the_molecule_cannot_be_weighted(predicted_fp):
+    class _Empty:
+        max_radius = RADIUS
+        bitinfo_to_fp_index_map = {}
+    assert render_enhanced_svg(RETRIEVED, predicted_fp, _Empty(), img_size=300) is None
 
 
 # ── Fragment thumbnails ───────────────────────────────────────────────────────

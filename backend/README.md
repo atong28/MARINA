@@ -12,8 +12,7 @@ FastAPI inference backend for MARINA/SPECTRE molecular structure annotation.
 | `POST` | `/api/predict` | Run MARINA inference on spectral data → top-k molecules |
 | `POST` | `/api/smiles-search` | Nearest-neighbour retrieval from a SMILES query |
 | `POST` | `/api/fingerprints/indices` | Return active entropy-fingerprint bit indices for a SMILES |
-| `POST` | `/api/fingerprints/explain` | Per-bit calibrated substructure confidences for the expanded view |
-| `POST` | `/api/fingerprints/highlight` | Depiction with one bit's atoms and bonds highlighted |
+| `POST` | `/api/fingerprints/explain` | Per-bit calibrated substructure confidences and depiction geometry for the expanded view |
 | `POST` | `/api/custom-smiles-card` | Score an arbitrary SMILES against a session fingerprint |
 | `GET`  | `/api/queue` | Worker-pool queue depth |
 | `GET`  | `/api/queue/{request_id}` | Queue position for one in-flight prediction |

@@ -1,0 +1,51 @@
+.fragment-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Only the occurrence shapes take the pointer, so the depiction underneath
+     and the rest of the panel behave as if the overlay were not there. */
+  pointer-events: none;
+}
+
+.fragment-overlay__occ {
+  transition: opacity 0.15s;
+}
+
+.fragment-overlay__outline {
+  fill: #dc2626;
+  stroke: #dc2626;
+}
+
+.fragment-overlay__fill {
+  fill: #dc2626;
+  stroke: #dc2626;
+  opacity: 0.16;
+  pointer-events: auto;
+  transition: opacity 0.15s;
+}
+
+/* Hovering one occurrence lifts it and fades the others, so two that overlap
+   can be told apart even though every occurrence shares the one colour. */
+.fragment-overlay__occ:hover .fragment-overlay__fill {
+  opacity: 0.4;
+}
+
+.fragment-overlay__occ:hover .fragment-overlay__outline {
+  animation: fragment-overlay-pulse 1s ease-in-out infinite;
+}
+
+.fragment-overlay:has(.fragment-overlay__occ:hover) .fragment-overlay__occ:not(:hover) {
+  opacity: 0.3;
+}
+
+@keyframes fragment-overlay-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fragment-overlay__occ:hover .fragment-overlay__outline {
+    animation: none;
+  }
+}

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, BitExplanation, ResultCard as ResultCardType } from '../../services/api'
+import { BitExplanation, DepictionGeometry, ResultCard as ResultCardType } from '../../services/api'
 import { useAppStore } from '../../store/store'
 import BitPanel from './BitPanel'
+import FragmentOverlay from './FragmentOverlay'
+import MoleculeViewer from './MoleculeViewer'
 import { pickDepiction } from './ResultCard'
 import './CompoundDetail.css'
 
@@ -33,7 +35,7 @@ function CompoundDetail({
   result, position, isCustom = false, predFp, modelId, onClose,
 }: CompoundDetailProps) {
   const [selected, setSelected] = useState<BitExplanation | null>(null)
-  const [highlightSvg, setHighlightSvg] = useState<string | null>(null)
+  const [geometry, setGeometry] = useState<DepictionGeometry | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const highlightEnabled = useAppStore((s) => s.highlightEnabled)
 
@@ -76,34 +78,16 @@ function CompoundDetail({
     }
   }, [onClose])
 
-  useEffect(() => {
-    if (!selected) {
-      setHighlightSvg(null)
-      return
-    }
-    let cancelled = false
-    api
-      .highlightBit({ smiles: result.smiles, atoms: selected.atoms, bonds: selected.bonds, centers: selected.centers })
-      .then((res) => { if (!cancelled) setHighlightSvg(res.svg ?? null) })
-      .catch(() => { if (!cancelled) setHighlightSvg(null) })
-    return () => { cancelled = true }
-  }, [selected, result.smiles])
-
   const onBackdrop = useCallback(
     (e: React.MouseEvent) => { if (e.target === e.currentTarget) onClose() },
     [onClose],
   )
 
-  // A selected bit's highlight wins outright — it is what the user just asked
-  // to see, and it is not the similarity map, so the map toggle does not gate
-  // it. With no bit selected we fall back to the same depiction the card
-  // behind this overlay is showing, toggle included.
-  const depiction = highlightSvg || pickDepiction(result, highlightEnabled)
-  const depictionSrc = depiction
-    ? (depiction.startsWith('data:image')
-        ? depiction
-        : `data:image/svg+xml,${encodeURIComponent(depiction)}`)
-    : null
+  // The same layers the card behind this overlay is showing, toggle included;
+  // a selected bit is drawn over them rather than replacing them, so the map
+  // toggle keeps working while a substructure is picked out.
+  const layers = pickDepiction(result, highlightEnabled)
+  const occurrences = selected?.occurrences ?? []
 
   return (
     <div className="compound-detail__backdrop" onClick={onBackdrop} role="presentation">
@@ -131,23 +115,20 @@ function CompoundDetail({
 
         <div className="compound-detail__body">
           <div className="compound-detail__left">
-            {depictionSrc ? (
-              <img
-                className="compound-detail__img"
-                src={depictionSrc}
-                alt={result.smiles}
-              />
-            ) : (
-              <div className="compound-detail__img compound-detail__img--empty">
-                {result.smiles}
-              </div>
-            )}
+            <div className="compound-detail__figure">
+              <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles}>
+                {geometry && occurrences.length > 0 && (
+                  <FragmentOverlay geometry={geometry} occurrences={occurrences} />
+                )}
+              </MoleculeViewer>
+            </div>
 
             {selected ? (
               <div className="compound-detail__caption">
                 Showing <code>{selected.fragment_smiles || `${selected.atom_symbol} atom`}</code>
-                {' '}(bit #{selected.index}) — {selected.atoms.length} atom
-                {selected.atoms.length === 1 ? '' : 's'}.{' '}
+                {' '}(bit #{selected.index}) — {occurrences.length} occurrence
+                {occurrences.length === 1 ? '' : 's'}
+                {occurrences.length > 1 ? '; hover one to single it out' : ''}.{' '}
                 <button type="button" className="compound-detail__clear" onClick={() => setSelected(null)}>
                   Clear
                 </button>
@@ -220,6 +201,7 @@ function CompoundDetail({
               predFp={predFp}
               modelId={modelId}
               onSelect={setSelected}
+              onGeometry={setGeometry}
               selectedIndex={selected?.index ?? null}
             />
           </div>

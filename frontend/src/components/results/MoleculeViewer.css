@@ -9,9 +9,21 @@
   overflow: hidden;
 }
 
-.molecule-viewer__img {
-  max-width: 100%;
-  height: auto;
+/* Every layer (map underlay, line drawing, substructure overlay) fills the
+   same square, so toggling the map or picking a bit never resizes or shifts
+   the molecule. */
+.molecule-viewer__stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.molecule-viewer__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 

@@ -183,8 +183,8 @@ export interface BitExplanation {
   group: BitGroup
   atoms: number[]
   bonds: number[]
-  /** Occurrence centre atoms, numbered on the depiction so the count is countable. */
-  centers?: number[]
+  /** Each instance of the substructure separately; `atoms`/`bonds` are their union. */
+  occurrences: FragmentOccurrence[]
   /** Drawing of the substructure, present only when requested. */
   fragment_svg?: string | null
   /** Multiplicity vocabularies only: the fragment's ≥1×, ≥2×, … thermometer. */
@@ -210,26 +210,34 @@ export interface BitExplainRequest {
   include_fragment_svg?: boolean
 }
 
+export interface FragmentOccurrence {
+  atoms: number[]
+  bonds: number[]
+}
+
+/**
+ * Where the candidate's atoms land on its depictions. Every depiction of a
+ * molecule (plain or similarity map) shares one fit, so shapes drawn from these
+ * coordinates line up over either.
+ */
+export interface DepictionGeometry {
+  /** Square canvas size the coordinates refer to. */
+  size: number
+  /** [x, y] per atom index, in canvas pixels. */
+  atoms: number[][]
+  /** [begin atom, end atom] per bond index. */
+  bonds: number[][]
+}
+
 export interface BitExplainResponse {
   smiles: string
+  depiction?: DepictionGeometry | null
   /** False when the model ships no calibration curve — confidences are then raw. */
   calibrated: boolean
   bits: BitExplanation[]
   totals: Record<BitGroup, number>
   total_shown: number
   total_available: number
-}
-
-export interface BitHighlightRequest {
-  smiles: string
-  atoms: number[]
-  bonds: number[]
-  centers?: number[]
-}
-
-export interface BitHighlightResponse {
-  smiles: string
-  svg?: string
 }
 
 // ── HTTP client ───────────────────────────────────────────────────────────────
@@ -304,9 +312,6 @@ export const api = {
 
   explainBits: (data: BitExplainRequest): Promise<BitExplainResponse> =>
     fetchJson('/fingerprints/explain', { method: 'POST', body: JSON.stringify(data) }),
-
-  highlightBit: (data: BitHighlightRequest): Promise<BitHighlightResponse> =>
-    fetchJson('/fingerprints/highlight', { method: 'POST', body: JSON.stringify(data) }),
 
   queue: () => fetchJson<QueueSnapshot>('/queue'),
 
