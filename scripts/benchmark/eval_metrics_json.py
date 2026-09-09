@@ -68,21 +68,16 @@ def nonempty_subsets(input_types):
             yield list(c)
 
 
-MS_INPUTS = {'mass_spec', 'mass_spec_neg'}
-
-
 def journal_coverable_set(journal):
     """Modalities the journal can supply: union of per-entry input keys, plus 'formula'
-    (always derivable on the fly from SMILES). MS channels are excluded even when the
-    journal now carries them: MS-containing combos are scored on the simulated test
-    population (score_sim, batched) rather than the per-entry benchmark path -- both for
-    consistency with the previously published per-model metrics and because the per-entry
-    path over every MS combo is intractable (124 vs 28 combos)."""
+    (always derivable on the fly from SMILES). The journal now carries real MS/MS for every
+    entry, so MS-containing combos are scored on the journal too -- every non-empty combo is
+    benchmark-coverable and the simulated full-test-set path is skipped entirely (466 real
+    journal samples per combo vs the full ~24k test population under simulation)."""
     cov = set()
     for e in journal.values():
         cov |= set(e.get('input', {}).keys())
     cov.add('formula')
-    cov -= MS_INPUTS
     return cov
 
 
@@ -144,10 +139,15 @@ def score_sim(cache, keys, model, device, batch_size):
 # Benchmark (journal): require-all-per-entry, per-entry forward (small n).
 # --------------------------------------------------------------------------- #
 @torch.no_grad()
-def score_bench(entries, keys, model, data_module, fp_loader, device):
+def score_bench(entries, keys, model, data_module, fp_loader, device, gold_cache, formula_cache):
     """Score `keys` on journal `entries`, using only entries that carry EVERY modality in
     `keys` (formula is always derivable from SMILES, so it never gates). Feeds exactly
-    `keys`. Returns (ranks, cosines) lists (strict)."""
+    `keys`. Returns (ranks, cosines) lists (strict).
+
+    The gold fingerprint and the formula vector depend only on the entry's SMILES, not on
+    `keys`, so they are memoised across combos in `gold_cache`/`formula_cache` (normalised
+    gold FP kept on CPU) -- otherwise every one of the ~124 combos re-runs the expensive
+    per-molecule FP build over the same journal structures."""
     keyset = set(keys)
     ranks, cosines = [], []
     for e in entries:
@@ -155,13 +155,21 @@ def score_bench(entries, keys, model, data_module, fp_loader, device):
             continue
         raw = dict(e['input'])
         if 'formula' in keyset:
-            raw['formula'] = formula_vec_from_smiles(e['smiles'])
+            fv = formula_cache.get(e['smiles'])
+            if fv is None:
+                fv = formula_vec_from_smiles(e['smiles'])
+                formula_cache[e['smiles']] = fv
+            raw['formula'] = fv
         clean = {m: raw[m] for m in keys}
         inputs = data_module.format_inference_data(clean)
         inputs = {'batch': _to_device(inputs['batch'], device)}
         pred = torch.sigmoid(model(**inputs)[0])
-        sfp = fp_loader.build_mfp_for_smiles(e['smiles'])
-        sfp = (sfp / torch.norm(sfp)).to(pred.device)
+        sfp = gold_cache.get(e['smiles'])
+        if sfp is None:
+            sfp = fp_loader.build_mfp_for_smiles(e['smiles'])
+            sfp = sfp / torch.norm(sfp)          # normalise once, keep on CPU
+            gold_cache[e['smiles']] = sfp
+        sfp = sfp.to(pred.device)
         rs, _ = _rank_conventions(pred, sfp, model.ranker)  # strict rank (0-based)
         ranks.append(rs)
         cosines.append(cos_sim(pred, sfp).item())
@@ -245,10 +253,13 @@ def eval_model(run_name, params_path, ckpt_path, device, batch_size, model_id):
 
     measurements = []
 
+    # gold FP + formula vector depend only on SMILES, not on the combo -> memoise across combos
+    gold_cache, formula_cache = {}, {}
+
     # benchmark: val + test + both, per coverable combo
     for keys in tqdm(bench_combos, desc=f"{run_name} benchmark"):
-        vr, vc = score_bench(val_entries, keys, model, data_module, fp_loader, device)
-        tr, tc = score_bench(test_entries, keys, model, data_module, fp_loader, device)
+        vr, vc = score_bench(val_entries, keys, model, data_module, fp_loader, device, gold_cache, formula_cache)
+        tr, tc = score_bench(test_entries, keys, model, data_module, fp_loader, device, gold_cache, formula_cache)
         for split, (rk, cs) in (('val', (vr, vc)), ('test', (tr, tc)), ('both', (vr + tr, vc + tc))):
             agg = _agg(rk, cs)
             measurements.append({'modalities': keys, 'eval_set': 'benchmark', 'split': split,
