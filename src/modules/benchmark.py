@@ -54,6 +54,17 @@ def get_mfp(smiles: str):
     ConvertToNumpyArray(fp, arr)
     return torch.tensor(arr, dtype=torch.float32)
 
+def _to_device(obj, device):
+    """Recursively move tensors inside dict/list/tuple to `device` (for GPU inference)."""
+    if torch.is_tensor(obj):
+        return obj.to(device)
+    if isinstance(obj, dict):
+        return {k: _to_device(v, device) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(_to_device(v, device) for v in obj)
+    return obj
+
+
 def load_model(args: MARINAArgs | SPECTREArgs, model: MARINA | SPECTRE) -> None:
     if args.project_name == 'MARINA':
         model.load_state_dict(torch.load(args.load_from_checkpoint)['state_dict'])
@@ -68,8 +79,11 @@ def load_model(args: MARINAArgs | SPECTREArgs, model: MARINA | SPECTRE) -> None:
         state_dict = OrderedDict(state)
         model.load_state_dict(state_dict)
     model.setup_ranker()
+    # Move the whole model (incl. the ranker's rankingset buffer) to GPU when available —
+    # otherwise the 531k-row cosine ranking + annotation retrieval run on CPU (0% GPU, slow).
+    model.to('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
-    
+
 def filter_data(data: dict[int, Any], restrictions: List[INPUT_TYPES]) -> dict[int, Any]:
     return {k: v for k, v in data.items() if k in restrictions}
 
@@ -159,6 +173,7 @@ def _run_benchmark_loop(
     recs = []
     ann_smiles = _retrieval_smiles(fp_loader, model.ranker)
     ecfp_cache: dict = {}
+    dev = next(model.parameters()).device
     for entry in tqdm(benchmark_data.values(), desc=desc):
         raw_input = entry['input']
         if 'formula' in restrictions:
@@ -166,7 +181,7 @@ def _run_benchmark_loop(
         clean = filter_data(raw_input, restrictions)
         if not any(k not in ('mw', 'formula') for k in clean):
             continue  # nothing spectral to feed for this subset
-        inputs = data_module.format_inference_data(clean)
+        inputs = _to_device(data_module.format_inference_data(clean), dev)
         with torch.no_grad():
             output = model(**inputs)
         pred = torch.sigmoid(output[0])
