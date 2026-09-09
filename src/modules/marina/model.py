@@ -158,21 +158,13 @@ class MARINA(pl.LightningModule):
             modality: nn.Parameter(torch.randn(1, 1, self.dim_model))
             for modality in self.encoders
         })
-        # mw and formula bypass per-modality self-attention (each is a single descriptor
-        # token, not a peak sequence), so they need their own learned modality token too --
-        # added to their token(s) below. Without it the cross-attention memory has no way to
-        # tell an mw/formula token apart from a spectral one (e.g. a mass_spec_neg token).
         for modality in ('mw', 'formula'):
             if modality in self.args.input_types:
                 self.mod_tokens[modality] = nn.Parameter(
                     torch.randn(1, 1, self.dim_model))
-        # Molecular weight: a single scalar, so a plain linear projection to one cross-attention
-        # memory token (not self-attention): a lone value has no sequence for attention to mix.
         self.mw_embed = (
             nn.Linear(1, self.dim_model) if 'mw' in self.args.input_types else None
         )
-        # Formula gets its own FFN encoder (not in self.encoders / self_attn): its tokens go
-        # straight into the cross-attention memory, bypassing per-modality self-attention.
         self.enc_formula = (
             FormulaEncoder(len(FORMULA_ELEMENTS), self.dim_model, args.formula_tokens)
             if 'formula' in self.args.input_types else None
@@ -340,10 +332,6 @@ class MARINA(pl.LightningModule):
             mm.reset()
 
     def configure_optimizers(self):
-        # 'none' is a truthy string, so it used to miss both branches and fall off the end
-        # returning None. Lightning accepts that as "this module has no optimizer" and runs
-        # fit() to completion without ever updating a weight -- days of GPU time, no error.
-        # Betas match the cosine branch so a constant-LR arm differs only in the schedule.
         if not self.scheduler or self.scheduler == "none":
             return torch.optim.AdamW(self.parameters(), lr=self.lr,
                                      weight_decay=self.weight_decay, betas=(0.9, 0.95))

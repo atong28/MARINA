@@ -78,9 +78,6 @@ def test_marina(
     )
 
     lr_monitor = cb.LearningRateMonitor(logging_interval="step")
-
-    # See train.py: Lightning >=2.6 picks RichProgressBar when `rich` is
-    # importable, which renders nothing to a non-TTY.
     progress_bar = cb.TQDMProgressBar()
 
     trainer = pl.Trainer(

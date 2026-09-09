@@ -55,12 +55,6 @@ def _resume_ckpt_dir(args, final_path: str, logger):
         )
         return None
     os.makedirs(final_path, exist_ok=True)
-    # Lightning saves checkpoints atomically via tempfile.mkstemp() (which honours TMPDIR,
-    # default /tmp) followed by a move onto final_path. On Nautilus final_path is CephFS while
-    # /tmp is the container overlay fs, so that move is a cross-device rename and dies with
-    # EXDEV, killing rank 0 mid-save -- the other ranks then hang on the next collective until
-    # NCCL times out. Point the temp dir at the same filesystem as the checkpoints so the
-    # rename stays within one device.
     ckpt_tmp = os.path.join(final_path, '_ckpt_tmp')
     os.makedirs(ckpt_tmp, exist_ok=True)
     os.environ['TMPDIR'] = ckpt_tmp
@@ -91,16 +85,11 @@ def launch_marina(args: MARINAArgs | SPECTREArgs, today: str):
 
     logger = get_logger(__file__)
 
-    # Resolved before the wandb/logging setup so logs.txt and params.json land alongside
-    # the checkpoints on persistent storage; otherwise a preempted run takes its log with it.
     ckpt_dir = _resume_ckpt_dir(args, final_path, logger)
 
     # create a wandb run
     wandb_run = configure_wandb(args, results_path, today, log_dir=ckpt_dir)
 
-    # Warm-start from a checkpoint before training. `train_marina` builds its own
-    # Trainer and never sees load_from_checkpoint, so without this the flag silently
-    # does nothing on a training run and the model trains from scratch.
     if args.train and args.load_from_checkpoint:
         state = torch.load(args.load_from_checkpoint, map_location='cpu')
         state_dict = state.get('state_dict', state)

@@ -30,9 +30,6 @@ from .fp_utils import (
     canonicalize_smiles,
 )
 
-# Deployed Morgan radius. Shared source with scripts/marina_db/config.FP_RADIUS (same env var)
-# so the vocab build and the train/eval query encoding never disagree. Default 10 (see
-# wiki/experiments/fp-quality.md radius-10 sweep). Override both sides with FP_RADIUS=<n>.
 DEFAULT_FP_RADIUS = int(os.environ.get("FP_RADIUS", "10"))
 
 

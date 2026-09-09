@@ -35,9 +35,6 @@ class MARINAArgs(SMARTArgs):
     ff_dim: int = 3072
     out_dim: int = 16384
 
-    # Molecular formula: a fixed-length element-count vector encoded by a small FFN (not
-    # self-attention) into `formula_tokens` cross-attention memory tokens. Active only when
-    # 'formula' is in input_types.
     formula_tokens: int = 1
 
     c_wavelength_bounds: List[float] = field(

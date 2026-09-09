@@ -11,10 +11,6 @@ INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spe
 
 DEBUG_LEN: int = 3000
 
-# mw and formula are non-spectral (a single global descriptor token, never a peak list) and are
-# each dropped 50% of the time for robustness. Neither is in SELF_ATTN_INPUTS: each gets its own
-# encoder (mw a linear projection, formula an FFN) whose token joins the cross-attention memory
-# directly, rather than going through a per-modality self-attention transformer.
 NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw', 'formula'}
 SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg'}
 
@@ -50,19 +46,10 @@ elif os.environ.get('DATASET_ROOT'):
 else:
     raise ValueError('Unknown setup – set the DATASET_ROOT environment variable')
 
-# The branches above sniff __file__ to pick a default per deployment. That is fine as a
-# default but must not outrank an explicit instruction, so environment variables are applied
-# on top. Previously they could not be: '/code' matched first on Nautilus, so DATASET_ROOT
-# was silently dropped there even though scripts/analysis docstrings tell you to set it.
-# Overriding per-variable rather than per-branch keeps the other roots intact when only one
-# is set.
 CODE_ROOT = os.environ.get('CODE_ROOT', CODE_ROOT)
 DATASET_ROOT = os.environ.get('DATASET_ROOT', DATASET_ROOT)
 BENCHMARK_ROOT = os.environ.get('BENCHMARK_ROOT', BENCHMARK_ROOT)
 PVC_ROOT = os.environ.get('PVC_ROOT', PVC_ROOT)
-# On SDSC the repo is bind-mounted at /code, so the Nautilus branch above matches and
-# points the key file at a PVC path that does not exist there. Overridable for the same
-# reason as the roots.
 WANDB_API_KEY_FILE = os.environ.get('WANDB_API_KEY_FILE', WANDB_API_KEY_FILE)
 for _name, _value in (('CODE_ROOT', CODE_ROOT), ('DATASET_ROOT', DATASET_ROOT),
                       ('BENCHMARK_ROOT', BENCHMARK_ROOT), ('PVC_ROOT', PVC_ROOT),
@@ -70,9 +57,6 @@ for _name, _value in (('CODE_ROOT', CODE_ROOT), ('DATASET_ROOT', DATASET_ROOT),
     if os.environ.get(_name):
         logger.info('%s overridden from environment: %s', _name, _value)
 
-# params.json exists to restore a checkpoint's *architecture* so the weights load.
-# Training-schedule fields must not come back with it, or a finetune silently inherits
-# the pretraining run's learning rate, budget and experiment name.
 DO_NOT_OVERRIDE = [
     'train', 'test', 'visualize', 'load_from_checkpoint', 'input_types', 'requires',
     'benchmark', 'restrictions', 'benchmark_split', 'resume',
@@ -98,11 +82,6 @@ INPUT_MAP = {
     'formula': FORMULA_TYPE
 }
 
-# Fixed element vocabulary for the molecular-formula encoder. Order is frozen (do not
-# reorder — precomputed formula_vec entries in index.pkl are positional). These are the 39
-# elements observed across all 486,583 MARINA-DB formulas (frequency-descending as of the
-# 2026-08-30 scan); '*' is a catch-all for any element not listed, so an unseen element at
-# inference degrades gracefully into one shared slot rather than being dropped.
 FORMULA_ELEMENTS: List[str] = [
     'H', 'C', 'O', 'N', 'S', 'Cl', 'Br', 'P', 'F', 'I', 'Si', 'B', 'Se', 'As', 'Fe',
     'Mg', 'Co', 'Na', 'Te', 'V', 'Al', 'Zn', 'Sn', 'Au', 'Mo', 'Cu', 'W', 'Ni', 'Bi',

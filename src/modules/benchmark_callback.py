@@ -11,9 +11,6 @@ from .log import get_logger
 
 logger = get_logger(__file__)
 
-# The journal is the sole live benchmark. Both splits are iterated in fixed order on
-# every rank: the number of collectives issued in on_validation_epoch_end must not
-# depend on which files/entries a rank can see (else DDP all_reduce desyncs).
 JOURNAL_FILE = "benchmark-journal.pkl"
 SPLITS = ("val", "test")
 

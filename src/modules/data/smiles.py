@@ -55,14 +55,6 @@ def canonicalize_smiles(
             return smiles
         seen.add(folded)
         smiles = folded
-    # Non-convergence. The 2D key path (keep_stereo=False) is not expected to oscillate
-    # (stereo stripped), and a non-fixed-point *key* would split one compound across two
-    # rows -- the defect this function exists to prevent -- so that stays a hard error.
-    # The stereo-preserving path DOES oscillate for a few natural products: RDKit flips the
-    # directional bonds around a ring-closure double bond between two equivalent spellings
-    # each pass (a 2-cycle, emitting "Conflicting single bond directions" warnings). That
-    # SMILES is provenance (canonical_3d_smiles / original_smiles), never a dedup key, so
-    # collapse the cycle to a deterministic representative rather than aborting the build.
     if keep_stereo:
         return min(seen)
     raise ValueError(
