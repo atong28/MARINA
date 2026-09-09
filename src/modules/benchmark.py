@@ -209,8 +209,9 @@ def sim_annotation(model, data_module, combos: list, batch_size: int, bank_ecfp)
     definition as the experimental side. Returns {combo_name: {1: frac, 5: frac, 10: frac}}
     (fractions, matching the test/mean_rank_k scale)."""
     from .marina.dataset import MARINADataset  # local import avoids a module cycle
+    nrm = torch.nn.functional.normalize
     dev = next(model.parameters()).device
-    bank_n = torch.nn.functional.normalize(bank_ecfp.float(), dim=1, p=2.0)  # (N,2048) CPU
+    bank = bank_ecfp  # keep fp16 (N,2048) on CPU; normalize only the small gathered slices
     out = {}
     for combo in combos:
         name = '_'.join(combo)
@@ -228,8 +229,9 @@ def sim_annotation(model, data_module, combos: list, batch_size: int, bank_ecfp)
             if top.dim() == 1:
                 top = top.unsqueeze(1)
             top = top.T.contiguous().cpu()                            # (B, k)
-            gold = bank_n[data_idx[sl]]                               # (B, 2048)
-            cos = (bank_n[top] * gold.unsqueeze(1)).sum(-1)           # (B, k)
+            gold = nrm(bank[data_idx[sl]].float(), dim=1)             # (B, 2048)
+            retr = nrm(bank[top].float(), dim=2)                      # (B, k, 2048)
+            cos = (retr * gold.unsqueeze(1)).sum(-1)                  # (B, k)
             good = cos >= ANN_THRESH
             for k in (1, 5, 10):
                 hit[k] += int(good[:, :k].any(dim=1).sum().item())

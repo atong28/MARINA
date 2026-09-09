@@ -120,6 +120,14 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
     raw = trainer.test(model, data_module)[0]
     metrics = {k: v for k, v in raw.items() if k.startswith("test/mean_")}
+    out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_results.json")
+    stypes = list(getattr(model, 'spectral_types', []))
+
+    def _dump():
+        with open(out, "w") as f:
+            json.dump({"ckpt": ckpt, "spectral_types": stypes, "metrics": metrics}, f, indent=2)
+
+    _dump()  # persist rank/cos BEFORE the (heavier) annotation pass so it is never lost
     if deltas:
         # annotation success on the sim test (batched); cache the bank ECFP4 across seeds
         bank, _ = build_bank_ecfp(
@@ -131,10 +139,7 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
             for combo, d in ann.items():
                 for k, v in d.items():
                     metrics[f"test/mean_ann_{k}/{combo}"] = v
-    out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_results.json")
-    with open(out, "w") as f:
-        json.dump({"ckpt": ckpt, "spectral_types": list(getattr(model, 'spectral_types', [])),
-                   "metrics": metrics}, f, indent=2)
+            _dump()  # rewrite with annotation merged
     del model, data_module, fp_loader
     torch.cuda.empty_cache()
     return out
