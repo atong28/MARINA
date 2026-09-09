@@ -51,10 +51,6 @@ MANUAL_DOIS = {
     'NP0332697': '10.3390/md23010044',
     'NP0332698': '10.3390/md23010044',
     'NP0332699': '10.3390/md23010044',
-    # Cavomycin A-C (not in NP-MRD refs yet - best guess)
-    # 'NP0332525': None,  # will be None
-    # 5,11-dihydroxy-3(12)-cyclotaxane (not found)
-    # 'NP0332442': None,
 }
 
 def get_paper_details_by_doi(doi):

@@ -310,8 +310,10 @@ class MARINA(pl.LightningModule):
                 if input_type == "all_inputs":
                     di[f"val/mean_{feat}"] = v
                 vals_for_avg.append(v)
+        # Metrics are already all-reduced inside MeanMetric.compute() via
+        # sync_on_compute=True, so sync_dist here would double-sync.
         for k, v in di.items():
-            self.log(k, v, on_epoch=True, on_step=False, sync_dist=True)
+            self.log(k, v, on_epoch=True, on_step=False, sync_dist=False)
         for mm in self._val_mm.values():
             mm.reset()
 

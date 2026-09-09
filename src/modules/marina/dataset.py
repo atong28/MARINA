@@ -268,11 +268,6 @@ class MARINADataModule(pl.LightningDataModule):
         return self.train[idx]
 
     def train_dataloader(self) -> DataLoader:
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
         if not self._fit_is_setup:
             self.setup(stage='fit')
 
@@ -288,11 +283,6 @@ class MARINADataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self) -> List[DataLoader]:
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
         if not self._fit_is_setup:
             self.setup(stage='fit')
 
@@ -310,11 +300,6 @@ class MARINADataModule(pl.LightningDataModule):
         ]
 
     def test_dataloader(self) -> List[DataLoader]:
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
         if not self._test_is_setup:
             self.setup(stage='test')
 

@@ -224,6 +224,8 @@ old_ckpt/
 !.pixi/config.toml
 ckpt/
 /data/
+/results/
+/runs/
 
 node_modules/
 

@@ -412,7 +412,7 @@ def count_fragment_occurrences(
     Unlike count_substructure_multiplicities (which returns a *presence* map over
     (frag, bucket) keys), this returns the raw multiplicity: how many radius-0..radius
     atom environments produce each fragment. It is the un-bucketed intermediate the
-    thermometer vocabulary is built from -- 60_fp_vocab.py needs the raw per-molecule
+    thermometer vocabulary is built from -- 4_fp_rankingset.py needs the raw per-molecule
     counts to histogram them across the corpus and enumerate the uncapped rung ladder.
 
     Fragments come from the same _substructure_occurrences generator as every other
@@ -470,7 +470,7 @@ def select_topk_by_entropy(entropies: np.ndarray, candidates, k: int) -> List[in
     the candidate value ascending, returning the indices in that order.
 
     This is the dedup/selection core: EntropyFPLoader.setup and the vocab-build script
-    (scripts/marina_db/build/60_fp_vocab.py) both need argpartition(-ent, kth=min(k, len-1))[:k]
+    (scripts/marina_db/build/4_fp_rankingset.py) both need argpartition(-ent, kth=min(k, len-1))[:k]
     then sorted(key=lambda i: (-ent[i], candidates[i])). `candidates` is any sequence
     indexable by the selected indices whose elements sort as the tiebreak (a 4-tuple
     BitInfo, a fragment SMILES, or a (frag, k) tuple). The caller computes `k` itself
@@ -499,9 +499,6 @@ def count_fragments_over_retrieval(
     smiles_list = list(smiles_map.values())
     procs = (mp.cpu_count() if not num_procs else max(1, int(num_procs)))
 
-    # Merge as results arrive rather than collecting every per-molecule dict first: the
-    # retrieval set yields ~100 features per molecule, so buffering all of them costs tens
-    # of GB, while the merged Counter is bounded by the number of distinct features.
     total = Counter()
     if procs == 1:
         # serial fallback (useful for debugging)

@@ -14,19 +14,6 @@ logger = get_logger(__file__)
 
 def configure_wandb(args: MARINAArgs | SPECTREArgs, results_path: str, today: str,
                     log_dir: str | None = None):
-    """_summary_
-
-    Args:
-        args (MARINAArgs | SPECTREArgs): _description_
-        results_path (str): _description_
-        today (str): _description_
-
-    Raises:
-        RuntimeError: _description_
-
-    Returns:
-        _type_: _description_
-    """
     experiment_id = f"{args.experiment_name}_{today}"
 
     # Where logs.txt and params.json go. On Nautilus results_path is an emptyDir, so a
@@ -61,15 +48,6 @@ def configure_wandb(args: MARINAArgs | SPECTREArgs, results_path: str, today: st
                 key = json.load(kf)["key"]
 
             wandb.login(key=key)
-
-        # resume="allow" only resumes when an explicit id is given; without one wandb
-        # mints a fresh id every time, so each chunk of a chained run would land in its
-        # own W&B run. experiment_id is stable across chunks exactly when the launcher
-        # pins SMART_RUN_ID, which is the same condition that makes the results
-        # directory stable -- so tying the run id to it keeps the two in step.
-        init_kwargs = {}
-        if getattr(args, "resume", False):
-            init_kwargs["id"] = experiment_id
 
         # resume="allow" only resumes when an explicit id is given; without one wandb
         # mints a fresh id every time, so each chunk of a chained run would land in its

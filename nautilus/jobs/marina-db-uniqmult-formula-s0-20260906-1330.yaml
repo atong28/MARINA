@@ -1,0 +1,85 @@
+# Single-seed (s0) training probe for RankingEntropyUniqueMultiplicity.
+#
+# CLEAN COMPARISON vs the deployed uncapped-formula-s0: same training code (branch
+# exp/marina-db-uniqmult = exp/marina-db-runs + only the UniqueMultiplicity fp loader,
+# cherry-pick 6692458 -> 4887d32), same input_types, same seed. The ONLY difference is
+# --fp_type RankingEntropyUniqueMultiplicity.
+#
+# The fp's artifacts are not in MARINA-DB.zip, so after startup unzips the dataset we inject
+# them into node-local /workspace from the persistent PVC, then re-run pack_arrow (skip-if-
+# exists packs only the new FragIdx) before training:
+#   /workspace/RankingEntropyUniqueMultiplicity/{bitinfo_to_idx.pkl,rankingset.pt}
+#   /workspace/arrow/<split>/FragIdxUniqueMultiplicity.parquet   (from stage-9 job)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-marina-db-uniqmult-formula-s0-20260906-1330
+  labels: { owner: atong }
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-A40
+                      - NVIDIA-RTX-A6000
+                      - NVIDIA-RTX-A5000
+                      - NVIDIA-A10
+                      - NVIDIA-GeForce-RTX-3090
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-TITAN-RTX
+                      - NVIDIA-L40
+                      - NVIDIA-L40S
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:                     # known-bad nodes (GPU-lost / CephFS), per uncapped arms
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - hcc-nrp-shor-c5909.unl.edu
+                      - hcc-chase-shor-c4705.unl.edu
+      containers:
+        - name: marina
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: BRANCH,   value: "exp/marina-db-uniqmult" }
+            - { name: COMMIT,   value: "3e419d9" }
+            - { name: DATASETS, value: "MARINA-DB.zip" }
+          command: ["/bin/bash", "-c"]
+          args:
+            - >-
+              set -euxo pipefail &&
+              bash /root/gurusmart/startup.sh &&
+              DS=/root/gurusmart/marina-db/dataset &&
+              cp -r "$DS/RankingEntropyUniqueMultiplicity" /workspace/ &&
+              for d in /workspace/arrow/*/; do s=$(basename "$d");
+                cp "$DS/arrow/$s/FragIdxUniqueMultiplicity.parquet" "$d"/; done &&
+              ls -la /workspace/RankingEntropyUniqueMultiplicity/ /workspace/arrow/*/FragIdxUniqueMultiplicity.parquet &&
+              cd /code &&
+              pixi run python scripts/dataset/pack_arrow.py --root /workspace &&
+              pixi run torchrun --nproc_per_node 4 --module src.main marina
+              --experiment_name marina-db-uniqmult-formula-s0
+              --seed 0
+              --fp_type RankingEntropyUniqueMultiplicity
+              --input_types hsqc c_nmr h_nmr mass_spec mass_spec_neg mw formula
+          resources:
+            requests: { cpu: "8", memory: 96Gi,  ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            limits:   { cpu: "8", memory: 115Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+          volumeMounts:
+            - { name: atong-spectre,  mountPath: /root/gurusmart }
+            - { name: smart-datasets, mountPath: /root/datasets }
+            - { name: dshm,           mountPath: /dev/shm }
+            - { name: data-unzip,     mountPath: /workspace }
+            - { name: code-workdir,   mountPath: /code }
+      volumes:
+        - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm,           emptyDir: { medium: Memory } }
+        - { name: data-unzip,     emptyDir: {} }
+        - { name: code-workdir,   emptyDir: {} }

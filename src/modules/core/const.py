@@ -11,16 +11,6 @@ INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spe
 
 DEBUG_LEN: int = 3000
 
-DROP_PERCENTAGE: Dict[INPUT_TYPES, float] = {
-    'hsqc': 0.5,
-    'h_nmr': 0.5,
-    'c_nmr': 0.5,
-    'mass_spec': 0.5,
-    'mass_spec_neg': 0.5,
-    'mw': 0.5,
-    'formula': 0.5
-}
-
 # mw and formula are non-spectral (a single global descriptor token, never a peak list) and are
 # each dropped 50% of the time for robustness. Neither is in SELF_ATTN_INPUTS: each gets its own
 # encoder (mw a linear projection, formula an FFN) whose token joins the cross-attention memory
