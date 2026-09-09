@@ -245,11 +245,15 @@ def _summarise(recs: list[dict], prefix: str, wandb_metrics: dict) -> None:
     wandb_metrics.update(m)
 
 
-def _journal_subsets(base: List) -> dict:
+def _journal_subsets(base: List, deltas: bool = False) -> dict:
     """Journal modality subsets fed to the model. 'all' = the model's own inputs; 'nmr' =
     the three NMR modalities; 'msms' = positive + negative MS/MS; plus each spectral modality
     on its own and the pairwise NMR combinations (for the per-combo results tables). Every
-    subset is intersected with `base` so a model only gets modalities it was trained with."""
+    subset is intersected with `base` so a model only gets modalities it was trained with.
+
+    With `deltas=True` (flagship Tables 1 & S1) each of the 8 spectral combos additionally
+    gets a `_formula` and a `_mw` copy, so the aggregator can take the (+Formula) and (+MW)
+    rank deltas against the base combo. Gated off by default to keep Shape-O runs light."""
     subs = {'all': list(base)}
     nmr = [m for m in ('hsqc', 'c_nmr', 'h_nmr') if m in base]
     msms = [m for m in ('mass_spec', 'mass_spec_neg') if m in base]
@@ -274,6 +278,17 @@ def _journal_subsets(base: List) -> dict:
     # 'all'). `mw`/`formula` included only if the model was trained with them.
     if nmr:
         subs['nmr_mw_formula'] = nmr + [m for m in ('mw', 'formula') if m in base]
+    # per-combo +Formula / +MW deltas (flagship Tables 1 & S1): a formula- and an MW-
+    # augmented copy of each of the 8 spectral combos. Keys are `{combo}_formula`/`{combo}_mw`.
+    if deltas:
+        combos = {k: subs[k] for k in
+                  ('h_nmr', 'c_nmr', 'hsqc', 'hsqc_c_nmr', 'hsqc_h_nmr',
+                   'c_nmr_h_nmr', 'nmr', 'nmr_msms') if k in subs}
+        for name, mods in combos.items():
+            if 'formula' in base:
+                subs[f'{name}_formula'] = mods + ['formula']
+            if 'mw' in base:
+                subs[f'{name}_mw'] = mods + ['mw']
     return subs
 
 
@@ -284,6 +299,7 @@ def benchmark_marina(
     fp_loader: EntropyFPLoader,
     wandb_run: Run | None = None,
     load_from_checkpoint: str | None = None,
+    deltas: bool = False,
 ) -> None:
     """Benchmark a MARINA/SPECTRE model on the journal set.
 
@@ -305,7 +321,7 @@ def benchmark_marina(
 
     logger.info(f'[Benchmark] Benchmarking {model.__class__.__name__} (journal, val+test)')
     journal: dict[str, Any] = pickle.load(open(journal_path, 'rb'))
-    subsets = _journal_subsets(base)
+    subsets = _journal_subsets(base, deltas=deltas)
     os.makedirs(os.path.join(BENCHMARK_ROOT, 'benchmarks'), exist_ok=True)
 
     wandb_metrics: dict = {}

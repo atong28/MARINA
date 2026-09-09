@@ -105,7 +105,7 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     return out
 
 
-def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False):
+def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False):
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
@@ -118,7 +118,7 @@ def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     )
     model = modelcls(args, fp_loader)
     data_module = dmcls(args, fp_loader)
-    benchmark_marina(args, data_module, model, fp_loader, load_from_checkpoint=ckpt)
+    benchmark_marina(args, data_module, model, fp_loader, load_from_checkpoint=ckpt, deltas=deltas)
     out = os.path.join(BENCHMARK_ROOT, "benchmarks",
                        f"{name}_benchmark_journal_results.pkl")
     del model, data_module, fp_loader
@@ -136,6 +136,8 @@ def main():
                     help="also run the simulated MARINA-DB test (trainer.test, per-combo)")
     ap.add_argument("--no-journal", dest="no_journal", action="store_true",
                     help="skip the journal benchmark (e.g. sim-only)")
+    ap.add_argument("--deltas", action="store_true",
+                    help="also compute per-combo +Formula/+MW subsets (flagship Tables 1 & S1)")
     ap.add_argument("--num_workers", type=int, default=2)
     # mode A
     ap.add_argument("--results_root")
@@ -149,7 +151,7 @@ def main():
     def run(name, ckpt, params_path):
         if not a.no_journal:
             out = eval_one(a.project_name, ckpt, params_path, name, a.fp_type,
-                           a.num_workers, a.legacy_spectre)
+                           a.num_workers, a.legacy_spectre, a.deltas)
             print(f"[{name}] wrote {out}", flush=True)
         if a.sim:
             out = sim_test(a.project_name, ckpt, params_path, name, a.fp_type,
