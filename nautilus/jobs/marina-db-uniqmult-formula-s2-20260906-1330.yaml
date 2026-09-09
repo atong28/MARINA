@@ -49,7 +49,7 @@ spec:
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
           env:
             - { name: BRANCH,   value: "exp/marina-db-uniqmult" }
-            - { name: COMMIT,   value: "3e419d9" }
+            - { name: COMMIT,   value: "f673c3c480feab50578081a4705b4398fc816ab7" }
             - { name: DATASETS, value: "MARINA-DB.zip" }
           command: ["/bin/bash", "-c"]
           args:

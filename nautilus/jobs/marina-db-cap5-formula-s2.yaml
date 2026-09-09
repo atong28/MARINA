@@ -27,7 +27,7 @@ spec:
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
           env:
             - { name: BRANCH,   value: "exp/marina-db-runs" }
-            - { name: COMMIT,   value: "485965b4c894ee23e7111915c1f9fb9950f23f12" }  # pinned exact SHA — see wiki/active/experiment-registry.md
+            - { name: COMMIT,   value: "b0424019aa5728cef65380557735a23c35f2f920" }  # pinned exact SHA — see wiki/active/experiment-registry.md
             - { name: DATASETS, value: "MARINA-DB.zip" }  # packed-inclusive (ships packed/)
           command: ["/bin/bash", "-c"]
           args:
