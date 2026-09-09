@@ -202,7 +202,7 @@ def build_bank_ecfp(fp_loader, ranker, cache_path: str | None = None):
 
 @torch.no_grad()
 def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
-             on_combo=None) -> dict:
+             on_combo=None, metrics=None) -> dict:
     """Memory-light simulated MARINA-DB test eval — one combo's test dataset at a time (so
     all combos' datasets are never built at once, unlike trainer.test which OOMs at ~24
     combos). Per combo computes, matching the trainer.test metrics exactly:
@@ -213,15 +213,22 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
       test/mean_ann_{1,5,10}/{combo}  : a top-ANN_TOPK retrieval has ECFP4 cos >= ANN_THRESH
                                         to the gold (the test molecule's own library row).
     `on_combo(metrics)` is called after each combo for incremental checkpointing (resumable
-    across pod loss). Returns a flat {metric_key: value} dict."""
+    across pod loss). Pass a pre-loaded `metrics` dict to RESUME: any combo whose keys are
+    already present is skipped. Returns a flat {metric_key: value} dict."""
     import gc
     from .marina.dataset import MARINADataset  # local import avoids a module cycle
     nrm = torch.nn.functional.normalize
     do_cos = torch.nn.CosineSimilarity(dim=1)
     dev = next(model.parameters()).device
-    metrics: dict = {}
+    metrics = dict(metrics) if metrics else {}
     for combo in combos:
         name = '_'.join(combo)
+        need = [f'test/mean_rank_1/{name}', f'test/mean_cos/{name}']
+        if bank_ecfp is not None:
+            need.append(f'test/mean_ann_1/{name}')
+        if all(kk in metrics for kk in need):
+            logger.info(f'[sim-eval/{name}] already present; skipping (resume)')
+            continue
         ds = MARINADataset(model.args, data_module.fp_loader, split='test',
                            override_input_types=list(combo))
         data_idx = torch.tensor([d[0] for d in ds.data])   # library idx per item, ds order

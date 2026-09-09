@@ -128,10 +128,18 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
         bank, _ = build_bank_ecfp(
             fp_loader, model.ranker,
             cache_path=os.path.join(DATASET_ROOT, "ecfp_bank_2048.pt"))
+        prev = {}
+        if os.path.exists(out):  # resume: reuse combos already checkpointed (pod-loss safe)
+            try:
+                prev = json.load(open(out)).get("metrics", {})
+                print(f"[{name}] resuming: {len(prev)} sim metrics already present", flush=True)
+            except Exception:
+                prev = {}
         def _dump(m):
             with open(out, "w") as f:
                 json.dump({"ckpt": ckpt, "spectral_types": stypes, "metrics": m}, f, indent=2)
-        metrics = sim_eval(model, data_module, combos, args.batch_size, bank, on_combo=_dump)
+        metrics = sim_eval(model, data_module, combos, args.batch_size, bank,
+                           on_combo=_dump, metrics=prev)
         _dump(metrics)
     else:
         trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
