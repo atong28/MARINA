@@ -221,6 +221,14 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
     do_cos = torch.nn.CosineSimilarity(dim=1)
     dev = next(model.parameters()).device
     metrics = dict(metrics) if metrics else {}
+    gold_cache: dict = {}  # smiles -> normalised ECFP4 (gold structure; NOT bank-indexed)
+    def _gold_ecfp(smi):
+        if smi not in gold_cache:
+            try:
+                gold_cache[smi] = nrm(get_mfp(smi).unsqueeze(0), dim=1)[0]
+            except Exception:
+                gold_cache[smi] = torch.zeros(2048)
+        return gold_cache[smi]
     for combo in combos:
         name = '_'.join(combo)
         need = [f'test/mean_rank_1/{name}', f'test/mean_cos/{name}']
@@ -231,7 +239,7 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
             continue
         ds = MARINADataset(model.args, data_module.fp_loader, split='test',
                            override_input_types=list(combo))
-        data_idx = torch.tensor([d[0] for d in ds.data])   # library idx per item, ds order
+        gold_smiles = [d[1].get('smiles') for d in ds.data]  # gold structure per item, ds order
         n = len(ds)
         rk = {1: 0, 5: 0, 10: 0}
         cos_sum = 0.0
@@ -254,7 +262,9 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
                 if top.dim() == 1:
                     top = top.unsqueeze(1)
                 top = top.T.contiguous().cpu()                        # (B, k)
-                gold = nrm(bank_ecfp[data_idx[sl]].float(), dim=1)    # (B, 2048)
+                # gold from the item's OWN structure (dataset index != retrieval-bank index,
+                # so bank_ecfp[data_idx] is the wrong molecule); retrieved rows are bank rows.
+                gold = torch.stack([_gold_ecfp(gold_smiles[i]) for i in sl])  # (B, 2048)
                 retr = nrm(bank_ecfp[top].float(), dim=2)             # (B, k, 2048)
                 good = (retr * gold.unsqueeze(1)).sum(-1) >= ANN_THRESH  # (B, k)
                 for k in (1, 5, 10):
@@ -269,7 +279,7 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
                 metrics[f'test/mean_ann_{k}/{name}'] = ann[k] / n
             msg += f" ann@1/5/10={100*ann[1]/n:.2f}/{100*ann[5]/n:.2f}/{100*ann[10]/n:.2f}"
         logger.info(msg)
-        del ds, data_idx
+        del ds, gold_smiles
         gc.collect()
         if on_combo is not None:
             on_combo(metrics)
