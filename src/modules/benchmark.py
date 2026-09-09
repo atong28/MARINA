@@ -136,23 +136,33 @@ def _retrieval_smiles(fp_loader, ranker):
     return smiles
 
 
-def _annotation_rank(gold_smiles: str, pred: torch.Tensor, ranker, retr_smiles, ecfp_cache) -> int:
+def _cached_ecfp(smiles, cache):
+    """ECFP4 (get_mfp) for a SMILES, memoised (None on failure)."""
+    if smiles not in cache:
+        try:
+            cache[smiles] = get_mfp(smiles)
+        except Exception:
+            cache[smiles] = None
+    return cache[smiles]
+
+
+def _annotation_rank(gold_smiles: str, pred: torch.Tensor, ranker, retr_smiles,
+                     ecfp_bank: dict, ecfp_gold: dict) -> int:
     """0-based rank of the first top-ANN_TOPK retrieval whose ECFP4 cosine to the gold
-    structure >= ANN_THRESH; returns ANN_TOPK if none (so it fails @1/5/10). ECFP4 of
-    retrieved rows is cached by bank index across queries."""
-    try:
-        gold = get_mfp(gold_smiles)
-    except Exception:
+    structure >= ANN_THRESH; returns ANN_TOPK if none (so it fails @1/5/10). Retrieved-row
+    ECFP4 is cached by bank index; gold ECFP4 by SMILES — both across subsets/splits."""
+    gold = _cached_ecfp(gold_smiles, ecfp_gold)
+    if gold is None:
         return ANN_TOPK
     idxs = ranker.retrieve_idx(pred, ANN_TOPK).tolist()
     for r, idx in enumerate(idxs):
-        if idx not in ecfp_cache:
+        if idx not in ecfp_bank:
             smi = retr_smiles[idx] if 0 <= idx < len(retr_smiles) else None
             try:
-                ecfp_cache[idx] = get_mfp(smi) if smi else None
+                ecfp_bank[idx] = get_mfp(smi) if smi else None
             except Exception:
-                ecfp_cache[idx] = None
-        fp = ecfp_cache[idx]
+                ecfp_bank[idx] = None
+        fp = ecfp_bank[idx]
         if fp is not None and cos_sim(gold, fp).item() >= ANN_THRESH:
             return r
     return ANN_TOPK
@@ -165,14 +175,21 @@ def _run_benchmark_loop(
     fp_loader: EntropyFPLoader,
     restrictions: List,
     desc: str = 'Benchmarking',
+    caches: dict | None = None,
 ) -> list[dict]:
     """One forward pass per entry under `restrictions`; return per-entry records
     [{cos, rank_strict, rank_tie[, ann_rank]}]. `ann_rank` (annotation success) is added
     when a retrieval-index SMILES map is available (disabled for augmented banks). Entries
-    with no spectral modality left after the restriction are skipped."""
+    with no spectral modality left after the restriction are skipped. `caches` (created once
+    by the caller) memoises the gold fingerprint (per SMILES) and ECFP4s across every
+    subset/split so RDKit runs once per structure, not once per subset."""
+    if caches is None:
+        caches = {}
+    mfp_cache = caches.setdefault('mfp', {})        # smiles -> gold fp_type fingerprint
+    ecfp_bank = caches.setdefault('ecfp_bank', {})  # bank idx -> ECFP4
+    ecfp_gold = caches.setdefault('ecfp_gold', {})  # smiles  -> ECFP4
     recs = []
     ann_smiles = _retrieval_smiles(fp_loader, model.ranker)
-    ecfp_cache: dict = {}
     dev = next(model.parameters()).device
     for entry in tqdm(benchmark_data.values(), desc=desc):
         raw_input = entry['input']
@@ -185,13 +202,16 @@ def _run_benchmark_loop(
         with torch.no_grad():
             output = model(**inputs)
         pred = torch.sigmoid(output[0])
-        sfp = fp_loader.build_mfp_for_smiles(entry['smiles'])
+        smi = entry['smiles']
+        if smi not in mfp_cache:
+            mfp_cache[smi] = fp_loader.build_mfp_for_smiles(smi)
+        sfp = mfp_cache[smi]
         sfp = (sfp / torch.norm(sfp)).to(pred.device)
         rs, rt = _rank_conventions(pred, sfp, model.ranker)
         rec = {'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt}
         if ann_smiles is not None:
             rec['ann_rank'] = _annotation_rank(
-                entry['smiles'], pred, model.ranker, ann_smiles, ecfp_cache)
+                smi, pred, model.ranker, ann_smiles, ecfp_bank, ecfp_gold)
         recs.append(rec)
     return recs
 
@@ -290,12 +310,13 @@ def benchmark_marina(
 
     wandb_metrics: dict = {}
     saved: dict = {}
+    caches: dict = {}  # memoise gold FPs + ECFP4s across all subsets/splits (RDKit once/structure)
     for split in ('val', 'test'):
         split_data = {k: v for k, v in journal.items() if v.get('split') == split}
         for sub_name, sub_mods in subsets.items():
             recs = _run_benchmark_loop(
                 split_data, data_module, model, fp_loader, sub_mods,
-                desc=f'journal/{split}/{sub_name}')
+                desc=f'journal/{split}/{sub_name}', caches=caches)
             _summarise(recs, f'benchmark_journal/{split}/{sub_name}', wandb_metrics)
             saved[f'{split}/{sub_name}'] = recs
 
