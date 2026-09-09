@@ -168,6 +168,77 @@ def _annotation_rank(gold_smiles: str, pred: torch.Tensor, ranker, retr_smiles,
     return ANN_TOPK
 
 
+def build_bank_ecfp(fp_loader, ranker, cache_path: str | None = None):
+    """(N_bank, 2048) float16 ECFP4 matrix aligned with the ranker bank rows (library idx).
+    Cached to `cache_path` so it is built once and reused across seeds. Returns
+    (bank_ecfp, retr_smiles) or (None, None) if the retrieval index is unavailable/mismatched."""
+    retr = _retrieval_smiles(fp_loader, ranker)
+    if retr is None:
+        return None, None
+    if cache_path and os.path.exists(cache_path):
+        try:
+            bank = torch.load(cache_path)
+            if bank.size(0) == len(retr):
+                logger.info(f'[sim-ann] loaded bank ECFP4 cache ({bank.size(0)} rows) {cache_path}')
+                return bank, retr
+        except Exception as e:
+            logger.warning(f'[sim-ann] bad ECFP4 cache {cache_path}: {e!r}; rebuilding')
+    logger.info(f'[sim-ann] building bank ECFP4 ({len(retr)} rows)...')
+    bank = torch.zeros((len(retr), 2048), dtype=torch.float16)
+    for i, smi in enumerate(tqdm(retr, desc='bank ECFP4')):
+        if smi:
+            try:
+                bank[i] = get_mfp(smi).half()
+            except Exception:
+                pass
+    if cache_path:
+        try:
+            torch.save(bank, cache_path)
+            logger.info(f'[sim-ann] cached bank ECFP4 -> {cache_path}')
+        except Exception as e:
+            logger.warning(f'[sim-ann] could not cache bank ECFP4: {e!r}')
+    return bank, retr
+
+
+@torch.no_grad()
+def sim_annotation(model, data_module, combos: list, batch_size: int, bank_ecfp) -> dict:
+    """Batched annotation success (ann@1/5/10) on the simulated MARINA-DB test split for each
+    combo. The gold structure of a test item is its own library row (`data_idx`, since the
+    test molecule is in the retrieval bank); a query hits @k if any of its top-ANN_TOPK
+    retrievals has ECFP4 (Morgan r=2, 2048-bit) cosine >= ANN_THRESH to the gold — the same
+    definition as the experimental side. Returns {combo_name: {1: frac, 5: frac, 10: frac}}
+    (fractions, matching the test/mean_rank_k scale)."""
+    from .marina.dataset import MARINADataset  # local import avoids a module cycle
+    dev = next(model.parameters()).device
+    bank_n = torch.nn.functional.normalize(bank_ecfp.float(), dim=1, p=2.0)  # (N,2048) CPU
+    out = {}
+    for combo in combos:
+        name = '_'.join(combo)
+        ds = MARINADataset(model.args, data_module.fp_loader, split='test',
+                           override_input_types=list(combo))
+        data_idx = torch.tensor([d[0] for d in ds.data])   # library idx per item, ds order
+        n = len(ds)
+        hit = {1: 0, 5: 0, 10: 0}
+        for start in tqdm(range(0, n, batch_size), desc=f'sim-ann/{name}'):
+            sl = list(range(start, min(start + batch_size, n)))
+            batch_inputs, _ = data_module._collate_fn([ds[i] for i in sl])
+            batch_inputs = _to_device({'batch': batch_inputs}, dev)
+            queries = torch.sigmoid(model(**batch_inputs))            # (B, D)
+            top = model.ranker.retrieve_idx(queries, ANN_TOPK)        # (k, B) or (k,)
+            if top.dim() == 1:
+                top = top.unsqueeze(1)
+            top = top.T.contiguous().cpu()                            # (B, k)
+            gold = bank_n[data_idx[sl]]                               # (B, 2048)
+            cos = (bank_n[top] * gold.unsqueeze(1)).sum(-1)           # (B, k)
+            good = cos >= ANN_THRESH
+            for k in (1, 5, 10):
+                hit[k] += int(good[:, :k].any(dim=1).sum().item())
+        out[name] = {k: hit[k] / n for k in (1, 5, 10)}
+        logger.info(f'[sim-ann/{name}] n={n} ann@1/5/10='
+                    f'{100*out[name][1]:.2f}/{100*out[name][5]:.2f}/{100*out[name][10]:.2f}')
+    return out
+
+
 def _run_benchmark_loop(
     benchmark_data: dict,
     data_module: MARINADataModule | SPECTREDataModule,

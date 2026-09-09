@@ -48,6 +48,27 @@ SIM_COMBOS = [
     ['mass_spec', 'mass_spec_neg'],
 ]
 
+# The 8 Table-S1 spectral combos (base). With --deltas the sim test also runs each with
+# molecular formula and with MW so Tables S1/S1b get sim rank/cos/annotation for every
+# {spectra, +Formula, +MW} row (SIM_COMBOS alone is spectral-only).
+S1_GROUPS = [
+    ['h_nmr'], ['c_nmr'], ['hsqc'],
+    ['hsqc', 'c_nmr'], ['hsqc', 'h_nmr'], ['c_nmr', 'h_nmr'],
+    ['hsqc', 'c_nmr', 'h_nmr'],
+    ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg'],
+]
+
+
+def sim_combos(deltas: bool) -> list:
+    """Modality combos for the simulated test. Default = SIM_COMBOS (spectral only, Table S2).
+    With deltas: the 8 S1 groups x {spectra, +formula, +mw} (24 combos) for Tables S1/S1b."""
+    if not deltas:
+        return SIM_COMBOS
+    combos = []
+    for g in S1_GROUPS:
+        combos += [list(g), g + ['formula'], g + ['mw']]
+    return combos
+
 
 def find_run(results_root: str, experiment: str) -> tuple[str, str]:
     exp_dir = os.path.join(results_root, experiment)
@@ -57,15 +78,15 @@ def find_run(results_root: str, experiment: str) -> tuple[str, str]:
     return os.path.join(os.path.dirname(ckpts[0]), "params.json"), ckpts[0]
 
 
-def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=False, sim=False):
+def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=False, sim=False, deltas=False):
     valid = {f.name for f in dc_fields(argcls)}
     kw = {k: v for k, v in params.items() if k in valid}
     if sim:
-        # simulated test: trainer.test() over the MARINA-DB test split, per SIM_COMBOS
+        # simulated test: trainer.test() over the MARINA-DB test split, per sim_combos(deltas)
         kw.update(train=False, test=True, benchmark=False,
                   load_from_checkpoint=ckpt, experiment_name=name, num_workers=num_workers)
         if 'additional_test_types' in valid:
-            kw['additional_test_types'] = SIM_COMBOS
+            kw['additional_test_types'] = sim_combos(deltas)
     else:
         kw.update(train=False, test=False, benchmark=True,
                   load_from_checkpoint=ckpt, experiment_name=name, num_workers=num_workers)
@@ -76,16 +97,19 @@ def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=
     return argcls(**kw)
 
 
-def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False):
+def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False):
     """Simulated test: trainer.test() over the MARINA-DB test split → per-combo
-    test/mean_rank_{1,5,10} + test/mean_cos, dumped to <name>_sim_results.json.
+    test/mean_rank_{1,5,10} + test/mean_cos, dumped to <name>_sim_results.json. With --deltas
+    the combo set is the 24 Table-S1 {spectra,+F,+MW} combos and a batched annotation pass
+    adds test/mean_ann_{1,5,10} per combo (Table S1b sim side).
     Requires the test-split arrow shards + index.pkl staged under DATASET_ROOT."""
     import pytorch_lightning as pl
+    from src.modules.benchmark import build_bank_ecfp, sim_annotation
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
-    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, sim=True)
-    print(f"[{name}] SIM test fp_type={args.fp_type} ckpt={ckpt}", flush=True)
+    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, sim=True, deltas=deltas)
+    print(f"[{name}] SIM test fp_type={args.fp_type} ckpt={ckpt} deltas={deltas}", flush=True)
     fp_loader = make_fp_loader(
         args.fp_type, entropy_out_dim=args.out_dim,
         retrieval_path=os.path.join(DATASET_ROOT, "retrieval.pkl"),
@@ -96,6 +120,17 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
     raw = trainer.test(model, data_module)[0]
     metrics = {k: v for k, v in raw.items() if k.startswith("test/mean_")}
+    if deltas:
+        # annotation success on the sim test (batched); cache the bank ECFP4 across seeds
+        bank, _ = build_bank_ecfp(
+            fp_loader, model.ranker,
+            cache_path=os.path.join(DATASET_ROOT, "ecfp_bank_2048.pt"))
+        if bank is not None:
+            ann = sim_annotation(model, data_module, sim_combos(True),
+                                 args.batch_size, bank)
+            for combo, d in ann.items():
+                for k, v in d.items():
+                    metrics[f"test/mean_ann_{k}/{combo}"] = v
     out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_results.json")
     with open(out, "w") as f:
         json.dump({"ckpt": ckpt, "spectral_types": list(getattr(model, 'spectral_types', [])),
@@ -155,7 +190,7 @@ def main():
             print(f"[{name}] wrote {out}", flush=True)
         if a.sim:
             out = sim_test(a.project_name, ckpt, params_path, name, a.fp_type,
-                           a.num_workers, a.legacy_spectre)
+                           a.num_workers, a.legacy_spectre, a.deltas)
             print(f"[{name}] wrote {out}", flush=True)
 
     if a.ckpt:
