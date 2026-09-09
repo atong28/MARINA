@@ -68,14 +68,21 @@ def nonempty_subsets(input_types):
             yield list(c)
 
 
+MS_INPUTS = {'mass_spec', 'mass_spec_neg'}
+
+
 def journal_coverable_set(journal):
     """Modalities the journal can supply: union of per-entry input keys, plus 'formula'
-    (always derivable on the fly from SMILES). MS channels are absent from the journal,
-    so combos containing them fall out as not-coverable automatically."""
+    (always derivable on the fly from SMILES). MS channels are excluded even when the
+    journal now carries them: MS-containing combos are scored on the simulated test
+    population (score_sim, batched) rather than the per-entry benchmark path -- both for
+    consistency with the previously published per-model metrics and because the per-entry
+    path over every MS combo is intractable (124 vs 28 combos)."""
     cov = set()
     for e in journal.values():
         cov |= set(e.get('input', {}).keys())
     cov.add('formula')
+    cov -= MS_INPUTS
     return cov
 
 
