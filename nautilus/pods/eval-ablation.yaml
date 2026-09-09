@@ -19,10 +19,6 @@ spec:
                   - NVIDIA-RTX-A4000
                   - NVIDIA-A10
                   - NVIDIA-GeForce-RTX-4090
-              - key: kubernetes.io/hostname
-                operator: NotIn
-                values:
-                  - hcc-nrp-shor-c5905.unl.edu
   containers:
     - name: pod-container
       image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8

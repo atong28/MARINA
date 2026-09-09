@@ -11,17 +11,9 @@ class SMARTArgs:
     seed: int = 0
     # path to load checkpoint from
     load_from_checkpoint: str | None = None
-    # Resume a run in place rather than warm-starting from it. load_from_checkpoint only
-    # restores weights, so a chained job restarts the LR warmup and early-stopping patience
-    # from scratch; this restores optimizer, schedule, epoch counter and callback state too.
-    # Also writes checkpoints somewhere persistent and keeps a rolling `last.ckpt`, since on
-    # Nautilus the default results dir is an emptyDir that dies with the pod.
-    # Requires a stable SMART_RUN_ID across chunks so they share one results directory.
+    # full run resume
     resume: bool = False
-    # How often --resume writes its rolling checkpoint. This is the only knob on resume's
-    # I/O cost: a 2.17GB checkpoint takes ~4.6s to the PVC (measured 470 MB/s) versus ~1.4s
-    # to ephemeral, so every 5 epochs is well under 1% of a 600s epoch. Raise it if the
-    # filesystem is loaded, at the cost of redoing up to this many epochs after a restart.
+    # if --resume is active, how many epochs for each checkpoint
     checkpoint_every_n_epochs: int = 5
     # whether to do training
     train: bool = True
@@ -44,10 +36,6 @@ class SMARTArgs:
     debug: bool = False
     batch_size: int = 32
     num_workers: int = 4
-    # Workers for the val/test dataloaders. There is one such loader per test type
-    # (input_types + additional_test_types), and with persistent_workers they all stay
-    # alive for the whole run, so mirroring num_workers here multiplies resident worker
-    # processes for loaders that only run at validation. Keep this small.
     val_num_workers: int = 2
     epochs: int = 750
     patience: int = 30
@@ -68,23 +56,8 @@ class SMARTArgs:
     # jittering default value to wobble the spectra
     jittering: float = 0.5
 
-    # Fixed per-modality drop probability. None keeps the computed default
-    # (1 - 0.5/availability). Set 0.0 to disable dropping entirely, which is what a
-    # mostly single-modality dataset wants since always_keep already protects those.
+    # fixed drop percentage if desired
     modality_drop_override: Optional[float] = None
-
-    # Modality-dropout sampling scheme for TRAINING masks.
-    #   'bernoulli'          : legacy — one random present spectral modality is force-kept,
-    #                          every other present modality is dropped independently at
-    #                          drop_percentage (see MARINADataset.compute_drop_percentage).
-    #                          The number of surviving modalities is binomial → concentrated
-    #                          in the middle, starving the single- and full-modality regimes.
-    #   'uniform_cardinality': draw a modality COMBINATION with uniform-over-cardinality
-    #                          weighting — pick the number of modalities uniformly, then a
-    #                          uniform subset of that size among the present modalities,
-    #                          requiring >=1 spectral modality. Equalizes the low- and
-    #                          full-modality regimes. `requires` still filters which compounds
-    #                          enter the split, but does NOT pin modalities under this scheme.
     modality_dropout_scheme: Literal['bernoulli', 'uniform_cardinality'] = 'bernoulli'
 
     # peak augmentation (injection + dropout); applies to hsqc/c_nmr/h_nmr during training only

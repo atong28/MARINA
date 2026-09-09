@@ -1,12 +1,15 @@
 # MARINA training Job — clean canonical template.
 #
-# Fill every <PLACEHOLDER>. For an experiment, first freeze the code:
-#     git branch exp/<NAME> origin/main && git push origin exp/<NAME>
-# set BRANCH=exp/<NAME> below, and commit the filled copy on the exp/<NAME>
-# branch (NOT main) so main stays clean and the spec travels with its code.
+# Fill every <PLACEHOLDER>. Every experiment is PINNED TO AN EXACT COMMIT SHA, not a
+# branch tip: set COMMIT=<full 40-char SHA> below (BRANCH is only the clone hint that
+# makes the SHA reachable). A branch tip moves — two seed-mates launched days apart, a
+# re-clone on pod restart, or a chain successor will each grab a DIFFERENT tip and
+# silently train different code. Pinning the SHA makes the code exact and makes any code
+# change PURPOSEFUL: bumping COMMIT is a documented decision. Record the SHA + config for
+# every experiment in wiki/active/experiment-registry.md (the SSOT) before launching.
 #
 # startup.sh is env-configured (see nautilus/startup.sh): REPO / BRANCH / COMMIT /
-# DATASETS / CODE_DIR / WORKSPACE / PIXI_INSTALL. Only BRANCH and DATASETS usually change.
+# DATASETS / CODE_DIR / WORKSPACE / PIXI_INSTALL. COMMIT and DATASETS are the fields you set.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -40,7 +43,8 @@ spec:
         - name: marina
           image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
           env:
-            - { name: BRANCH,   value: "exp/<NAME>" }   # frozen experiment branch (or a tag)
+            - { name: BRANCH,   value: "<BRANCH>" }        # clone hint so COMMIT is reachable (e.g. exp/<NAME> or main)
+            - { name: COMMIT,   value: "<FULL-40-CHAR-SHA>" }  # REQUIRED: exact pinned SHA — record it in wiki/active/experiment-registry.md
             - { name: DATASETS, value: "MARINA-DB.zip" }  # go-forward dataset; ships packed/ (memmap auto-selected). Space-separated for multiple zips
           command: ["/bin/bash", "-c"]
           args:

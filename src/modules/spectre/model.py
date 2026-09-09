@@ -78,7 +78,14 @@ class SPECTRE(pl.LightningModule):
         self._val_mm = torch.nn.ModuleDict()
         self._test_mm = torch.nn.ModuleDict()
 
-        self.embedding = nn.Embedding(6, self.dim_model)
+        # `legacy_type_embedding` builds the released checkpoint's 4-row
+        # `NMR_type_embedding` instead of the ported 6-row `embedding`; encode() picks the
+        # right one. Only the attribute name/row count differs, so the ckpt loads strict.
+        self.legacy_type_embedding = getattr(args, 'legacy_type_embedding', False)
+        if self.legacy_type_embedding:
+            self.NMR_type_embedding = nn.Embedding(4, self.dim_model)
+        else:
+            self.embedding = nn.Embedding(6, self.dim_model)
         self.fc = nn.Linear(self.dim_model, self.out_dim)
         self.latent = torch.nn.Parameter(torch.randn(1, 1, self.dim_model))
 
@@ -137,7 +144,8 @@ class SPECTRE(pl.LightningModule):
             if idx.any():
                 points_flat[idx] = encoder(x_flat[idx])
         points = points_flat.reshape(B, N, dim_model)
-        type_embed = self.embedding(type_indicator)  # (B, N, dim_model)
+        emb = self.NMR_type_embedding if self.legacy_type_embedding else self.embedding
+        type_embed = emb(type_indicator)  # (B, N, dim_model)
         points += type_embed
         latent = self.latent.expand(B, 1, -1)
         points = torch.cat([latent, points], dim=1)

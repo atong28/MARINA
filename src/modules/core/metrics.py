@@ -42,24 +42,7 @@ def cm(
     thresh: float = 0.0,
     no_ranking: bool = False,
 ):
-    """
-    Binary FP metrics + retrieval via cosine.
-
-    Args:
-        model_output (torch.Tensor): _description_
-        fp_label (torch.Tensor): _description_
-        ranker (RankingSet): _description_
-        loss (torch.Tensor): _description_
-        loss_fn (_type_): _description_
-        thresh (float, optional): _description_. Defaults to 0.0.
-        no_ranking (bool, optional): _description_. Defaults to False.
-
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        _type_: _description_
-    """
+    """Binary FP metrics + retrieval via cosine."""
     global do_f1, do_recall, do_precision, do_accuracy
 
     # Ensure metrics are on the right device/dtype

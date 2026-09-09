@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-marina-db-uncapped-formula-s2-20260902-1121
+  labels: { owner: atong }
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-A40, NVIDIA-RTX-A6000, NVIDIA-RTX-A5000, NVIDIA-A10,
+                             NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-4090,
+                             NVIDIA-TITAN-RTX, NVIDIA-L40, NVIDIA-L40S]
+      containers:
+        - name: marina
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: BRANCH,   value: "exp/marina-db-runs" }
+            - { name: COMMIT,   value: "485965b4c894ee23e7111915c1f9fb9950f23f12" }  # pinned exact SHA — see wiki/active/experiment-registry.md
+            - { name: DATASETS, value: "MARINA-DB.zip" }  # packed-inclusive (ships packed/)
+          command: ["/bin/bash", "-c"]
+          args:
+            - >-
+              set -euxo pipefail &&
+              bash /root/gurusmart/startup.sh &&
+              cd /code &&
+              pixi run python scripts/dataset/pack_arrow.py --root /workspace &&
+              pixi run torchrun --nproc_per_node 4 --module src.main marina
+              --experiment_name marina-db-uncapped-formula-s2
+              --seed 2
+              --fp_type RankingEntropyMultiplicityUncapped
+              --input_types hsqc c_nmr h_nmr mass_spec mass_spec_neg mw formula
+          resources:
+            requests: { cpu: "8", memory: 96Gi,  ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+            limits:   { cpu: "8", memory: 115Gi, ephemeral-storage: 600Gi, nvidia.com/gpu: "4" }
+          volumeMounts:
+            - { name: atong-spectre,  mountPath: /root/gurusmart }
+            - { name: smart-datasets, mountPath: /root/datasets }
+            - { name: dshm,           mountPath: /dev/shm }
+            - { name: data-unzip,     mountPath: /workspace }
+            - { name: code-workdir,   mountPath: /code }
+      volumes:
+        - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm,           emptyDir: { medium: Memory } }
+        - { name: data-unzip,     emptyDir: {} }
+        - { name: code-workdir,   emptyDir: {} }

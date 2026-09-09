@@ -23,11 +23,16 @@ spec:
     - name: pod-container
       image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
       command: ["sh"]
-      args: 
+      args:
       - "-c"
-      - >- 
-        bash /root/gurusmart/startup.sh MARINA1.zip &&
-        sleep infinity 
+      # clone exp/marina-db-runs + pixi via startup (small MARINA1.zip only), then overlay
+      # ONLY the MARINA-DB rankingsets/retrieval needed for the journal benchmark (~1.2 GB;
+      # arrow/packed are for training/sim and are NOT unzipped, keeping under 30Gi ephemeral).
+      - >-
+        bash /root/gurusmart/startup.sh MARINA1.zip main &&
+        unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropy/*' 'RankingEntropyMultiplicity/*' 'retrieval.pkl' -d /workspace &&
+        echo "[bench] rankingsets staged" &&
+        sleep infinity
       volumeMounts:
         - mountPath: "/root/gurusmart"
           name: atong-spectre
@@ -39,7 +44,6 @@ spec:
           name: dshm
         - mountPath: /code
           name: code-workdir
-        
       resources:
         limits:
           memory: 32Gi
@@ -51,7 +55,6 @@ spec:
           cpu: 8
           nvidia.com/gpu: 1
           ephemeral-storage: 30Gi
-  
   volumes:
     - name: atong-spectre
       persistentVolumeClaim:

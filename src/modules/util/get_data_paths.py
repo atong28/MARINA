@@ -7,15 +7,6 @@ from ..spectre.args import SPECTREArgs
 
 
 def get_data_paths(args: MARINAArgs | SPECTREArgs, today: str) -> Tuple[str, str]:
-    """_summary_
-
-    Args:
-        args (MARINAArgs | SPECTREArgs): _description_
-        today (str): _description_
-
-    Returns:
-        Tuple[str, str]: _description_
-    """
     results_path = os.path.join(
         DATASET_ROOT,
         "results",

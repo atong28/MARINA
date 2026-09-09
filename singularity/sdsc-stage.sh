@@ -3,8 +3,12 @@
 # socket opened by sdsc-connect.sh. Re-runnable: rsync only sends what changed, so this
 # doubles as "ship my latest code" between chunks.
 #
-#   Usage:  bash singularity/sdsc-stage.sh <sdsc-username> [dataset ...]
-#   e.g.    bash singularity/sdsc-stage.sh atong1 MARINA1 MARINA3
+#   Usage:  COMMIT=<full-SHA> bash singularity/sdsc-stage.sh <sdsc-username> [dataset ...]
+#   e.g.    COMMIT=cf6954bff5… bash singularity/sdsc-stage.sh atong1 MARINA-DB
+#
+# COMMIT is REQUIRED: experiments are pinned to an exact commit (see
+# wiki/active/experiment-registry.md). Staging aborts unless the local MARINA repo is a clean
+# checkout at exactly that SHA, so the rsync'd code is reproducible rather than "whatever was local".
 #
 # Datasets default to MARINA1. The .sif itself is NOT built here -- Expanse does not
 # grant the root/fakeroot needed for `singularity build`. Build it on a machine you own
@@ -17,6 +21,7 @@ SOCK="${SDSC_SOCK:-$HOME/.ssh/sdsc.sock}"
 HOST="${SDSC_HOST:-login.expanse.sdsc.edu}"
 PROJECT_ROOT="${PROJECT_ROOT:-/expanse/lustre/projects/sdp158/atong1}"
 LOCAL_ROOT="${LOCAL_ROOT:-$HOME/atong}"
+COMMIT="${COMMIT:?set COMMIT=<full 40-char SHA>: experiments are pinned to an exact commit; record it in wiki/active/experiment-registry.md}"
 
 USER_NAME="${1:-}"
 if [ -z "$USER_NAME" ]; then
@@ -39,6 +44,23 @@ fi
 
 echo "==> creating layout under $PROJECT_ROOT"
 "${SSH[@]}" "mkdir -p '$PROJECT_ROOT'/{code,images,datasets,benchmark,runs/wandb,slurm-logs}"
+
+# Enforce exact code. This script rsyncs the local working tree (.git is excluded), so the cluster
+# runs whatever is checked out locally at stage time. Require the local repo to be a CLEAN checkout
+# at the pinned COMMIT, so the staged code equals that SHA byte-for-byte. Overriding = check out a
+# different SHA on purpose and record it in wiki/active/experiment-registry.md.
+head=$(git -C "$LOCAL_ROOT/MARINA" rev-parse HEAD)
+if [ "$head" != "$COMMIT" ]; then
+    echo "  local MARINA is at $head, not the pinned COMMIT=$COMMIT" >&2
+    echo "  run: git -C $LOCAL_ROOT/MARINA checkout $COMMIT" >&2
+    exit 1
+fi
+if [ -n "$(git -C "$LOCAL_ROOT/MARINA" status --porcelain)" ]; then
+    echo "  local MARINA tree is dirty -- commit/stash tracked edits and remove untracked files so staged code == $COMMIT:" >&2
+    git -C "$LOCAL_ROOT/MARINA" status --porcelain >&2
+    exit 1
+fi
+echo "==> code pinned at $COMMIT (clean working tree)"
 
 echo "==> syncing repo"
 # .pixi (8.5G) and analysis (14G) are local-only working state; frontend is not used by

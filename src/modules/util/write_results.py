@@ -51,15 +51,6 @@ def write_results(
     logger: logging.Logger = None,
     wandb_run=None
 ) -> None:
-    """_summary_
-
-    Args:
-        args (MARINAArgs | SPECTREArgs): _description_
-        final_path (str): _description_
-        result_path (str): _description_
-        logger (logging.Logger, optional): _description_. Defaults to None.
-        wandb_run (_type_, optional): _description_. Defaults to None.
-    """
     if is_main_process() and args.train:
         logger and logger.info("[Main] Moving results to final destination")
         overall_start = time.time()

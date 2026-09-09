@@ -21,6 +21,13 @@ class SPECTREArgs(SMARTArgs):
     ff_dim: int = 3072
     out_dim: int = 16384
 
+    # The released `spectre_flexible` checkpoint predates the MS/MW port: its type
+    # embedding is `NMR_type_embedding` with 4 rows, not the ported `embedding` with 6.
+    # Set True to build the 4-row `NMR_type_embedding` so that checkpoint loads strict
+    # (every other parameter name/shape already matches). NMR-only inputs only ever emit
+    # type indices 0-3, so 4 rows suffice.
+    legacy_type_embedding: bool = False
+
     c_wavelength_bounds: List[float] = field(
         default_factory=lambda: [0.01, 400.0])
     h_wavelength_bounds: List[float] = field(
