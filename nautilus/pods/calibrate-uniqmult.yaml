@@ -1,0 +1,79 @@
+# One-off task pod to run the bit-confidence calibration forward pass for the DEPLOYED model
+# marina_uniqmult_s1 (= marina-db-uniqmult-formula-s1, RankingEntropyUniqueMultiplicity).
+# Mirrors singularity/delta-calibrate.sbatch on Nautilus. Sibling of devel.yaml so the canonical
+# dev pod is left untouched. Delete when the preds_uniqmult_s1.npz has been pulled.
+#
+# After the pod is Ready, inject the uniqmult fp artifacts + repack arrow (same as the training
+# job marina-db-uniqmult-formula-s1), stage the s1 checkpoint, then run 01_predict.py.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: calib-atong
+  labels: { owner: atong }
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-TITAN-RTX
+                  - NVIDIA-A40
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-RTX-A6000
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-A10
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-L40
+                  - NVIDIA-L40S
+  containers:
+    - name: pod-container
+      image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+      command: ["sh"]
+      args:
+      - "-c"
+      - >-
+        bash /root/gurusmart/startup.sh &&
+        sleep infinity
+      env:
+        - { name: BRANCH,   value: "exp/marina-db-uniqmult" }
+        - { name: COMMIT,   value: "f673c3c480feab50578081a4705b4398fc816ab7" }
+        - { name: DATASETS, value: "MARINA-DB.zip" }
+      volumeMounts:
+        - mountPath: "/root/gurusmart"
+          name: atong-spectre
+        - mountPath: "/root/datasets"
+          name: smart-datasets
+        - mountPath: "/workspace"
+          name: data-unzip
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /code
+          name: code-workdir
+      resources:
+        limits:
+          memory: 32Gi
+          cpu: 8
+          nvidia.com/gpu: 1
+          ephemeral-storage: 300Gi
+        requests:
+          memory: 32Gi
+          cpu: 8
+          nvidia.com/gpu: 1
+          ephemeral-storage: 300Gi
+  volumes:
+    - name: atong-spectre
+      persistentVolumeClaim:
+        claimName: atong-spectre
+    - name: smart-datasets
+      persistentVolumeClaim:
+        claimName: smart-datasets
+    - name: dshm
+      emptyDir:
+        medium: Memory
+    - name: data-unzip
+      emptyDir: {}
+    - name: code-workdir
+      emptyDir: {}
