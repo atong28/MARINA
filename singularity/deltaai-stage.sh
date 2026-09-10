@@ -34,7 +34,7 @@ echo "==> git-clone/checkout MARINA at $COMMIT (using DeltaAI's github ssh key)"
 "${SSH[@]}" bash -s <<EOF
 set -euo pipefail
 export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
-CODE="$PROJECT_ROOT/code/MARINA"
+CODE="$PROJECT_ROOT/code/MARINA-deltaai"
 if [ ! -d "\$CODE/.git" ]; then
     git clone "$REPO" "\$CODE"
 fi

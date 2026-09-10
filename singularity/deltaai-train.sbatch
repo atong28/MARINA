@@ -49,7 +49,7 @@ INPUT_TYPES="${INPUT_TYPES:-hsqc c_nmr h_nmr mass_spec mass_spec_neg mw formula}
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 
 IMAGE="${IMAGE:-$PROJECT_ROOT/images/marina-arm64.sif}"
-CODE_DIR="${CODE_DIR:-$PROJECT_ROOT/code/MARINA}"
+CODE_DIR="${CODE_DIR:-$PROJECT_ROOT/code/MARINA-deltaai}"
 CHAIN_SCRIPT="${CHAIN_SCRIPT:-$CODE_DIR/singularity/deltaai-train.sbatch}"
 MAX_CHUNKS="${MAX_CHUNKS:-12}"
 CHAIN_INDEX="${CHAIN_INDEX:-1}"
