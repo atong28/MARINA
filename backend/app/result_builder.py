@@ -116,7 +116,12 @@ def build_result_cards(
     """
     Build a list of ResultCard dicts from (global_idx, score) pairs.
     """
+    from app.calibration import load_calibrator
     from app.renderer import render_plain_svg, render_enhanced_svg
+
+    # Same calibration the bit panel shows, so the map and the panel agree.
+    model_root = getattr(session, "model_root", None)
+    calibrator = load_calibrator(model_root) if model_root else None
 
     cards: List[dict] = []
     for global_idx, cosine_score in pairs:
@@ -138,7 +143,8 @@ def build_result_cards(
             tanimoto_sim  = _tanimoto(pred_tensor, retrieved_vec)
 
         fp_loader = session.fp_loader
-        enhanced_svg = render_enhanced_svg(smiles, pred_tensor, fp_loader, img_size=img_size)
+        enhanced_svg = render_enhanced_svg(smiles, pred_tensor, fp_loader, img_size=img_size,
+                                           calibrator=calibrator)
         plain_svg    = render_plain_svg(smiles, img_size=img_size)
 
         name, primary_link = _primary(entry)

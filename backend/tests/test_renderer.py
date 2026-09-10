@@ -110,21 +110,15 @@ def test_cos_sim_handles_zero_vectors():
     assert _cos_sim(torch.zeros(4), torch.ones(4)) == 0.0
 
 
-def test_multiplicity_ablation_drops_only_the_top_bucket(marina_src):
+def _chain_fixture(marina_src):
     """
-    A counting vocabulary: removing one occurrence of a fragment lowers its count
-    by one, so only the top cumulative bucket goes. Zeroing every bucket (the
-    Morgan rule) made every atom look load-bearing and the map green-only.
-
-    Candidate: hexanoic acid. Prediction: butanoic acid's fingerprint, which has
-    fewer chain CH2 occurrences. Ablating a chain carbon of the candidate then
-    removes buckets the prediction does not want and must IMPROVE the match
-    (negative weight); the carboxyl carbon, wanted by both, must still be positive.
+    Counting vocabulary over hexanoic acid (candidate) and butanoic acid (the
+    prediction), which has fewer chain CH2 occurrences: the candidate's extra
+    chain is surplus the prediction does not want, the carboxyl end is wanted by both.
     """
     from src.modules.data.fp_utils import (
         count_substructure_multiplicities, MULTIPLICITY_UNCAPPED,
     )
-    from app.renderer import _atom_weights, _multiplicity_drops
     long, short = "CCCCCC(=O)O", "CCCC(=O)O"
 
     cols: dict = {}
@@ -143,11 +137,74 @@ def test_multiplicity_ablation_drops_only_the_top_bucket(marina_src):
         pred[cols[feat]] = 1.0
 
     mol = _mol(long)
-    weights = _atom_weights(mol, long, pred, _Loader())
-    assert len(weights) == mol.GetNumAtoms()
-    assert min(weights[:5]) < 0, "a surplus chain carbon should contradict the shorter prediction"
     carboxyl = [a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() == "C" and
                 any(n.GetSymbol() == "O" for n in a.GetNeighbors())][0]
+    return long, mol, pred, _Loader(), carboxyl
+
+
+def test_attribution_paints_surplus_chain_pink_and_shared_end_green(marina_src):
+    """
+    Direct attribution: the terminal methyl sits only in chain fragments the
+    prediction lacks (long chains, and the ≥5×/≥6× carbon buckets), so it must
+    be negative; the carboxyl carbon's fragments are predicted, so positive.
+    """
+    from app.renderer import _atom_weights_attribution
+
+    long, mol, pred, loader, carboxyl = _chain_fixture(marina_src)
+    weights = _atom_weights_attribution(mol, long, pred, loader)
+    assert len(weights) == mol.GetNumAtoms()
+    assert weights[0] < 0
+    assert weights[carboxyl] > 0
+
+
+def test_attribution_is_independent_of_atom_order(marina_src):
+    """
+    The ablation credited each occurrence to one centre atom, so the same
+    molecule written two ways coloured differently. Attribution scores every
+    copy of a fragment alike and spreads it over all its atoms, so reversing the
+    SMILES must give the same weights on the same atoms.
+    """
+    from app.renderer import _atom_weights_attribution
+
+    long, mol, pred, loader, _ = _chain_fixture(marina_src)
+    fwd = _atom_weights_attribution(mol, long, pred, loader)
+    rev_smiles = "OC(=O)CCCCC"
+    rev = _atom_weights_attribution(_mol(rev_smiles), rev_smiles, pred, loader)
+    # The two SMILES number the atoms differently; match them by canonical rank.
+    from rdkit import Chem
+    fwd_mol, rev_mol = _mol(long), _mol(rev_smiles)
+    fwd_by_rank = dict(zip(Chem.CanonicalRankAtoms(fwd_mol, breakTies=True), fwd))
+    rev_by_rank = dict(zip(Chem.CanonicalRankAtoms(rev_mol, breakTies=True), rev))
+    assert fwd_by_rank.keys() == rev_by_rank.keys()
+    for rank, w in rev_by_rank.items():
+        assert abs(fwd_by_rank[rank] - w) < 1e-9, f"rank {rank}: {fwd_by_rank[rank]} vs {w}"
+
+
+def test_attribution_uses_the_calibrator(marina_src):
+    from app.renderer import _atom_weights_attribution
+
+    long, mol, pred, loader, carboxyl = _chain_fixture(marina_src)
+    raw = _atom_weights_attribution(mol, long, pred, loader)
+    # A calibrator that halves every probability pulls everything toward "not predicted".
+    halved = _atom_weights_attribution(mol, long, pred, loader, calibrator=lambda p: p * 0.5)
+    assert all(h <= r + 1e-9 for h, r in zip(halved, raw))
+    assert halved[carboxyl] < raw[carboxyl]
+
+
+def test_multiplicity_ablation_drops_only_the_top_bucket(marina_src):
+    """
+    The retained ablation method on a counting vocabulary: removing one
+    occurrence of a fragment lowers its count by one, so only the top cumulative
+    bucket goes. Zeroing every bucket (the Morgan rule) made every atom look
+    load-bearing and the map green-only.
+    """
+    from src.modules.data.fp_utils import MULTIPLICITY_UNCAPPED
+    from app.renderer import _atom_weights_ablation, _multiplicity_drops
+
+    long, mol, pred, loader, carboxyl = _chain_fixture(marina_src)
+    weights = _atom_weights_ablation(mol, long, pred, loader)
+    assert len(weights) == mol.GetNumAtoms()
+    assert min(weights[:5]) < 0, "a surplus chain carbon should contradict the shorter prediction"
     assert weights[carboxyl] > 0
 
     # Direct check of the rule: an atom drops one bucket per occurrence it centres.

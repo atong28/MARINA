@@ -252,17 +252,32 @@ source tree are **not** watched (no spurious reloads from large checkpoints).
 | `MOLECULE_IMG_SIZE` | `400` | Depiction size in pixels |
 | `RDKIT_ENABLED` | `true` | `false` disables all depictions |
 | `HIGHLIGHT_ENABLED` | `true` | `false` serves plain depictions only — see below |
+| `HIGHLIGHT_METHOD` | `attribution` | How map weights are computed: `attribution` or `ablation` — see below |
 
-Every result card carries two depictions: `plain_svg`, a vector line drawing,
-and `svg`, the similarity map in which each atom is shaded by how much removing
-it would change the match against the query fingerprint. The frontend's
-**Similarity map** checkbox picks between them client-side, so toggling it never
-re-runs a search.
+Every result card carries two depictions: `plain_svg`, a transparent vector line
+drawing, and `svg`, the similarity map — a transparent colour wash the frontend
+layers *under* the line drawing (both are drawn with the same fit, so they
+align). Green atoms support the retrieval, pink atoms contradict it. The
+frontend's **Similarity map** checkbox adds or removes the wash client-side, so
+toggling it never re-runs a search.
 
-Producing `svg` costs one leave-one-out fingerprint ablation *per atom per card*,
-which dominates card-building time on CPU. `HIGHLIGHT_ENABLED=false` skips it:
-`svg` comes back `null`, and `/api/health` reports `highlight_available: false`
-so the UI hides the checkbox rather than offering a switch with one position.
+`HIGHLIGHT_METHOD` selects how the per-atom weights are computed:
+
+- `attribution` (default): every substructure occurrence in the candidate is
+  scored by the model's predicted probability for it minus 0.5 (calibrated when
+  the model ships `calibration.json`), and the score is spread over the
+  occurrence's atoms, smaller environments weighing more. For counting
+  vocabularies a fragment present n times is scored by the mean of its
+  ≥1×..≥n× buckets, every copy alike. Reads as "does this atom belong to
+  substructures the model expected", agrees with the bit panel, one pass.
+- `ablation`: the original SPECTRE rule — the cosine drop from removing the
+  environments centred on each atom (for counting vocabularies, one bucket per
+  occurrence, from the top). The sign is relative to the candidate's average
+  alignment and the result depends on SMILES atom order; kept for comparison.
+
+`HIGHLIGHT_ENABLED=false` skips the map entirely: `svg` comes back `null`, and
+`/api/health` reports `highlight_available: false` so the UI hides the checkbox
+rather than offering a switch with one position.
 
 ### Compute pool
 

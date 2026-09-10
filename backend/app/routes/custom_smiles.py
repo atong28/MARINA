@@ -80,8 +80,11 @@ async def custom_smiles_card(body: CustomSmilesCardRequest):
     tanimoto_sim = _tanimoto(ref_tensor, mfp_tensor)
 
     # SVG rendering
+    from app.calibration import load_calibrator
+    model_root = getattr(session, "model_root", None)
+    calibrator = load_calibrator(model_root) if model_root else None
     enhanced_svg = await asyncio.to_thread(
-        render_enhanced_svg, smiles, ref_tensor, session.fp_loader, MOLECULE_IMG_SIZE
+        render_enhanced_svg, smiles, ref_tensor, session.fp_loader, MOLECULE_IMG_SIZE, calibrator,
     )
     plain_svg = await asyncio.to_thread(render_plain_svg, smiles, MOLECULE_IMG_SIZE)
 

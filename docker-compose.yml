@@ -93,6 +93,8 @@ services:
       DATASET_ROOT: /data
       # false → plain depictions only, and the UI hides its similarity-map toggle.
       HIGHLIGHT_ENABLED: ${HIGHLIGHT_ENABLED:-true}
+      # attribution (default) or ablation — see backend/README.md.
+      HIGHLIGHT_METHOD: ${HIGHLIGHT_METHOD:-attribution}
 
       # ── Usage stats ─────────────────────────────────────────────────────────
       # Persisted on a writable named volume; /data is mounted read-only.

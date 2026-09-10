@@ -256,6 +256,7 @@ def render_enhanced_svg(
     predicted_fp: torch.Tensor,
     fp_loader: object,
     img_size: int = 400,
+    calibrator=None,
 ) -> Optional[str]:
     """
     Render the similarity-map colour wash for a molecule: the Gaussian fill of
@@ -288,8 +289,8 @@ def render_enhanced_svg(
         # Pass the same SMILES string that produced `mol`: _atom_weights re-parses
         # it to extract bit environments, and canonicalizing in between would
         # renumber the atoms and shift every highlight.
-        weights = _atom_weights(mol, smiles, predicted_fp, fp_loader)
-        if weights is None:
+        weights = _atom_weights(mol, smiles, predicted_fp, fp_loader, calibrator)
+        if weights is None or not any(weights):
             return None
 
         weights, _ = SimilarityMaps.GetStandardizedWeights(weights)
@@ -369,17 +370,134 @@ def _cos_sim(a: torch.Tensor, b: torch.Tensor) -> float:
     return 0.0 if denom == 0 else float((a @ b) / denom)
 
 
-def _atom_weights(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: object):
+def _atom_weights(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: object,
+                  calibrator=None):
+    """
+    Per-atom signed weights for the similarity map: positive supports the
+    retrieval (green), negative contradicts it (pink).
+
+    Two methods, chosen by HIGHLIGHT_METHOD. `attribution` (default) projects
+    each present substructure's predicted probability onto the atoms it covers;
+    `ablation` is the older leave-one-atom-out cosine difference. See each
+    function for the semantics and trade-offs.
+    """
+    from app.config import HIGHLIGHT_METHOD
+    if HIGHLIGHT_METHOD == "ablation":
+        return _atom_weights_ablation(mol, smiles, predicted_fp, fp_loader)
+    return _atom_weights_attribution(mol, smiles, predicted_fp, fp_loader, calibrator)
+
+
+# Occurrence scores are centred here: a substructure predicted above it supports
+# the candidate, below it contradicts. Same threshold the bit panel groups on.
+_ATTRIBUTION_THRESHOLD = 0.5
+
+
+def _atom_weights_attribution(mol, smiles: str, predicted_fp: torch.Tensor,
+                              fp_loader: object, calibrator=None):
+    """
+    Direct attribution: the bit panel projected onto the structure.
+
+    Every substructure occurrence in the candidate is scored by how strongly the
+    model predicted it, minus the decision threshold, and that score is spread
+    over the occurrence's atoms. An atom's weight is the radius-weighted mean of
+    the scores of every occurrence containing it, so it reads as "does this atom
+    belong to substructures the model expected (green) or did not (pink)", with
+    intensity following the model's confidence.
+
+    For a counting vocabulary a fragment present n times is scored by the mean
+    predicted probability of its ≥1×..≥n× buckets — the fraction of copies the
+    model wants — and every copy gets the same score, since copies are
+    interchangeable. This makes the map independent of which atom the
+    enumeration happened to centre an occurrence on, unlike the ablation.
+
+    Smaller environments get more say (1/atoms in the occurrence) so a large
+    fragment does not swamp the local chemistry underneath it. The size is a
+    property of the occurrence's atom set, not of the centre it was enumerated
+    from (the same set is a different radius from a different centre), which is
+    what keeps the map independent of SMILES atom order. Atoms in no
+    vocabulary substructure get weight 0.
+
+    Missing substructures — predicted but absent from the candidate — have no
+    atoms to paint and so cannot appear on any map drawn on the candidate; the
+    panel's "predicted, but not in this structure" group carries them.
+    """
+    try:
+        from collections import Counter
+        from app.marina_import import ensure_marina_importable
+        ensure_marina_importable()
+        from src.modules.data.fp_utils import get_feature_locations, _multiplicity_cap
+        from rdkit import Chem
+
+        max_radius = getattr(fp_loader, "max_radius", 6) or 6
+        bitinfo_map = getattr(fp_loader, "bitinfo_to_fp_index_map", {})
+        if not bitinfo_map:
+            return None
+        feature_kind = getattr(fp_loader, "FEATURE_KIND", "morgan")
+        located = get_feature_locations(smiles, max_radius, kind=feature_kind)
+        if not located:
+            return None
+
+        pred = predicted_fp.detach().float().cpu().flatten().tolist()
+
+        def prob(col):
+            p = pred[col] if 0 <= col < len(pred) else 0.0
+            return calibrator(p) if calibrator else p
+
+        # One (centre atom, radius, fragment) per occurrence, and a score per fragment.
+        if feature_kind in _MULTIPLICITY_KINDS:
+            occurrences = [(a, r, f) for a, feats in located.items()
+                           for (f, k), r in feats if k == 1]
+            cap = _multiplicity_cap(feature_kind)
+            score = {}
+            for frag, n in Counter(f for _, _, f in occurrences).items():
+                cols = [bitinfo_map.get((frag, k)) for k in range(1, min(n, cap) + 1)]
+                cols = [c for c in cols if c is not None]
+                if cols:
+                    score[frag] = sum(prob(c) for c in cols) / len(cols) - _ATTRIBUTION_THRESHOLD
+        else:
+            occurrences = [(a, r, f) for a, feats in located.items() for f, r in feats]
+            score = {f: prob(bitinfo_map[f]) - _ATTRIBUTION_THRESHOLD
+                     for _, _, f in occurrences if f in bitinfo_map}
+
+        n_atoms = mol.GetNumAtoms()
+        num, den = [0.0] * n_atoms, [0.0] * n_atoms
+        for centre, radius, frag in occurrences:
+            s = score.get(frag)
+            if s is None:
+                continue
+            atoms = {centre}
+            for bond_idx in Chem.FindAtomEnvironmentOfRadiusN(mol, radius, centre):
+                bond = mol.GetBondWithIdx(bond_idx)
+                atoms.add(bond.GetBeginAtomIdx())
+                atoms.add(bond.GetEndAtomIdx())
+            w = 1.0 / len(atoms)
+            for i in atoms:
+                if i < n_atoms:
+                    num[i] += s * w
+                    den[i] += w
+        return [num[i] / den[i] if den[i] else 0.0 for i in range(n_atoms)]
+    except Exception as exc:
+        logger.debug("_atom_weights_attribution failed: %s", exc)
+        return None
+
+
+def _atom_weights_ablation(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: object):
     """
     Per-atom contribution weights, as a leave-one-out ablation of the retrieved
     molecule's fingerprint (ported from SPECTRE's
-    show_retrieved_mol_with_highlighted_frags).
+    show_retrieved_mol_with_highlighted_frags). Kept as HIGHLIGHT_METHOD=ablation.
 
     weight[i] = cos(FP_retrieved, FP_pred) - cos(FP_retrieved without atom i, FP_pred)
 
     Positive means removing the atom hurts the match, so the atom supports the
     retrieval; negative means removing it improves the match. The sign is the
     whole point — a non-negative weight vector renders green-only.
+
+    Known weaknesses, which motivated the attribution method: an occurrence is
+    credited to one centre atom (the lowest index that produced it), so the map
+    depends on SMILES atom order; only environments *centred* on the atom are
+    removed; and the sign is relative to the candidate's average alignment, not
+    to whether the model predicted the substructure.
     """
     try:
         from app.marina_import import ensure_marina_importable
@@ -419,7 +537,7 @@ def _atom_weights(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: objec
             weights.append(base_sim - _cos_sim(fp, pred))
         return weights
     except Exception as exc:
-        logger.debug("_atom_weights failed: %s", exc)
+        logger.debug("_atom_weights_ablation failed: %s", exc)
         return None
 
 
