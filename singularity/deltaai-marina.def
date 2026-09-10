@@ -1,0 +1,155 @@
+Bootstrap: docker
+From: nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04
+
+# MARINA training image for NCSA DeltaAI (aarch64 / Grace-Hopper).
+#
+# TARGET GPU: NVIDIA GH200 120GB (Hopper, sm_90), DeltaAI `ghx4` partition. The node CPU is
+# ARM (NVIDIA Grace / aarch64), so this image is NOT interchangeable with the amd64 marina.sif
+# used on Expanse and the A100 Delta -- it must be BUILT FOR aarch64:
+#
+#   MUST be built on an aarch64 host (or with aarch64 emulation). This workstation runs in a
+#   rootless user namespace and cannot register QEMU binfmt, so `docker buildx --platform
+#   linux/arm64` does not work here. Build natively on an aarch64 machine, e.g. on the DeltaAI
+#   login node itself with a rootless build:
+#     apptainer build --ignore-fakeroot-command marina-arm64.sif deltaai-marina.def
+#   then place it at $PROJECT_ROOT/images/marina-arm64.sif.
+#
+# TWO DELIBERATE DEVIATIONS from the amd64 marina.def, both forced by aarch64 wheel/build
+# availability and both irrelevant to a fingerprint-comparison training run:
+#   * torch 2.7.1+cu128 (NOT 2.8.0): PyTorch publishes no 2.8.0 aarch64/cu128 wheel at all;
+#     aarch64 cu128 exists only for 2.7.1 and 2.9.0. 2.7.1 is the closest below 2.8.0 and is
+#     supported by pytorch-lightning 2.6.1 (2.9.0 is too new for PL 2.6.1).
+#   * rdkit 2026.03.6 (NOT 2025.9.6): conda-forge has no py313 aarch64 build of rdkit 2025.09.x;
+#     the earliest py313 aarch64 rdkit is 2026.03.x. Training reads its fingerprint TARGETS from
+#     the prebuilt FragIdx/rankingset injected into the dataset, not from runtime RDKit, so the
+#     image RDKit version only touches the benchmark-callback's build_mfp_for_smiles (a
+#     monitoring metric), never the trained fingerprint or the val/test rank comparison.
+#
+# SCOPE: this image runs training (`src.main`) and nothing else -- its package set is the
+# measured import closure of src/, identical in spirit to marina.def.
+
+%labels
+    Author Anthony Tong
+    Description MARINA training environment (aarch64 / GH200 sm_90)
+    Python 3.13
+    Torch 2.7.1+cu128
+    PytorchLightning 2.6.1
+
+%help
+    MARINA training environment for DeltaAI (aarch64, GH200/Hopper sm_90).
+    - Bind the repo to /code, the dataset root to /workspace, run with --pwd /code
+    - Build ON an aarch64 host: apptainer build --ignore-fakeroot-command marina-arm64.sif deltaai-marina.def
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export PATH=/opt/conda/envs/smart/bin:$PATH
+    export PYTHONUNBUFFERED=1
+    export PYTHONPATH=/code:$PYTHONPATH
+
+%post
+    set -eux
+
+    export DEBIAN_FRONTEND=noninteractive
+    export PIP_NO_CACHE_DIR=1
+    export MAMBA_ROOT_PREFIX=/opt/micromamba
+    export TORCH_INDEX=https://download.pytorch.org/whl/cu128
+
+    apt-get update && apt-get install -y --no-install-recommends \
+        bash ca-certificates curl wget git bzip2 \
+        libglib2.0-0 libxext6 libxrender1 libsm6 libx11-6 \
+        libfontconfig1 libfreetype6 libstdc++6 \
+        && rm -rf /var/lib/apt/lists/*
+
+    mkdir -p /opt/conda /opt/micromamba /code /workspace
+
+    # aarch64 micromamba (NOT linux-64).
+    curl -Ls https://micro.mamba.pm/api/micromamba/linux-aarch64/latest \
+        | tar -xvj -C /tmp bin/micromamba
+    mv /tmp/bin/micromamba /usr/local/bin/micromamba
+    chmod +x /usr/local/bin/micromamba
+    micromamba --version
+
+    # Import closure of src/. Versions match marina.def where an aarch64 build exists; rdkit is
+    # bumped to the earliest py313 aarch64 build (see header) and does not affect fp targets.
+    micromamba create -y -p /opt/conda/envs/smart -c conda-forge \
+        python=3.13.12 \
+        numpy=2.4.2 \
+        pyarrow=23.0.1 \
+        pydantic=2.12.5 \
+        rdkit=2026.03.6 \
+        tqdm=4.67.3 \
+        tyro=1.0.8 \
+        wandb=0.25.0 \
+        pip
+
+    /opt/conda/envs/smart/bin/pip install --upgrade pip setuptools wheel
+
+    # torch 2.7.1+cu128 aarch64 (see header for why not 2.8.0).
+    /opt/conda/envs/smart/bin/pip install \
+        torch==2.7.1 --index-url "${TORCH_INDEX}"
+
+    /opt/conda/envs/smart/bin/pip install \
+        pytorch-lightning==2.6.1 \
+        torchmetrics==1.8.2
+
+    micromamba clean -a -y
+    rm -rf /root/.cache/pip
+
+    echo "=== smoke test: the measured import closure of src/ ==="
+/opt/conda/envs/smart/bin/python - <<'PY'
+import importlib, sys
+mods = ["numpy", "pyarrow", "pydantic", "pytorch_lightning", "rdkit",
+        "torch", "torchmetrics", "tqdm", "tyro", "wandb"]
+bad = []
+for m in mods:
+    try:
+        mod = importlib.import_module(m)
+        print(f"  {m:20s} {getattr(mod, '__version__', 'ok')}")
+    except Exception as e:
+        bad.append(f"{m}: {e}")
+try:
+    from pydantic.dataclasses import dataclass  # noqa: F401
+except Exception as e:
+    bad.append(f"pydantic.dataclasses: {e}")
+if bad:
+    print("FAILED:", *bad, sep="\n  ")
+    sys.exit(1)
+print("all imports OK")
+PY
+
+    echo "=== assert this wheel can run on GH200 (sm_90) ==="
+/opt/conda/envs/smart/bin/python - <<'PY'
+import sys, torch
+archs = ""
+try:
+    archs = torch._C._cuda_getArchFlags() or ""
+except Exception as e:
+    print(f"  (_cuda_getArchFlags unavailable: {e})")
+print("torch", torch.__version__)
+print("arch flags:", archs or "<undetermined>")
+if not archs:
+    print("WARNING: could not read compiled arch flags; sm_90 support is UNVERIFIED.")
+elif "sm_90" not in archs.split():
+    print("FATAL: no sm_90 in this wheel; it cannot run on GH200/Hopper nodes.", file=sys.stderr)
+    sys.exit(1)
+else:
+    print("sm_90 present: image is valid for GH200/Hopper")
+PY
+
+    echo "=== torchrun present ==="
+    test -x /opt/conda/envs/smart/bin/torchrun
+    /opt/conda/envs/smart/bin/python -c \
+        "import torch.distributed.run; print('torchrun entrypoint OK')"
+
+%runscript
+    export PATH=/opt/conda/envs/smart/bin:$PATH
+    exec "$@"
+
+%test
+    export PATH=/opt/conda/envs/smart/bin:$PATH
+    python -c "
+import pytorch_lightning, torch, torchmetrics, rdkit, pydantic, tyro, pyarrow, wandb, numpy, tqdm
+from pydantic.dataclasses import dataclass
+print('image OK:', torch.__version__, '| pl', pytorch_lightning.__version__)
+"
