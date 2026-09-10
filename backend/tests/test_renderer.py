@@ -110,6 +110,62 @@ def test_cos_sim_handles_zero_vectors():
     assert _cos_sim(torch.zeros(4), torch.ones(4)) == 0.0
 
 
+def test_multiplicity_ablation_drops_only_the_top_bucket(marina_src):
+    """
+    A counting vocabulary: removing one occurrence of a fragment lowers its count
+    by one, so only the top cumulative bucket goes. Zeroing every bucket (the
+    Morgan rule) made every atom look load-bearing and the map green-only.
+
+    Candidate: hexanoic acid. Prediction: butanoic acid's fingerprint, which has
+    fewer chain CH2 occurrences. Ablating a chain carbon of the candidate then
+    removes buckets the prediction does not want and must IMPROVE the match
+    (negative weight); the carboxyl carbon, wanted by both, must still be positive.
+    """
+    from src.modules.data.fp_utils import (
+        count_substructure_multiplicities, MULTIPLICITY_UNCAPPED,
+    )
+    from app.renderer import _atom_weights, _multiplicity_drops
+    long, short = "CCCCCC(=O)O", "CCCC(=O)O"
+
+    cols: dict = {}
+    for smi in (long, short):
+        for feat in sorted(count_substructure_multiplicities(smi, RADIUS)):
+            cols.setdefault(feat, len(cols))
+
+    class _Loader:
+        FEATURE_KIND = MULTIPLICITY_UNCAPPED
+        max_radius = RADIUS
+        bitinfo_to_fp_index_map = cols
+        out_dim = len(cols)
+
+    pred = torch.zeros(len(cols))
+    for feat in count_substructure_multiplicities(short, RADIUS):
+        pred[cols[feat]] = 1.0
+
+    mol = _mol(long)
+    weights = _atom_weights(mol, long, pred, _Loader())
+    assert len(weights) == mol.GetNumAtoms()
+    assert min(weights[:5]) < 0, "a surplus chain carbon should contradict the shorter prediction"
+    carboxyl = [a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() == "C" and
+                any(n.GetSymbol() == "O" for n in a.GetNeighbors())][0]
+    assert weights[carboxyl] > 0
+
+    # Direct check of the rule: an atom drops one bucket per occurrence it centres.
+    from src.modules.data.fp_utils import get_feature_locations
+    located = get_feature_locations(long, RADIUS, kind=MULTIPLICITY_UNCAPPED)
+    atom_to_bits = {a: [f for f, _ in feats] for a, feats in located.items()}
+    drops = _multiplicity_drops(atom_to_bits, MULTIPLICITY_UNCAPPED)
+    for atom, removed in drops.items():
+        per_frag: dict = {}
+        for frag, k in removed:
+            per_frag.setdefault(frag, []).append(k)
+        centred = [f for f, k in atom_to_bits[atom] if k == 1]
+        for frag, ks in per_frag.items():
+            assert len(ks) == centred.count(frag)
+            top = max(k for f, k in atom_to_bits[atom] if f == frag)
+            assert sorted(ks) == list(range(top - len(ks) + 1, top + 1))
+
+
 # ── Rendering ─────────────────────────────────────────────────────────────────
 
 def test_enhanced_render_returns_a_png_data_uri(stub_loader, predicted_fp):

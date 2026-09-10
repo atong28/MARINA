@@ -404,11 +404,57 @@ def _atom_weights(mol, smiles: str, predicted_fp: torch.Tensor, fp_loader: objec
         base_fp = _mfp_from_bitinfo(atom_to_bits, bitinfo_map, out_dim)
         base_sim = _cos_sim(base_fp, pred)
 
-        return [
-            base_sim - _cos_sim(
-                _mfp_from_bitinfo(atom_to_bits, bitinfo_map, out_dim, (atom_idx,)), pred)
-            for atom_idx in range(mol.GetNumAtoms())
-        ]
+        if feature_kind in _MULTIPLICITY_KINDS:
+            drops = _multiplicity_drops(atom_to_bits, feature_kind)
+        else:
+            drops = {a: set(bits) for a, bits in atom_to_bits.items()}
+
+        weights = []
+        for atom_idx in range(mol.GetNumAtoms()):
+            fp = base_fp.clone()
+            for b in drops.get(atom_idx, ()):
+                col = bitinfo_map.get(b)
+                if col is not None and 0 <= col < out_dim:
+                    fp[col] = 0.0
+            weights.append(base_sim - _cos_sim(fp, pred))
+        return weights
     except Exception as exc:
         logger.debug("_atom_weights failed: %s", exc)
         return None
+
+
+_MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped", "unique_multiplicity")
+
+
+def _multiplicity_drops(atom_to_bits: dict, feature_kind: str) -> dict:
+    """
+    Which (fragment, bucket) features ablating each atom removes, for a counting
+    vocabulary.
+
+    SPECTRE's rule — zero every bit centred on the atom — is right for Morgan bits,
+    where one bit is one environment. Here a fragment's cumulative buckets (≥1×,
+    ≥2×, …) are separate columns and an atom centred on ONE occurrence of a
+    fragment counted n times carries all n of them, so zeroing them all pretends
+    the fragment vanished from the molecule. Removal then always destroys wanted
+    bits, every weight comes out positive and the map can only ever be green.
+
+    Removing an occurrence lowers the count from n to n-1, which turns off only
+    the ≥n× bucket, so that is what an atom's ablation drops (one bucket per
+    occurrence it is the centre of, from the top down).
+    """
+    from collections import Counter
+    from src.modules.data.fp_utils import _multiplicity_cap
+
+    cap = _multiplicity_cap(feature_kind)
+    # One (frag, 1) entry per occurrence, keyed by its centre atom.
+    centred = {a: [f for f, k in bits if k == 1] for a, bits in atom_to_bits.items()}
+    counts = Counter(f for frags in centred.values() for f in frags)
+    drops = {}
+    for atom, frags in centred.items():
+        removed = set()
+        for frag, m in Counter(frags).items():
+            n = counts[frag]
+            top, new_top = min(n, cap), min(n - m, cap)
+            removed |= {(frag, k) for k in range(new_top + 1, top + 1)}
+        drops[atom] = removed
+    return drops
