@@ -1,0 +1,65 @@
+# Exp 3 — within-bucket MCS collision analysis, CPU indexed sweep.
+#
+# rdFMCS is CPU-bound and the within-bucket pairs are embarrassingly parallel, so this is a
+# COMPLETIONS-shard sweep: each pod runs one --shard-id of --num-shards and writes a partial
+# parquet; concat with scripts/exp3_concat.py afterward. No GPU (do NOT add a GPU request —
+# an idle-GPU CPU job is the #1 Nautilus ban cause).
+#
+# PREREQS before `kubectl create -f` (both are one-time):
+#   1. Push exp3_collision_mces.py to the repo and pin the COMMIT below (clone-by-SHA, per
+#      the experiment-registry convention).
+#   2. Stage the two data artifacts onto a PVC the pod mounts, and point --retrieval / --fp at
+#      them. They are NOT in git:
+#        - data/dataset/retrieval.pkl                                  (~39 MB)
+#        - data/dataset/RankingEntropyUniqueMultiplicity/rankingset.pt (~870 MB)
+#      Set <FP_DATA_MOUNT> / paths to wherever you stage them on atong-spectre.
+#
+# For the 531k retrieval set this is optional — the local run finishes in ~1h. The cluster
+# payoff is the 68M library (swap --retrieval/--fp for the 68M shards + rebuilt rankingset)
+# and fast iteration; the same --num-shards mechanism scales unchanged.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-exp3-collision-mces
+  labels: { owner: atong }
+spec:
+  completions: 40
+  parallelism: 40
+  completionMode: Indexed
+  backoffLimit: 2
+  activeDeadlineSeconds: 21600      # 6h hard cap
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      containers:
+        - name: exp3
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: BRANCH, value: "main" }
+            - { name: COMMIT, value: "<FULL-40-CHAR-SHA-AFTER-PUSH>" }
+            - { name: DATASETS, value: "" }        # exp3 needs no training dataset unzip
+            - { name: PIXI_INSTALL, value: "1" }
+          command: ["/bin/bash", "-c"]
+          args:
+            - >-
+              set -euxo pipefail &&
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" &&
+              mkdir -p ~/.ssh && cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa &&
+              git clone --branch "$BRANCH" git@github.com:atong28/MARINA.git /code &&
+              git -C /code checkout --quiet "$COMMIT" &&
+              cd /code && pixi install &&
+              pixi run python analysis/fp-quality/scripts/exp3_collision_mces.py
+              --retrieval <FP_DATA_MOUNT>/retrieval.pkl
+              --fp <FP_DATA_MOUNT>/RankingEntropyUniqueMultiplicity/rankingset.pt
+              --workers 8 --timeout 60 --max-pairs-per-group 500 --seed 0
+              --num-shards 40 --shard-id "$JOB_COMPLETION_INDEX"
+              --out /root/gurusmart/exp3-results/exp3_collision_mces_uniqmult.shard${JOB_COMPLETION_INDEX}.parquet
+          resources:
+            requests: { cpu: "8", memory: 16Gi, ephemeral-storage: 20Gi }
+            limits:   { cpu: "10", memory: 20Gi, ephemeral-storage: 20Gi }
+          volumeMounts:
+            - { name: atong-spectre, mountPath: /root/gurusmart }   # code ssh key + results out
+      volumes:
+        - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }
