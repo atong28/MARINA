@@ -12,3 +12,8 @@
 | NP0352202 | CD2Cl2 | 6 | 2 | 12 | 92% | 15 | pyridine-fused isocoumarin; clean, HMBC-assigned; 2 benzene 3J targets uncertain |
 | NP0351848 | CDCl3 | 0 | 1 | 16 | 94% | 25 | brasilane sesquiterp.; HSQC export corrupt (excluded); HMBC methyl-anchored map; COSY crowded, only CH2OH geminal |
 | NP0351238 | DMSO-d6 | 11 | 3 | 24 | 97% | 30 | phloroglucinol-fused lactone; fully HMBC-assigned; solvent was blank in meta (=DMSO) |
+| NP0350793 | CD3OD | 0 | 0 | 0 | - | 3 | Ketomemicin; unprocessable: all three 2D NUS (50/50/25%) no nuslist |
+| NP0352143 | C5D5N | 10 | 0 | 2 | 40% | 25 | Massularoside saponin (C41); PARTIAL - diagnostic anomerics/methyls + 2 verified glycosidic linkages; dense envelope not exhaustive |
+| NP0350690 | CD3CN | 0 | 0 | 0 | - | 3 | Comptonellin cyclic peptide; unprocessable: all three 2D NUS 50% no nuslist |
+| NP0352144 | D2O | 9 | 0 | 0 | 0% | 18 | cyclic peptide-alkaloid; heavy overlap + t1 streak/low-13C artifacts; PARTIAL HSQC only, poor target |
+| NP0350602 | Acetone-d6 | 0 | 0 | 0 | - | 3 | Calancardin analog; unprocessable: all three 2D NUS (20/40/25%) no nuslist |

@@ -1,0 +1,33 @@
+{
+  "npid": "NP0352144",
+  "smiles": "[H][C@@]12CCCN1C(=O)C[C@]([H])(NC(=O)[C@]1([H])C[C@]([H])(CCN1)OC(=O)[C@@]([H])(NC(=O)[C@]1([H])CCCCN1C2=O)C(C)(O)CC)C(O)=O",
+  "formula": "C27H41N5O9",
+  "solvent": "D2O",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 4.94, "f1_ppm": 46.3, "rel_intensity": 0.73, "confidence": "medium"},
+        {"f2_ppm": 4.90, "f1_ppm": 32.4, "rel_intensity": 0.61, "confidence": "medium"},
+        {"f2_ppm": 4.79, "f1_ppm": 36.4, "rel_intensity": 0.43, "confidence": "medium"},
+        {"f2_ppm": 4.49, "f1_ppm": 29.1, "rel_intensity": 0.28, "confidence": "medium"},
+        {"f2_ppm": 4.17, "f1_ppm": 38.3, "rel_intensity": 1.00, "confidence": "medium"},
+        {"f2_ppm": 3.90, "f1_ppm": 31.8, "rel_intensity": 0.42, "confidence": "medium"},
+        {"f2_ppm": 3.76, "f1_ppm": 21.7, "rel_intensity": 0.21, "confidence": "low"},
+        {"f2_ppm": 2.90, "f1_ppm": 21.7, "rel_intensity": 0.19, "confidence": "low"},
+        {"f2_ppm": 3.47, "f1_ppm": 27.4, "rel_intensity": 0.26, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "cyclic-peptide HSQC is crowded with strong t1 streaks at every alpha-CH 1H position; the picker returns many spurious low-13C 'peaks' (f1 = 14, 8.7, 0.7, -3.0, -14.6 ppm) that are streak/noise, not carbons of this compound (only one genuine low carbon, the ethyl CH3 ~8 ppm). Only the clearly-resolved real-region (f1 21-46) contour centers are recorded, without atom assignment (the 5 amino-acid alpha-CH and the many proline/pipecolic ring CH2 are too degenerate/overlapped to assign reliably).",
+    "COSY": "not curated: crowded overlapped cyclic-peptide spin systems, per-pair assignment unreliable within budget.",
+    "HMBC": "not curated: without a resolved HSQC proton-carbon map and given the overlap, HMBC cross-peaks cannot be assigned reliably."
+  },
+  "notes": "Cyclic peptide-alkaloid (proline + pipecolic residues, C-terminal acid, an ester linkage, C33 quaternary carbinol). In D2O (NH exchanged). PARTIAL curation: only confidently-resolved HSQC cross-peaks recorded. 1H ref corr -0.144; 13C axis appears to carry t1-streak artifacts at low ppm. This compound is a poor calibration target (heavy overlap) and is recorded conservatively."
+}
