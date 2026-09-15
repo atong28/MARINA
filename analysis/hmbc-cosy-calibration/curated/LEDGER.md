@@ -27,3 +27,8 @@
 | NP0351588 | CDCl3 | 22 | 0 | 10 | 55% | 25 | Trichoharzchin PKS-NRPS macrocycle; HMBC key alkenes/ketone/CHOH assigned; aliphatic partial |
 | NP0351815 | DMSO-d6 | 8 | 2 | 7 | 88% | 15 | Lindolin D indolylacetanilide; CH2 HMBC core assigned; some indole/aniline ArCH overlap |
 | NP0351880 | CD3OD | 0 | 0 | 0 | - | 2 | Acrochlorin meroterpenoid; unprocessable: all three 2D NUS (40/50/35%) no nuslist |
+| NP0351466 | C5D5N | 4 | 0 | 0 | 0% | 10 | Campestridin glycolipid saponin (C42); MINIMAL - dilute+overlapped poor target |
+| NP0350689 | CD3CN | 0 | 0 | 0 | - | 1 | Comptonellin analog cyclic peptide; unprocessable: all 2D NUS 50% no nuslist |
+| NP0352130 | D2O | 8 | 0 | 6 | 60% | 18 | STX/TTX caged guanidinium; CH3-HMBC core assigned; HDO ridge interferes with O-CH region |
+| NP0350566 | Acetone-d6 | 0 | 3 | 0 | - | 12 | Panusimilin bis-chromene dimer; ONLY COSY processable (HSQC/HMBC NUS); methine chain traced |
+| NP0353960 | CDCl3 | 11 | 0 | 2 | 10% | 18 | Anthracauris C2-symmetric sesquiterpenoid dimer; HSQC resolved, HMBC weak (dilute) |

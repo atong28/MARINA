@@ -1,0 +1,28 @@
+{
+  "npid": "NP0351466",
+  "smiles": "CCCC1CCCCCCCCCC(=O)O[C@H]2[C@@H](O[C@@H](C)[C@H](OC(=O)C(C)C)[C@H]2O[C@@H]2O[C@@H](C)[C@H](O)[C@@H](O)[C@H]2O)O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O[C@@H]2[C@@H](O)[C@@H](O)[C@@H](C)O[C@H]2O1",
+  "formula": "C42H72O20",
+  "solvent": "C5D5N",
+  "frequency_mhz": 900.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 6.15, "f1_ppm": 103.4, "rel_intensity": 0.06, "confidence": "medium"},
+        {"f2_ppm": 5.30, "f1_ppm": 80.2, "rel_intensity": 0.06, "confidence": "low"},
+        {"f2_ppm": 4.97, "f1_ppm": 78.3, "rel_intensity": 0.06, "confidence": "low"},
+        {"f2_ppm": 5.50, "f1_ppm": 63.8, "rel_intensity": 0.09, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "the strongest picked contours (8.63/125.1, 9.00/137.1, 10.15/151.4, and the 2.5-3.0/18-20 cluster) have 1H/13C shifts inconsistent with this aliphatic glycolipid and are impurity/artifact/residual-pyridine, not the compound.",
+    "COSY": "not curated - large glycolipid, dilute, overlapped (poor target).",
+    "HMBC": "not curated - large glycolipid, dilute, overlapped (poor target)."
+  },
+  "notes": "Campestridin - a large macrolactone glycolipid saponin (branched fatty-acyl core esterifying a tetrasaccharide of 6-deoxy/hexose sugars + isobutyryl ester), C42H72O20, in C5D5N at 900 MHz. POOR calibration target: dilute sample (real cross-peaks are weak; the picker's strong peaks are contaminants), extensive sugar-ring + long-alkyl-chain overlap. Only a few weakly-resolved sugar contours recorded (one anomeric ~6.15/103.4), positions only. Recommend excluding from per-pair calibration statistics."
+}

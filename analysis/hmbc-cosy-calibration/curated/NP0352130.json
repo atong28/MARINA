@@ -1,0 +1,44 @@
+{
+  "npid": "NP0352130",
+  "smiles": "[H]N1C(=[NH2+])N(O)[C@]23[C@]4([H])O[C@@]1([H])[C@@]2([H])[C@@H]1[C@@]([H])(C)[C@@H](OC41O)[C@]3([H])O",
+  "formula": "C11H16N3O5",
+  "solvent": "D2O",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 0.77, "f1_ppm": 16.0, "assign": [12, 12], "confidence": "high"},
+        {"f2_ppm": 2.14, "f1_ppm": 37.1, "assign": [11, 11], "confidence": "high"},
+        {"f2_ppm": 3.01, "f1_ppm": 48.7, "assign": [10, 10], "confidence": "medium"},
+        {"f2_ppm": 3.87, "f1_ppm": 81.1, "assign": [13, 13], "confidence": "high"},
+        {"f2_ppm": 4.11, "f1_ppm": 86.3, "confidence": "medium"},
+        {"f2_ppm": 4.80, "f1_ppm": 80.5, "confidence": "medium"},
+        {"f2_ppm": 4.19, "f1_ppm": 64.7, "confidence": "medium"},
+        {"f2_ppm": 2.47, "f1_ppm": 45.7, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 0.77, "f1_ppm": 81.3, "assign": [12, 13], "rel_intensity": 0.85, "confidence": "high"},
+        {"f2_ppm": 0.77, "f1_ppm": 36.4, "assign": [12, 11], "rel_intensity": 0.84, "confidence": "high"},
+        {"f2_ppm": 0.77, "f1_ppm": 48.4, "assign": [12, 10], "rel_intensity": 0.83, "confidence": "high"},
+        {"f2_ppm": 2.47, "f1_ppm": 106.7, "rel_intensity": 0.53, "confidence": "medium"},
+        {"f2_ppm": 2.47, "f1_ppm": 86.2, "rel_intensity": 0.56, "confidence": "medium"},
+        {"f2_ppm": 4.11, "f1_ppm": 105.6, "rel_intensity": 0.24, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "HDO ridge at ~4.56 ppm (D2O) produces spurious cross-peaks (4.56/-4.0, 4.56/153.9); reference-region artifacts near 1H -0.2/13C -2 excluded.",
+    "COSY": "not curated: rigid caged spin system near the HDO ridge; small couplings hard to separate reliably.",
+    "HMBC": "downfield picks at 176.0/183.8 are artifacts (this cation has no carbonyl); guanidinium C1~157.1 seen weakly. Only the confident methyl and cage-quaternary correlations recorded."
+  },
+  "notes": "Saxitoxin/tetrodotoxin-family caged guanidinium alkaloid (C11H16N3O5+, N-hydroxy), D2O. Rigid polycyclic: methyl C12=16.0/0.77 (HMBC to C11=37.1, C13=81.1, C10=48.4). Cage O-CH at 64-86, cage quaternaries (aminal/hemiketal C5/C15) ~105-107, guanidinium C1~157. 7 CH + 1 CH3 expected; the O-CH region overlaps the HDO ridge so exact count/assignment of the 4.1-4.8 O-CH is partial. HSQC signs not reliable; 1H ref -0.151."
+}

@@ -1,0 +1,26 @@
+{
+  "npid": "NP0350566",
+  "smiles": "[H][C@@]12O[C@]3([H])C4=C(OC(C)(C)[C@@]3([H])[C@]1([H])C(C)(C)OC1=C2C=C(O)C(O)=C1)C=C(O)C(O)=C4",
+  "formula": "C22H24O7",
+  "solvent": "Acetone-d6",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "COSY": {
+      "pulse_program": "cosy",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 4.46, "f1_ppm": 2.27, "assign": [0, 10], "confidence": "high"},
+        {"f2_ppm": 4.34, "f1_ppm": 2.27, "assign": [9, 10], "confidence": "medium"},
+        {"f2_ppm": 4.59, "f1_ppm": 4.34, "assign": [2, 9], "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "unprocessable: NUS 25% (FnTYPE=2) no nuslist.",
+    "HMBC": "unprocessable: NUS 25% (FnTYPE=2) no nuslist."
+  },
+  "notes": "Panusimilin - a symmetric bis(2,2-dimethylchromene) caged polyphenol dimer, Acetone-d6. Only COSY is uniformly sampled (HSQC and HMBC are NUS with no nuslist, so no proton-carbon map). The central sp3 methine chain C0(O-CH ~4.46)-C10(2.27)-C9(4.34)-C2 gives the recorded cross-peaks; the 4 aromatic CH sit on tetrasubstituted rings as isolated singlets (no COSY) and the 4 gem-dimethyls are singlets. Cross-peak atom assignments are tentative (no HSQC to confirm which O-CH is C0 vs C2). Strong t1 streaks at 4.46 and 2.27."
+}
