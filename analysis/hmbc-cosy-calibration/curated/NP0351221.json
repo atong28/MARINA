@@ -1,0 +1,47 @@
+{
+  "npid": "NP0351221",
+  "smiles": "[H][C@]12[C@@H](OC(=O)C(C)C)[C@@H]3[C@@H](CN(C)C)C(=O)O[C@@H]3[C@H](OC(C)=O)[C@]1(C)[C@@H](O)CC[C@]2(C)O",
+  "formula": "C23H37NO8",
+  "solvent": "CDCl3",
+  "frequency_mhz": 400.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 5.79, "f1_ppm": 67.5, "confidence": "medium"},
+        {"f2_ppm": 5.19, "f1_ppm": 74.1, "assign": [1, 1], "confidence": "medium"},
+        {"f2_ppm": 4.81, "f1_ppm": 72.7, "confidence": "medium"},
+        {"f2_ppm": 3.33, "f1_ppm": 71.8, "confidence": "medium"},
+        {"f2_ppm": 2.71, "f1_ppm": 45.5, "confidence": "medium"},
+        {"f2_ppm": 2.60, "f1_ppm": 46.0, "confidence": "low"},
+        {"f2_ppm": 2.19, "f1_ppm": 20.2, "confidence": "medium"},
+        {"f2_ppm": 1.26, "f1_ppm": 29.1, "confidence": "medium"},
+        {"f2_ppm": 1.31, "f1_ppm": 26.3, "confidence": "medium"},
+        {"f2_ppm": 1.21, "f1_ppm": 19.3, "assign": [6, 6], "confidence": "medium"},
+        {"f2_ppm": 1.31, "f1_ppm": 12.7, "confidence": "low"},
+        {"f2_ppm": 2.19, "f1_ppm": 42.2, "confidence": "low"},
+        {"f2_ppm": 1.78, "f1_ppm": 27.2, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 2.15, "f1_ppm": 172.1, "assign": [21, 20], "rel_intensity": 0.97, "confidence": "high"},
+        {"f2_ppm": 1.18, "f1_ppm": 177.3, "rel_intensity": 0.72, "confidence": "high"},
+        {"f2_ppm": 5.78, "f1_ppm": 177.3, "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 2.23, "f1_ppm": 179.6, "rel_intensity": 0.04, "confidence": "medium"},
+        {"f2_ppm": 1.12, "f1_ppm": 25.8, "rel_intensity": 0.25, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "sample dilute; overlapped methyl region.",
+    "COSY": "not curated: dilute, overlapped ring."
+  },
+  "notes": "Highly oxygenated sesquiterpene (guaianolide-type) gamma-butyrolactone bearing an (dimethylamino)methyl, a secondary isobutyrate and a secondary acetate (CDCl3), dilute. Carbonyls: acetate C=O 172.1 (acetate CH3 2.19/20.2), isobutyrate C=O 177.3 (iBu gem-CH3 ~1.18/19, methine ~34), lactone C=O 179.6. O-CH: C1(iBu ester) 74.1/5.19, and acetate/lactone O-CH at 67-73 (5.79, 4.81, 3.33). N-CH2/NMe2 and ring CH ~45-46. Methyls C24/C30 ~26-29. Skeleton assignment partial (weak/dilute HMBC). HSQC signs not reliable."
+}

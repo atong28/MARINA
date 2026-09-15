@@ -1,0 +1,50 @@
+{
+  "npid": "NP0352049",
+  "smiles": "C[C@H]1C(=O)S[C@@]11CC\\C(C)=C\\CC(=C)\\C=C\\C=C/C2=COC(=N2)\\C(=N/O)[C@@H](CO)OC(=O)C1",
+  "formula": "C24H28N2O6S",
+  "solvent": "CD3OD",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 1.74, "f1_ppm": 15.0, "confidence": "high"},
+        {"f2_ppm": 1.15, "f1_ppm": 9.8, "confidence": "high"},
+        {"f2_ppm": 5.08, "f1_ppm": 117.2, "confidence": "high"},
+        {"f2_ppm": 7.99, "f1_ppm": 137.4, "confidence": "high"},
+        {"f2_ppm": 7.54, "f1_ppm": 127.4, "confidence": "medium"},
+        {"f2_ppm": 6.39, "f1_ppm": 136.9, "confidence": "medium"},
+        {"f2_ppm": 6.31, "f1_ppm": 131.6, "confidence": "medium"},
+        {"f2_ppm": 6.20, "f1_ppm": 116.0, "confidence": "medium"},
+        {"f2_ppm": 5.37, "f1_ppm": 124.4, "confidence": "low"},
+        {"f2_ppm": 5.96, "f1_ppm": 74.8, "confidence": "medium"},
+        {"f2_ppm": 4.30, "f1_ppm": 71.2, "confidence": "medium"},
+        {"f2_ppm": 4.08, "f1_ppm": 61.3, "confidence": "medium"},
+        {"f2_ppm": 3.12, "f1_ppm": 45.0, "confidence": "medium"},
+        {"f2_ppm": 2.06, "f1_ppm": 36.0, "confidence": "low"},
+        {"f2_ppm": 1.29, "f1_ppm": 29.2, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.14, "f1_ppm": 194.0, "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 7.99, "f1_ppm": 152.6, "rel_intensity": 0.27, "confidence": "high"},
+        {"f2_ppm": 3.12, "f1_ppm": 169.3, "rel_intensity": 0.27, "confidence": "medium"},
+        {"f2_ppm": 1.74, "f1_ppm": 134.6, "rel_intensity": 0.01, "confidence": "medium"},
+        {"f2_ppm": 1.74, "f1_ppm": 124.1, "rel_intensity": 0.01, "confidence": "medium"},
+        {"f2_ppm": 4.30, "f1_ppm": 193.8, "rel_intensity": 0.21, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "COSY": "not curated: overlapped macrocyclic polyene within budget.",
+    "HMBC": "only well-resolved methyl/heteroaromatic/ester correlations recorded."
+  },
+  "notes": "Largimycin C - a macrocyclic thiolactone with an oxazole, an (E)-oxime, a conjugated polyene, an exocyclic methylene and a trisubstituted alkene (CD3OD). PARTIAL: thiolactone C-CH3 C(9.8/1.15) -> thiolactone C=O 194.0; vinyl-Me 15.0/1.74 -> trisubstituted alkene (134.6/124.1); exocyclic =CH2 117.2/5.08; oxazole =CH 137.4/7.99 -> oxazole C 152.6; ester/lactone C=O ~169.3; polyene CH 116-137, oxime-CH O-CH 74.8, CH2OH 61.3, O-CH 71.2. Macrocycle skeleton partly assigned. HSQC signs not reliable; 1H ref -0.02."
+}

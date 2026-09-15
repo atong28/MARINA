@@ -1,0 +1,41 @@
+{
+  "npid": "NP0351503",
+  "smiles": "CCC[C@@H]1O[C@@H]1C1=C(\\C=C\\C(=O)N[C@@H](CC2=CC=C(O)C=C2)C(=O)N(C)[C@@H](CC2=C(Cl)C(O)=C(OC)C=C2)C(=O)N(C)[C@@H](C)C(=O)N[C@H](CO)C(=O)NCC(O)=O)C=CC=C1",
+  "formula": "C43H52ClN5O12",
+  "solvent": "DMSO-d6",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 6.99, "f1_ppm": 130.6, "confidence": "medium"},
+        {"f2_ppm": 6.64, "f1_ppm": 115.8, "confidence": "medium"},
+        {"f2_ppm": 7.40, "f1_ppm": 128.8, "confidence": "low"},
+        {"f2_ppm": 7.62, "f1_ppm": 126.5, "confidence": "low"},
+        {"f2_ppm": 6.42, "f1_ppm": 109.3, "confidence": "medium"},
+        {"f2_ppm": 6.41, "f1_ppm": 121.0, "confidence": "low"},
+        {"f2_ppm": 3.49, "f1_ppm": 56.0, "confidence": "high"},
+        {"f2_ppm": 4.28, "f1_ppm": 55.8, "confidence": "low"},
+        {"f2_ppm": 3.58, "f1_ppm": 62.2, "confidence": "low"},
+        {"f2_ppm": 3.42, "f1_ppm": 58.9, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.49, "f1_ppm": 147.3, "rel_intensity": 0.37, "confidence": "high"},
+        {"f2_ppm": 1.12, "f1_ppm": 170.9, "rel_intensity": 0.10, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "COSY": "not curated - large depsipeptide, overlapped.",
+    "HMBC": "not exhaustively curated - only OMe->aryl and representative amide-region correlations; large peptide."
+  },
+  "notes": "Pepticinnamin - a farnesyltransferase-inhibitor epoxy-cinnamoyl depsipeptide (Tyr, 3-chloro-4-methoxy-5-hydroxy-Tyr, two N-methyl AAs, Ser, Gly; terminal propyl-epoxide-cinnamoyl), C43H52ClN5O12, DMSO. Large -> PARTIAL: Tyr aromatic (130.6/115.8), chloro-methoxy-Tyr aromatic (109.3, 121.0), cinnamoyl aromatic/olefinic; aryl OMe 56.0/3.49 -> aryl C-O 147.3; peptide alpha-CH 55-62; amide carbonyls 168-173. Full backbone not assigned. Moderate target. HSQC signs not reliable; 1H ref -0.009."
+}

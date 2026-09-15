@@ -52,3 +52,8 @@
 | NP0350909 | CDCl3 | 14 | 0 | 10 | 50% | 14 | Asperdole D indoline-diterpenoid; reverse-prenyl+C(CH3)2OH assigned; skeleton partial |
 | NP0350731 | DMSO-d6 | 10 | 0 | 8 | 70% | 15 | Chromonemycin chromone-chain-pyranone; dilute; HMBC core assigned |
 | NP0351796 | CD3OD | 4 | 0 | 6 | 20% | 12 | ergostane steroid dione-triol; dense/dilute; methyls+C3-OH+ketones only |
+| NP0354143 | C5D5N | 12 | 0 | 3 | 20% | 14 | Pullenvasterol meroterpenoid glycoside (C37); dilute; NAc/OMe/anomeric assigned |
+| NP0350997 | CD3CN | 0 | 0 | 0 | - | 2 | Sinulariolone variant; unprocessable: all three 2D NUS (32/32/25%) no nuslist |
+| NP0351221 | CDCl3 | 13 | 0 | 5 | 30% | 14 | oxygenated sesquiterpene lactone (NMe2/iBu/OAc esters); dilute; carbonyls assigned |
+| NP0351503 | DMSO-d6 | 10 | 0 | 2 | 10% | 12 | Pepticinnamin depsipeptide (C43); large; aromatic/OMe/aCH partial |
+| NP0352049 | CD3OD | 15 | 0 | 6 | 35% | 15 | Largimycin C macrocyclic oxazole/polyene thiolactone; thiolactone/oxazole assigned; partial |
