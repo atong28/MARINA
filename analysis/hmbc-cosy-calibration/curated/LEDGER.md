@@ -42,3 +42,8 @@
 | NP0351241 | CD3OD | 14 | 2 | 11 | 80% | 18 | Cinnaterpenol sesquiterpene diol; HMBC-assigned core; COSY weak |
 | NP0350714 | C5D5N | 10 | 0 | 11 | 70% | 18 | Rhodomollein grayanane heptaol; methyl-HMBC networks assigned; ring CH partial |
 | NP0352007 | CD3CN | 0 | 0 | 0 | - | 2 | Fissisteifol; unprocessable: all three 2D NUS (25/50/50%) no nuslist |
+| NP0352128 | D2O | 13 | 0 | 3 | 15% | 12 | STX/TTX caged guanidinium (8-epi); epimeric doubling; positions only |
+| NP0350908 | CDCl3 | 15 | 0 | 10 | 55% | 20 | Asperdole C indoline-diterpenoid; reverse-prenyl+C(CH3)2OH assigned; skeleton partial |
+| NP0350923 | DMSO-d6 | 15 | 0 | 5 | 30% | 16 | pyrroloindoline DKP alkaloid; reverse-prenyl/acetyl assigned; ring partial |
+| NP0350580 | CD3OD | 13 | 0 | 9 | 45% | 16 | Phomoparagin meroterpenoid alkaloid; alkene/carbinol/lactone assigned; polycyclic partial |
+| NP0350716 | C5D5N | 10 | 0 | 5 | 40% | 15 | chloro-grayanane diterpene; alkene/gem-diMe assigned; pyridine-deshielded, partial |

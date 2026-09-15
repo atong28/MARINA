@@ -1,0 +1,51 @@
+{
+  "npid": "NP0350580",
+  "smiles": "[H][C@@]12C=C(C)[C@@H](C)[C@@]3([H])[C@H](CC4=CC=CC=C4)N=C4C[C@@]5([H])[C@@]([H])(C[C@H](C)C[C@@]5(C)O)[C@H]1OC(=O)[C@@]234",
+  "formula": "C28H35NO3",
+  "solvent": "CD3OD",
+  "frequency_mhz": 700.2,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 7.32, "f1_ppm": 128.7, "confidence": "medium"},
+        {"f2_ppm": 7.24, "f1_ppm": 126.2, "confidence": "medium"},
+        {"f2_ppm": 5.38, "f1_ppm": 121.2, "confidence": "high"},
+        {"f2_ppm": 4.36, "f1_ppm": 88.4, "confidence": "high"},
+        {"f2_ppm": 4.85, "f1_ppm": 69.5, "confidence": "low"},
+        {"f2_ppm": 1.70, "f1_ppm": 20.9, "confidence": "high"},
+        {"f2_ppm": 0.91, "f1_ppm": 21.1, "confidence": "medium"},
+        {"f2_ppm": 1.29, "f1_ppm": 28.6, "confidence": "medium"},
+        {"f2_ppm": 2.93, "f1_ppm": 43.8, "confidence": "medium"},
+        {"f2_ppm": 3.04, "f1_ppm": 32.4, "confidence": "low"},
+        {"f2_ppm": 2.21, "f1_ppm": 52.0, "confidence": "low"},
+        {"f2_ppm": 1.70, "f1_ppm": 49.0, "confidence": "low"},
+        {"f2_ppm": 3.31, "f1_ppm": 48.0, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.70, "f1_ppm": 143.7, "rel_intensity": 0.65, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 121.1, "rel_intensity": 0.60, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 34.1, "rel_intensity": 0.34, "confidence": "medium"},
+        {"f2_ppm": 1.25, "f1_ppm": 72.0, "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 1.25, "f1_ppm": 49.1, "rel_intensity": 0.91, "confidence": "medium"},
+        {"f2_ppm": 1.25, "f1_ppm": 41.9, "rel_intensity": 0.85, "confidence": "medium"},
+        {"f2_ppm": 1.00, "f1_ppm": 40.4, "rel_intensity": 0.75, "confidence": "medium"},
+        {"f2_ppm": 1.00, "f1_ppm": 49.3, "rel_intensity": 0.73, "confidence": "medium"},
+        {"f2_ppm": 4.36, "f1_ppm": 176.5, "rel_intensity": 0.40, "confidence": "high"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "CD3OD residual (3.31/49) overlaps some ring CH; HDO region excluded.",
+    "COSY": "not curated: complex fused polycyclic aliphatic within budget."
+  },
+  "notes": "Phomoparagin - a complex fused meroterpenoid alkaloid (benzyl, cyclic imine N=C, gamma-lactone, trisubstituted alkene, tertiary carbinol), CD3OD at 700 MHz. PARTIAL: trisubstituted alkene =CH(121.2/5.38)/=C(143.7) with vinyl-Me(20.9); tertiary carbinol C-OH=72.0 bearing Me(28.6); lactone O-CH=88.4/4.36 -> lactone C=O(176.5); benzyl phenyl (128.7/126.2). Secondary methyls, ring CH/CH2 partly resolved. Full polycyclic assignment not attempted. HSQC signs not reliable; 1H ref -0.02."
+}
