@@ -1,0 +1,35 @@
+H-H |J| by bond count
+  3J_HH: n= 118384 med= 6.91 p10= 4.62 p90= 8.57 frac>=1Hz=1.00 frac>=2Hz=1.00 frac>=4Hz=0.95
+  4J_HH: n=  42140 med= 1.31 p10= 0.67 p90= 2.00 frac>=1Hz=0.67 frac>=2Hz=0.13 frac>=4Hz=0.00
+  5J_HH: n=  13230 med= 0.50 p10= 0.10 p90= 1.00 frac>=1Hz=0.47 frac>=2Hz=0.01 frac>=4Hz=0.00
+  7J_HH: n=     73 med= 0.00 p10= 0.00 p90= 0.00 frac>=1Hz=0.01 frac>=2Hz=0.01 frac>=4Hz=0.01
+C-H |J| by bond count
+  1J_CH: n=  55037 med=134.96 p10=122.22 p90=162.80 frac>=1Hz=1.00 frac>=2Hz=1.00 frac>=4Hz=1.00
+  2J_CH: n=  96212 med= 2.53 p10= 1.85 p90= 4.83 frac>=1Hz=1.00 frac>=2Hz=0.87 frac>=4Hz=0.14
+  3J_CH: n= 124963 med= 4.05 p10= 3.15 p90= 7.01 frac>=1Hz=1.00 frac>=2Hz=1.00 frac>=4Hz=0.52
+  4J_CH: n= 141979 med= 0.36 p10= 0.11 p90= 1.02 frac>=1Hz=0.12 frac>=2Hz=0.01 frac>=4Hz=0.00
+  5J_CH: n=    184 med= 2.17 p10= 0.71 p90=121.80 frac>=1Hz=0.85 frac>=2Hz=0.80 frac>=4Hz=0.42
+  6J_CH: n=    124 med= 3.13 p10= 0.00 p90=121.80 frac>=1Hz=0.53 frac>=2Hz=0.53 frac>=4Hz=0.48
+  7J_CH: n=     94 med=121.80 p10= 0.36 p90=121.80 frac>=1Hz=0.83 frac>=2Hz=0.83 frac>=4Hz=0.79
+  8J_CH: n=    116 med= 6.73 p10= 0.28 p90=121.80 frac>=1Hz=0.76 frac>=2Hz=0.76 frac>=4Hz=0.57
+  9J_CH: n=    120 med=121.80 p10= 0.50 p90=128.10 frac>=1Hz=0.82 frac>=2Hz=0.75 frac>=4Hz=0.63
+  10J_CH: n=    130 med=121.80 p10= 1.50 p90=164.27 frac>=1Hz=0.92 frac>=2Hz=0.86 frac>=4Hz=0.83
+  11J_CH: n=    156 med=147.40 p10=121.56 p90=164.27 frac>=1Hz=0.99 frac>=2Hz=0.97 frac>=4Hz=0.97
+  12J_CH: n=    126 med=121.80 p10= 0.63 p90=164.27 frac>=1Hz=0.87 frac>=2Hz=0.81 frac>=4Hz=0.75
+  13J_CH: n=     88 med= 7.04 p10= 0.50 p90=121.80 frac>=1Hz=0.84 frac>=2Hz=0.70 frac>=4Hz=0.57
+  14J_CH: n=    106 med= 6.73 p10= 0.22 p90=121.80 frac>=1Hz=0.70 frac>=2Hz=0.70 frac>=4Hz=0.55
+  15J_CH: n=     66 med=121.80 p10= 0.28 p90=128.10 frac>=1Hz=0.82 frac>=2Hz=0.76 frac>=4Hz=0.70
+  16J_CH: n=     54 med=121.80 p10= 0.20 p90=167.04 frac>=1Hz=0.85 frac>=2Hz=0.85 frac>=4Hz=0.85
+  17J_CH: n=     66 med=120.78 p10= 0.28 p90=121.80 frac>=1Hz=0.82 frac>=2Hz=0.82 frac>=4Hz=0.76
+  18J_CH: n=     70 med= 5.63 p10= 0.28 p90=121.80 frac>=1Hz=0.69 frac>=2Hz=0.69 frac>=4Hz=0.51
+  19J_CH: n=     70 med= 7.04 p10= 0.50 p90=121.80 frac>=1Hz=0.83 frac>=2Hz=0.71 frac>=4Hz=0.54
+  20J_CH: n=     82 med=121.80 p10= 7.04 p90=164.27 frac>=1Hz=1.00 frac>=2Hz=0.90 frac>=4Hz=0.90
+  21J_CH: n=     64 med=155.84 p10=121.80 p90=164.27 frac>=1Hz=1.00 frac>=2Hz=1.00 frac>=4Hz=1.00
+per-molecule means over 2999 mols:
+  heavy                    mean=  32.5 med=   30 p90=   55 max=73
+  HSQC(1J entries)         mean=  18.4 med=   15 p90=   33 max=62
+  COSY 3J pairs            mean=  12.5 med=    9 p90=   27 max=58
+  COSY 3+4J pairs          mean=  18.6 med=   15 p90=   37 max=96
+  HMBC 2+3J pairs          mean=  73.7 med=   60 p90=  143 max=265
+  HMBC 2+3+4J pairs        mean= 121.1 med=   99 p90=  239 max=456
+  HMBC 2+3J & |J|>=2Hz     mean=  69.4 med=   56 p90=  138 max=233
