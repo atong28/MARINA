@@ -32,3 +32,8 @@
 | NP0352130 | D2O | 8 | 0 | 6 | 60% | 18 | STX/TTX caged guanidinium; CH3-HMBC core assigned; HDO ridge interferes with O-CH region |
 | NP0350566 | Acetone-d6 | 0 | 3 | 0 | - | 12 | Panusimilin bis-chromene dimer; ONLY COSY processable (HSQC/HMBC NUS); methine chain traced |
 | NP0353960 | CDCl3 | 11 | 0 | 2 | 10% | 18 | Anthracauris C2-symmetric sesquiterpenoid dimer; HSQC resolved, HMBC weak (dilute) |
+| NP0354171 | DMSO-d6 | 15 | 7 | 15 | 90% | 22 | Aspernigrin pyridinone-Leu-Ala; fully HMBC/COSY-assigned; clean |
+| NP0351071 | CD3OD | 9 | 3 | 9 | 95% | 16 | N-acetyl AA + hydroxamate isoprenoid; clean, HMBC-assigned; C7 near CD3OD |
+| NP0350778 | C5D5N | 8 | 0 | 0 | 0% | 6 | Dracomicin B glycopeptide (C84); MINIMAL - poor target like Dracomicin A |
+| NP0350983 | CD3CN | 8 | 0 | 8 | 75% | 18 | Macatrichocarpin dihydrochalcone; dilute (methyls folded); HMBC core assigned |
+| NP0352127 | D2O | 9 | 0 | 5 | 30% | 15 | STX/TTX caged guanidinium (6-epi); epimeric doubling; CH3-HMBC partial |

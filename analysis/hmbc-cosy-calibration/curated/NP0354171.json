@@ -1,0 +1,71 @@
+{
+  "npid": "NP0354171",
+  "smiles": "CC(C)C[C@H](N1C=C(C(N)=O)C(=O)C=C1CC1=CC=CC=C1)C(=O)N[C@@H](C)C(O)=O",
+  "formula": "C22H27N3O5",
+  "solvent": "DMSO-d6",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 0.70, "f1_ppm": 22.6, "assign": [0, 0], "confidence": "high"},
+        {"f2_ppm": 0.75, "f1_ppm": 22.4, "assign": [2, 2], "confidence": "medium"},
+        {"f2_ppm": 1.22, "f1_ppm": 17.2, "assign": [26, 26], "confidence": "high"},
+        {"f2_ppm": 1.35, "f1_ppm": 24.6, "assign": [1, 1], "confidence": "high"},
+        {"f2_ppm": 1.90, "f1_ppm": 41.3, "assign": ["3a", 3], "confidence": "high"},
+        {"f2_ppm": 1.50, "f1_ppm": 41.3, "assign": ["3b", 3], "confidence": "high"},
+        {"f2_ppm": 4.16, "f1_ppm": 37.3, "assign": ["15a", 15], "confidence": "high"},
+        {"f2_ppm": 4.10, "f1_ppm": 37.3, "assign": ["15b", 15], "confidence": "high"},
+        {"f2_ppm": 4.07, "f1_ppm": 48.7, "assign": [25, 25], "confidence": "high"},
+        {"f2_ppm": 4.88, "f1_ppm": 60.0, "assign": [4, 4], "confidence": "high"},
+        {"f2_ppm": 6.33, "f1_ppm": 122.3, "assign": [13, 13], "confidence": "high"},
+        {"f2_ppm": 8.63, "f1_ppm": 144.7, "assign": [6, 6], "confidence": "high"},
+        {"f2_ppm": 7.21, "f1_ppm": 129.1, "assign": [17, 17], "confidence": "medium"},
+        {"f2_ppm": 7.37, "f1_ppm": 129.4, "assign": [18, 18], "confidence": "low"},
+        {"f2_ppm": 7.28, "f1_ppm": 127.5, "assign": [19, 19], "confidence": "low"}
+      ]
+    },
+    "COSY": {
+      "pulse_program": "cosy",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.23, "f1_ppm": 4.06, "assign": [26, 25], "confidence": "high"},
+        {"f2_ppm": 0.69, "f1_ppm": 1.33, "assign": [0, 1], "confidence": "high"},
+        {"f2_ppm": 1.90, "f1_ppm": 1.49, "assign": ["3a", "3b"], "confidence": "high"},
+        {"f2_ppm": 4.88, "f1_ppm": 1.49, "assign": [4, "3b"], "confidence": "high"},
+        {"f2_ppm": 4.88, "f1_ppm": 1.90, "assign": [4, "3a"], "confidence": "high"},
+        {"f2_ppm": 1.35, "f1_ppm": 1.90, "assign": [1, "3a"], "confidence": "medium"},
+        {"f2_ppm": 0.71, "f1_ppm": 1.00, "assign": [0, 2], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 8.63, "f1_ppm": 176.7, "assign": [6, 11], "rel_intensity": 0.53, "confidence": "high"},
+        {"f2_ppm": 8.63, "f1_ppm": 151.1, "assign": [6, 14], "rel_intensity": 0.52, "confidence": "high"},
+        {"f2_ppm": 8.63, "f1_ppm": 165.5, "assign": [6, 8], "rel_intensity": 0.35, "confidence": "medium"},
+        {"f2_ppm": 6.33, "f1_ppm": 37.5, "assign": [13, 15], "rel_intensity": 0.15, "confidence": "high"},
+        {"f2_ppm": 6.33, "f1_ppm": 118.2, "assign": [13, 7], "rel_intensity": 0.22, "confidence": "high"},
+        {"f2_ppm": 6.33, "f1_ppm": 151.1, "assign": [13, 14], "rel_intensity": 0.17, "confidence": "medium"},
+        {"f2_ppm": 4.88, "f1_ppm": 168.1, "assign": [4, 22], "rel_intensity": 0.11, "confidence": "high"},
+        {"f2_ppm": 4.88, "f1_ppm": 41.3, "assign": [4, 3], "rel_intensity": 0.09, "confidence": "high"},
+        {"f2_ppm": 4.88, "f1_ppm": 24.6, "assign": [4, 1], "rel_intensity": 0.03, "confidence": "medium"},
+        {"f2_ppm": 4.88, "f1_ppm": 151.1, "assign": [4, 14], "rel_intensity": 0.06, "confidence": "medium"},
+        {"f2_ppm": 4.07, "f1_ppm": 173.9, "assign": [25, 27], "rel_intensity": 0.17, "confidence": "high"},
+        {"f2_ppm": 4.07, "f1_ppm": 17.3, "assign": [25, 26], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 4.07, "f1_ppm": 168.3, "assign": [25, 22], "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 1.22, "f1_ppm": 173.9, "assign": [26, 27], "rel_intensity": 0.86, "confidence": "high"},
+        {"f2_ppm": 1.22, "f1_ppm": 48.4, "assign": [26, 25], "rel_intensity": 0.76, "confidence": "high"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "DMSO-d6 residual at 2.51/40.2 excluded."
+  },
+  "notes": "Aspernigrin-type: N-substituted 3-carbamoyl-4-pyridinone bearing a 2-benzyl group, N-linked to a Leu-Ala dipeptide (Leu alpha on the pyridinone N, C-terminal Ala acid). DMSO-d6. Fully assigned via HMBC/COSY: pyridinone =CH C6=144.7/8.63 (->ring C11=176.7, C14=151.1, carboxamide C8=165.5) and C13=122.3/6.33 (->benzyl C15=37.5, C7=118.2); Leu alpha C4=60.0 (->peptide amide C22=168.1); Ala C25=48.7 (->COOH C27=173.9, Ala CH3 C26=17.2). Leu CH2 C3=41.3, CH C1=24.6, 2 CH3 ~22.5. Phenyl 3 CH ~127-129 (ortho/meta/para tentative). HSQC signs not reliable."
+}

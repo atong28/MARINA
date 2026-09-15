@@ -1,0 +1,32 @@
+{
+  "npid": "NP0350778",
+  "smiles": "CN[C@@]1(C)C[C@H](O[C@H]2[C@@H](C)O[C@@H](O[C@H]3[C@H](C)O[C@H](C[C@]3(C)N)O[C@@]3(C)C[C@H](O[C@@H]4[C@@H](C)O[C@H](C[C@]4(C)N)O[C@H]4[C@H](C)O[C@H](C[C@]4(C)O)O[C@H]4[C@@H](O)[C@@H](C)O[C@@H](O[C@H]5[C@@H](C)O[C@@H](OC6=CC=C(C=C6)C(\\C)=C\\C(=O)N[C@H]6CCC(=O)NC[C@H](NC(=O)[C@@H](NC6=O)[C@H](C)C6=CNC7=CC=C(Cl)C=C67)C(O)=O)[C@H](O)[C@H]5O)[C@@H]4O)O[C@@H](C)[C@@H]3O)[C@H](O)[C@H]2O)O[C@H](C)[C@H]1O",
+  "formula": "C84H127ClN8O31",
+  "solvent": "C5D5N",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 5.11, "f1_ppm": 107.3, "rel_intensity": 0.15, "confidence": "medium"},
+        {"f2_ppm": 5.44, "f1_ppm": 101.7, "rel_intensity": 0.12, "confidence": "medium"},
+        {"f2_ppm": 5.22, "f1_ppm": 100.5, "rel_intensity": 0.14, "confidence": "medium"},
+        {"f2_ppm": 5.72, "f1_ppm": 98.3, "rel_intensity": 0.15, "confidence": "medium"},
+        {"f2_ppm": 7.91, "f1_ppm": 118.8, "rel_intensity": 0.22, "confidence": "medium"},
+        {"f2_ppm": 7.47, "f1_ppm": 127.5, "rel_intensity": 0.25, "confidence": "medium"},
+        {"f2_ppm": 7.33, "f1_ppm": 112.8, "rel_intensity": 0.12, "confidence": "medium"},
+        {"f2_ppm": 6.71, "f1_ppm": 119.7, "rel_intensity": 0.18, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "residual protonated pyridine-d5 (8.7/149.9, 7.59/135.5, 7.22/123.6) excluded.",
+    "COSY": "not curated - molecule far too large/overlapped (poor target).",
+    "HMBC": "not curated - molecule far too large/overlapped (poor target)."
+  },
+  "notes": "Dracomicin B - a very large glycopeptide antibiotic (C84, aminodeoxy-sugar chain + chlorinated Trp/dehydro aglycone), congener of Dracomicin A (NP0350777), in C5D5N. POOR calibration target: dense overlapped sugar + aliphatic regions preclude reliable per-atom assignment within budget. Only a few resolved diagnostic contours recorded (4 anomerics, 4 aromatic aglycone CH), positions only. Recommend excluding from per-pair calibration statistics."
+}

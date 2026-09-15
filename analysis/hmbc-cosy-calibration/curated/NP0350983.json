@@ -1,0 +1,46 @@
+{
+  "npid": "NP0350983",
+  "smiles": "COC1=C(CC=C(C)C)C=C(CCC(=O)C2=C(O)C=C(O)C=C2O)C=C1",
+  "formula": "C21H24O5",
+  "solvent": "CD3CN",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 3.77, "f1_ppm": 55.1, "assign": [0, 0], "confidence": "high"},
+        {"f2_ppm": 5.25, "f1_ppm": 122.8, "assign": [5, 5], "confidence": "high"},
+        {"f2_ppm": 5.86, "f1_ppm": 94.8, "assign": [18, 18], "confidence": "medium"},
+        {"f2_ppm": 6.99, "f1_ppm": 129.4, "assign": [24, 24], "confidence": "low"},
+        {"f2_ppm": 6.83, "f1_ppm": 110.5, "assign": [25, 25], "confidence": "low"},
+        {"f2_ppm": 7.03, "f1_ppm": 126.6, "assign": [9, 9], "confidence": "low"},
+        {"f2_ppm": 2.85, "f1_ppm": 29.5, "confidence": "low"},
+        {"f2_ppm": 3.22, "f1_ppm": 33.8, "assign": [4, 4], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.77, "f1_ppm": 155.5, "assign": [0, 2], "rel_intensity": 0.56, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 132.1, "assign": [7, 6], "rel_intensity": 0.84, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 122.7, "assign": [7, 5], "rel_intensity": 0.82, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 24.8, "assign": [7, 8], "rel_intensity": 0.30, "confidence": "medium"},
+        {"f2_ppm": 5.86, "f1_ppm": 164.0, "assign": [18, 19], "rel_intensity": 0.43, "confidence": "medium"},
+        {"f2_ppm": 5.86, "f1_ppm": 104.3, "assign": [18, 15], "rel_intensity": 0.63, "confidence": "medium"},
+        {"f2_ppm": 5.86, "f1_ppm": 95.5, "assign": [18, 21], "rel_intensity": 0.71, "confidence": "medium"},
+        {"f2_ppm": 3.26, "f1_ppm": 204.9, "assign": [12, 13], "rel_intensity": 0.23, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "sample dilute: the strong prenyl gem-dimethyls (1.70, C7/C8) are picked at impossible 13C (-10/209.8, axis folding) - real 13C ~17-25; only real-region contours recorded.",
+    "COSY": "not curated - dilute; weak signal.",
+    "HMBC": "artifact picks at 13C ~-11/206-210/183 (dilute-sample folding/noise) excluded except the genuine ketone C13~204.9."
+  },
+  "notes": "Macatrichocarpin-type: 2',4',6'-trihydroxyphenyl (phloroglucinyl) dihydrochalcone with a 4-methoxy-3-prenyl-phenyl ring, CD3CN, dilute. Assigned: OMe C0=55.1->C2(methoxyphenyl C-O=155.5); prenyl =CH C5=122.8, =C C6=132.1 (from CH3 1.70), gem-CH3 C7/C8~18-25; phloroglucinol ArCH C18=94.8->C15(ipso,104.3)/C19(C-OH,164.0)/C21(95.5); ketone C13=204.9 (from bridge CH2 C12 3.26). Bridge CH2 C11/C12 ~28-33, prenyl ArCH2 C4~33.8. Aromatic CH assignments (methoxyphenyl C9/C24/C25) tentative. HSQC signs not reliable."
+}
