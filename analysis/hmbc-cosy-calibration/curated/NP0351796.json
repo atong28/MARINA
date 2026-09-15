@@ -1,0 +1,40 @@
+{
+  "npid": "NP0351796",
+  "smiles": "[H][C@@]1(CC(=O)[C@]2(O)[C@]1(C)CC[C@]1([H])[C@@]3(C)CC[C@H](O)C[C@]3([H])CC(=O)[C@@]21O)[C@H](C)CCCC(C)C",
+  "formula": "C27H44O5",
+  "solvent": "CD3OD",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 0.82, "f1_ppm": 14.3, "confidence": "high"},
+        {"f2_ppm": 0.89, "f1_ppm": 21.7, "confidence": "high"},
+        {"f2_ppm": 0.96, "f1_ppm": 18.0, "confidence": "medium"},
+        {"f2_ppm": 3.58, "f1_ppm": 69.7, "confidence": "high"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.00, "f1_ppm": 21.4, "rel_intensity": 1.00, "confidence": "medium"},
+        {"f2_ppm": 1.00, "f1_ppm": 39.3, "rel_intensity": 0.84, "confidence": "medium"},
+        {"f2_ppm": 0.85, "f1_ppm": 39.3, "rel_intensity": 0.84, "confidence": "medium"},
+        {"f2_ppm": 0.85, "f1_ppm": 35.5, "rel_intensity": 0.81, "confidence": "medium"},
+        {"f2_ppm": 2.66, "f1_ppm": 208.5, "rel_intensity": 0.12, "confidence": "high"},
+        {"f2_ppm": 2.49, "f1_ppm": 212.1, "rel_intensity": 0.06, "confidence": "high"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "dense steroid aliphatic envelope (0.8-2.7 / 20-55) heavily overlapped and dilute; only well-resolved methyls and the C3-carbinol recorded.",
+    "COSY": "not curated: dense overlapped steroid ring/side-chain.",
+    "HMBC": "only well-resolved methyl->ring and alpha-CH2->ketone correlations recorded."
+  },
+  "notes": "Ergostane/cholestane-type steroid: 3-hydroxy (C3-OH 69.7/3.58) with two ring ketones (208.5, 212.1) and two tertiary carbinol quaternaries; 5 methyls (14.3/18.0/21.7 + 2 overlapped), 10 CH2, isopropyl side chain. CD3OD. Dense aliphatic overlap -> PARTIAL: methyls, C3-OH, the two ketones (alpha-CH2 HMBC). Full ring/side-chain assignment not attempted. Poor-to-moderate calibration target due to overlap. HSQC signs not reliable; 1H ref -0.02."
+}

@@ -1,0 +1,42 @@
+{
+  "npid": "NP0352129",
+  "smiles": "[H]N1[C@H](O)[C@@]2([H])[C@@]3([H])O[C@]4(O)O[C@H]([C@]3([H])C)[C@]([H])(O)[C@@]2(N(O)C1=[NH2+])[C@]4([H])O",
+  "formula": "C11H18N3O7",
+  "solvent": "D2O",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 1.20, "f1_ppm": 13.6, "assign": [11, 11], "confidence": "high"},
+        {"f2_ppm": 3.10, "f1_ppm": 53.7, "confidence": "medium"},
+        {"f2_ppm": 4.01, "f1_ppm": 76.9, "confidence": "medium"},
+        {"f2_ppm": 4.13, "f1_ppm": 73.1, "confidence": "medium"},
+        {"f2_ppm": 5.34, "f1_ppm": 72.7, "confidence": "medium"},
+        {"f2_ppm": 3.76, "f1_ppm": 67.7, "confidence": "medium"},
+        {"f2_ppm": 4.32, "f1_ppm": 65.7, "confidence": "medium"},
+        {"f2_ppm": 2.33, "f1_ppm": 40.5, "confidence": "medium"},
+        {"f2_ppm": 2.61, "f1_ppm": 34.1, "assign": [10, 10], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.20, "f1_ppm": 28.2, "assign": [11, 10], "rel_intensity": 0.21, "confidence": "high"},
+        {"f2_ppm": 1.20, "f1_ppm": 72.5, "assign": [11, 9], "rel_intensity": 0.22, "confidence": "high"},
+        {"f2_ppm": 1.20, "f1_ppm": 77.9, "assign": [11, 4], "rel_intensity": 0.23, "confidence": "medium"},
+        {"f2_ppm": 1.20, "f1_ppm": 83.5, "rel_intensity": 0.09, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HMBC": "HDO ridge (~4.8) produces spurious downfield picks (127-167 ppm) and 176 is an artifact (no carbonyl in this cation).",
+    "COSY": "not curated: rigid cage near HDO."
+  },
+  "notes": "Saxitoxin/tetrodotoxin-family caged guanidinium (1-hydroxy-8... analog), C11H18N3O7+, D2O; sibling of NP0352127/128. Cleaner than the 'epi' siblings (no obvious epimeric doubling). Methyl C11=13.6/1.20 (HMBC to C10=28.2, C9=72.5, C4=77.9); cage O-CH 66-77, cage CH 34-54. Cage orthoester quaternary (~105) and guanidinium (~155) weak/obscured by HDO ridge. HSQC signs not recorded; 1H ref +0.086. Partial curation."
+}

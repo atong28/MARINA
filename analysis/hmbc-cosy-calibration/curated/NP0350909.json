@@ -1,0 +1,53 @@
+{
+  "npid": "NP0350909",
+  "smiles": "[H][C@@]1(C[C@]2(O)C(=O)N(C3=C2C=CC=C3)C(C)(C)C=C)CC[C@]2([H])C(=CC[C@]3([H])O[C@H](CC[C@@]23C)C(C)(C)O)C1(C)C",
+  "formula": "C33H47NO4",
+  "solvent": "CDCl3",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 5.19, "f1_ppm": 113.0, "confidence": "high"},
+        {"f2_ppm": 5.28, "f1_ppm": 115.6, "confidence": "medium"},
+        {"f2_ppm": 6.06, "f1_ppm": 144.2, "confidence": "high"},
+        {"f2_ppm": 7.32, "f1_ppm": 124.0, "confidence": "medium"},
+        {"f2_ppm": 7.13, "f1_ppm": 114.0, "confidence": "medium"},
+        {"f2_ppm": 7.03, "f1_ppm": 122.4, "confidence": "medium"},
+        {"f2_ppm": 7.18, "f1_ppm": 128.7, "confidence": "medium"},
+        {"f2_ppm": 3.57, "f1_ppm": 79.0, "confidence": "medium"},
+        {"f2_ppm": 3.47, "f1_ppm": 72.7, "confidence": "low"},
+        {"f2_ppm": 1.70, "f1_ppm": 25.8, "confidence": "medium"},
+        {"f2_ppm": 1.80, "f1_ppm": 28.2, "confidence": "medium"},
+        {"f2_ppm": 1.19, "f1_ppm": 30.1, "confidence": "medium"},
+        {"f2_ppm": 0.83, "f1_ppm": 24.4, "confidence": "low"},
+        {"f2_ppm": 0.69, "f1_ppm": 15.3, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.72, "f1_ppm": 60.5, "assign": [22, 21], "rel_intensity": 0.79, "confidence": "high"},
+        {"f2_ppm": 1.72, "f1_ppm": 144.2, "assign": [22, 24], "rel_intensity": 0.66, "confidence": "high"},
+        {"f2_ppm": 1.72, "f1_ppm": 28.2, "assign": [22, 23], "rel_intensity": 0.70, "confidence": "medium"},
+        {"f2_ppm": 6.06, "f1_ppm": 60.3, "assign": [24, 21], "rel_intensity": 0.05, "confidence": "high"},
+        {"f2_ppm": 1.19, "f1_ppm": 76.7, "rel_intensity": 0.73, "confidence": "high"},
+        {"f2_ppm": 1.19, "f1_ppm": 29.8, "rel_intensity": 0.69, "confidence": "medium"},
+        {"f2_ppm": 1.19, "f1_ppm": 19.5, "rel_intensity": 0.64, "confidence": "medium"},
+        {"f2_ppm": 0.83, "f1_ppm": 146.1, "rel_intensity": 0.70, "confidence": "medium"},
+        {"f2_ppm": 0.83, "f1_ppm": 39.9, "rel_intensity": 1.00, "confidence": "medium"},
+        {"f2_ppm": 2.20, "f1_ppm": 180.1, "rel_intensity": 0.15, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "CHCl3 artifact 7.27/77.2 excluded.",
+    "COSY": "not curated: complex diterpene aliphatic overlap within budget."
+  },
+  "notes": "Asperdole D - indoline(oxindole)-diterpenoid, congener of Asperdole C (NP0350908), CDCl3. Same key features: reverse prenyl N-C(CH3)2 C21=60.5 / gem-CH3 ~25.8,28.2 / =CH C24=144.2/6.06 / =CH2 C25=113.0/5.19; C(CH3)2OH quaternary ~76.7 (methyls 19.5/29.8); a ring olefinic quaternary ~146.1 (angular methyl 0.83 -> it); oxindole C=O ~180.1; indoline benzo CH 114-129. Diterpene skeleton partly assigned. HSQC signs not reliable; 1H ref -0.023."
+}

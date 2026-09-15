@@ -1,0 +1,11 @@
+{
+  "npid": "NP0350693",
+  "smiles": "[H]C1(NC(=O)C([H])(NC(=O)C(C)N(C)C(=O)C(C)N(C)C(=O)C(CC(C)C=C)NC(=O)C(CC(C)COC=O)N(C)C(=O)C(C)N(C)C1=O)C(O)C(C)C)C(C)CC",
+  "formula": "C39H67N7O10",
+  "solvent": "CD3CN",
+  "frequency_mhz": 699.0,
+  "status": "unprocessable",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {},
+  "notes": "Comptonellin analog (cyclic peptide). All three 2D spectra are NUS 50% (FnTYPE=2) with no nuslist; none can be reconstructed. Nothing curated."
+}
