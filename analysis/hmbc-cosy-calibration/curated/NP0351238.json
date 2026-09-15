@@ -1,0 +1,72 @@
+{
+  "npid": "NP0351238",
+  "smiles": "[H][C@@]12CC3=C(OC)C=C(OC)C=C3O[C@]1([H])[C@@]1(CC(O)=O)OC(=O)C[C@@]1([H])O2",
+  "formula": "C17H18O8",
+  "solvent": "DMSO-d6",
+  "frequency_mhz": 400.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 3.70, "f1_ppm": 55.7, "assign": [5, 5], "confidence": "high"},
+        {"f2_ppm": 3.74, "f1_ppm": 55.8, "assign": [9, 9], "confidence": "high"},
+        {"f2_ppm": 6.16, "f1_ppm": 92.5, "assign": [6, 6], "confidence": "high"},
+        {"f2_ppm": 6.06, "f1_ppm": 93.9, "assign": [10, 10], "confidence": "high"},
+        {"f2_ppm": 4.45, "f1_ppm": 71.6, "assign": [0, 0], "confidence": "high"},
+        {"f2_ppm": 4.52, "f1_ppm": 78.0, "assign": [13, 13], "confidence": "high"},
+        {"f2_ppm": 4.69, "f1_ppm": 79.8, "assign": [23, 23], "confidence": "high"},
+        {"f2_ppm": 2.71, "f1_ppm": 20.5, "assign": [1, 1], "confidence": "high"},
+        {"f2_ppm": 3.11, "f1_ppm": 36.5, "assign": [15, 15], "confidence": "high"},
+        {"f2_ppm": 2.57, "f1_ppm": 36.9, "assign": ["22a", 22], "confidence": "high"},
+        {"f2_ppm": 3.13, "f1_ppm": 36.9, "assign": ["22b", 22], "confidence": "medium"}
+      ]
+    },
+    "COSY": {
+      "pulse_program": "cosygpqf",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 4.45, "f1_ppm": 2.71, "assign": [0, 1], "confidence": "high"},
+        {"f2_ppm": 3.13, "f1_ppm": 2.54, "assign": ["22a", "22b"], "confidence": "medium"},
+        {"f2_ppm": 4.67, "f1_ppm": 3.12, "assign": [23, 22], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.70, "f1_ppm": 159.5, "assign": [5, 3], "rel_intensity": 0.94, "confidence": "high"},
+        {"f2_ppm": 3.74, "f1_ppm": 158.6, "assign": [9, 7], "rel_intensity": 0.80, "confidence": "high"},
+        {"f2_ppm": 6.16, "f1_ppm": 100.0, "assign": [6, 2], "rel_intensity": 0.35, "confidence": "high"},
+        {"f2_ppm": 6.16, "f1_ppm": 159.5, "assign": [6, 3], "rel_intensity": 0.26, "confidence": "high"},
+        {"f2_ppm": 6.16, "f1_ppm": 93.9, "assign": [6, 10], "rel_intensity": 0.21, "confidence": "medium"},
+        {"f2_ppm": 6.06, "f1_ppm": 153.4, "assign": [10, 11], "rel_intensity": 0.27, "confidence": "high"},
+        {"f2_ppm": 6.06, "f1_ppm": 100.0, "assign": [10, 2], "rel_intensity": 0.24, "confidence": "high"},
+        {"f2_ppm": 6.06, "f1_ppm": 92.5, "assign": [10, 6], "rel_intensity": 0.27, "confidence": "medium"},
+        {"f2_ppm": 2.71, "f1_ppm": 100.0, "assign": [1, 2], "rel_intensity": 0.12, "confidence": "high"},
+        {"f2_ppm": 2.71, "f1_ppm": 71.6, "assign": [1, 0], "rel_intensity": 0.08, "confidence": "high"},
+        {"f2_ppm": 2.71, "f1_ppm": 153.7, "assign": [1, 11], "rel_intensity": 0.04, "confidence": "medium"},
+        {"f2_ppm": 4.45, "f1_ppm": 100.0, "assign": [0, 2], "rel_intensity": 0.16, "confidence": "high"},
+        {"f2_ppm": 4.45, "f1_ppm": 78.0, "assign": [0, 13], "rel_intensity": 0.07, "confidence": "medium"},
+        {"f2_ppm": 4.52, "f1_ppm": 71.6, "assign": [13, 0], "rel_intensity": 0.24, "confidence": "high"},
+        {"f2_ppm": 4.52, "f1_ppm": 79.8, "assign": [13, 23], "rel_intensity": 0.19, "confidence": "medium"},
+        {"f2_ppm": 4.52, "f1_ppm": 93.7, "assign": [13, 14], "rel_intensity": 0.12, "confidence": "high"},
+        {"f2_ppm": 4.69, "f1_ppm": 175.9, "assign": [23, 20], "rel_intensity": 0.20, "confidence": "high"},
+        {"f2_ppm": 4.69, "f1_ppm": 71.6, "assign": [23, 0], "rel_intensity": 0.11, "confidence": "medium"},
+        {"f2_ppm": 3.11, "f1_ppm": 171.5, "assign": [15, 16], "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 3.11, "f1_ppm": 93.7, "assign": [15, 14], "rel_intensity": 0.47, "confidence": "high"},
+        {"f2_ppm": 3.11, "f1_ppm": 79.8, "assign": [15, 23], "rel_intensity": 0.25, "confidence": "low"},
+        {"f2_ppm": 2.57, "f1_ppm": 175.9, "assign": [22, 20], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 2.57, "f1_ppm": 79.8, "assign": [22, 23], "rel_intensity": 0.15, "confidence": "high"},
+        {"f2_ppm": 2.57, "f1_ppm": 93.7, "assign": [22, 14], "rel_intensity": 0.07, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "DMSO-d6 residual at 2.50/40.2 (2.50/39.5 nominal) excluded; other 2.50-region contour is solvent."
+  },
+  "notes": "Phloroglucinol-fused bicyclic lactone (cinnaflavonol-type) in DMSO-d6. Fully assigned via HMBC: aromatic C2(alkyl)=100.0, C3(OMe)=159.5, C6-H=92.5, C7(OMe)=158.6, C10-H=93.9, C11(O-acetal)=153.4; acetal/O-CH C0=71.6, C13=78.0, C23=79.8, central quaternary C14=93.7; ArCH2 C1=20.5; CH2COOH C15=36.5->COOH C16=171.5; lactone CH2 C22=36.9->lactone C20=175.9. Two OMe overlap at 55.7. CH2 region (3.1 ppm) overlaps C15/C22 but HMBC distinguishes them (C15->COOH, C22->lactone). HSQC/HMBC signs not reliable."
+}

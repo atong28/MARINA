@@ -1,0 +1,51 @@
+{
+  "npid": "NP0352202",
+  "smiles": "COC1=C2C(OC(=O)C3=C2N=CC=C3C)=CC=C1O",
+  "formula": "C14H11NO4",
+  "solvent": "CD2Cl2",
+  "frequency_mhz": 400.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqcedetgp",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 3.96, "f1_ppm": 61.8, "assign": [0, 0], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 2.84, "f1_ppm": 22.9, "assign": [14, 14], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 8.91, "f1_ppm": 153.8, "assign": [11, 11], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 7.34, "f1_ppm": 126.4, "assign": [12, 12], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 7.18, "f1_ppm": 118.2, "assign": [15, 15], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 7.07, "f1_ppm": 112.9, "assign": [16, 16], "sign": 1, "confidence": "high"}
+      ]
+    },
+    "COSY": {
+      "pulse_program": "cosygpqf",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 8.89, "f1_ppm": 7.34, "assign": [11, 12], "confidence": "high"},
+        {"f2_ppm": 7.18, "f1_ppm": 7.07, "assign": [15, 16], "confidence": "medium"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbcgplpndqf",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.96, "f1_ppm": 144.0, "assign": [0, 2], "rel_intensity": 0.50, "confidence": "high"},
+        {"f2_ppm": 2.84, "f1_ppm": 153.1, "assign": [14, 13], "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 2.84, "f1_ppm": 126.4, "assign": [14, 12], "rel_intensity": 0.75, "confidence": "high"},
+        {"f2_ppm": 2.84, "f1_ppm": 117.0, "assign": [14, 8], "rel_intensity": 0.42, "confidence": "high"},
+        {"f2_ppm": 8.91, "f1_ppm": 126.2, "assign": [11, 12], "rel_intensity": 0.06, "confidence": "medium"},
+        {"f2_ppm": 8.91, "f1_ppm": 152.8, "assign": [11, 13], "rel_intensity": 0.07, "confidence": "medium"},
+        {"f2_ppm": 7.34, "f1_ppm": 117.2, "assign": [12, 8], "rel_intensity": 0.04, "confidence": "medium"},
+        {"f2_ppm": 7.34, "f1_ppm": 22.9, "assign": [12, 14], "rel_intensity": 0.03, "confidence": "medium"},
+        {"f2_ppm": 7.18, "f1_ppm": 146.8, "assign": [15, 17], "rel_intensity": 0.21, "confidence": "medium"},
+        {"f2_ppm": 7.18, "f1_ppm": 143.8, "rel_intensity": 0.20, "confidence": "low"},
+        {"f2_ppm": 7.07, "f1_ppm": 146.8, "assign": [16, 17], "rel_intensity": 0.23, "confidence": "medium"},
+        {"f2_ppm": 7.07, "f1_ppm": 113.3, "rel_intensity": 0.13, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "notes": "Pyridine-fused isocoumarin (polycerasoidin-type). Only 6 protonated carbons: OMe C0=61.8 (unusually downfield -> flanked aryl OMe on C2=144.0), aryl-Me C14=22.9, pyridine CH C11=153.8/8.91 (alpha-N) and C12=126.4/7.34, benzene CH C15=118.2/7.18 and C16=112.9/7.07 (C16 ortho to C17-OH=146.8). Quaternaries from HMBC: C2(OMe)=144.0, C8=117.0, C13(Me-bearing pyridine)=153.1, C17(OH)=146.8. Edited-HSQC signs reliable. 1H ref corr -0.038. Weak/uncertain benzene 3J targets (143.8, 113.3) left unassigned."
+}

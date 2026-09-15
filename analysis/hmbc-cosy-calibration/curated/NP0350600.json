@@ -1,0 +1,11 @@
+{
+  "npid": "NP0350600",
+  "smiles": "COC1=CC2=C(C(O)=C1)C1=C(CC2)C=C(O)C(=C1)C1=C(O)C=C(OC)C2=C1CCC1=C2C=CC(O)=C1",
+  "formula": "C30H26O6",
+  "solvent": "Acetone-d6",
+  "frequency_mhz": 400.0,
+  "status": "unprocessable",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {},
+  "notes": "Calancardin. All three 2D spectra are non-uniformly sampled (HSQC NUS 20%, COSY NUS 40%, HMBC NUS 25%, FnTYPE=2) with no nuslist in the deposit, so none can be reconstructed. Nothing curated."
+}

@@ -1,0 +1,46 @@
+{
+  "npid": "NP0351848",
+  "smiles": "[H][C@]12CC[C@@](C)(O)[C@]1([H])CC(C)(C)C[C@@]21O[C@]1(C)CO",
+  "formula": "C15H26O3",
+  "solvent": "CDCl3",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 0.97, "f1_ppm": 42.8, "assign": [9, 7], "rel_intensity": 1.00, "confidence": "medium"},
+        {"f2_ppm": 0.97, "f1_ppm": 38.5, "assign": [9, 11], "rel_intensity": 0.90, "confidence": "medium"},
+        {"f2_ppm": 0.97, "f1_ppm": 26.4, "assign": [9, 10], "rel_intensity": 0.88, "confidence": "high"},
+        {"f2_ppm": 0.97, "f1_ppm": 32.6, "assign": [9, 8], "rel_intensity": 0.72, "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 33.3, "assign": [10, 8], "rel_intensity": 0.78, "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 38.5, "assign": [10, 11], "rel_intensity": 0.64, "confidence": "medium"},
+        {"f2_ppm": 1.01, "f1_ppm": 32.4, "assign": [10, 8], "rel_intensity": 0.53, "confidence": "medium"},
+        {"f2_ppm": 1.14, "f1_ppm": 77.9, "assign": [4, 3], "rel_intensity": 0.82, "confidence": "high"},
+        {"f2_ppm": 1.14, "f1_ppm": 40.5, "assign": [4, 2], "rel_intensity": 0.68, "confidence": "medium"},
+        {"f2_ppm": 1.14, "f1_ppm": 50.5, "assign": [4, 6], "rel_intensity": 0.40, "confidence": "medium"},
+        {"f2_ppm": 1.41, "f1_ppm": 63.0, "assign": [15, 14], "rel_intensity": 0.86, "confidence": "high"},
+        {"f2_ppm": 1.41, "f1_ppm": 67.6, "assign": [15, 12], "rel_intensity": 0.49, "confidence": "high"},
+        {"f2_ppm": 1.41, "f1_ppm": 65.8, "assign": [15, 16], "rel_intensity": 0.55, "confidence": "medium"},
+        {"f2_ppm": 3.61, "f1_ppm": 63.0, "assign": [16, 14], "rel_intensity": 0.07, "confidence": "high"},
+        {"f2_ppm": 3.61, "f1_ppm": 67.6, "assign": [16, 12], "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 3.61, "f1_ppm": 17.5, "assign": [16, 15], "rel_intensity": 0.08, "confidence": "high"}
+      ]
+    },
+    "COSY": {
+      "pulse_program": "cosygpppqf (DQF-COSY)",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.61, "f1_ppm": 3.63, "assign": ["16a", "16b"], "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "export is corrupt/mis-phased: processor reports only 42% of strong 1H peaks fall on a 1D multiplet and 12% of 13C on a 1D line, edited signs inconsistent, dispersive F2 phase with antiphase pairs; strongest 'peaks' sit at impossible 1H shifts (8.13, -0.74, -1.13, 8.60) for a fully aliphatic terpene. No proton-carbon map recoverable; HSQC not curated.",
+    "COSY": "DQF-COSY is uniformly sampled but the aliphatic ring region (1.0-2.0 ppm) is a crowded, noisy mesh; without a valid HSQC proton-carbon map, individual cross-peaks cannot be assigned to specific protons. Only the clearly-resolved CH2OH (C16) geminal cross-peak recorded."
+  },
+  "notes": "Brasilane-type sesquiterpene (fully aliphatic; tetrasubstituted epoxide C12/C14 + CH2OH). HSQC corrupt (see excluded), so carbon map built from HMBC + 13C 1D: C3(C-OH)=78.0, epoxide C12=67.6/C14=63.0, C16(CH2OH)=65.9, C8(gem-diMe Cq)=32.6, ring CH C6=50.5, CH2 C7=42.8/C2=40.5/C11=38.5; methyls C4(on C3), C9/C10(gem, ~24-26), C15(on C14)=17.6. 13C 1D shows 13 of 15 C (two epoxide quaternaries weak). HMBC magnitude-mode (no signs). C7/C11 (42.8 vs 38.5) not distinguished. 13C axis of the HMBC referenced to the sensible 1D."
+}
