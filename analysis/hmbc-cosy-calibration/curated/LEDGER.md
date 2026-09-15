@@ -57,3 +57,8 @@
 | NP0351221 | CDCl3 | 13 | 0 | 5 | 30% | 14 | oxygenated sesquiterpene lactone (NMe2/iBu/OAc esters); dilute; carbonyls assigned |
 | NP0351503 | DMSO-d6 | 10 | 0 | 2 | 10% | 12 | Pepticinnamin depsipeptide (C43); large; aromatic/OMe/aCH partial |
 | NP0352049 | CD3OD | 15 | 0 | 6 | 35% | 15 | Largimycin C macrocyclic oxazole/polyene thiolactone; thiolactone/oxazole assigned; partial |
+| NP0351447 | C5D5N | 6 | 0 | 3 | 20% | 12 | Astracondensin cycloartane saponin; cyclopropane+glycosidic linkage; partial |
+| NP0350688 | CD3CN | 0 | 0 | 0 | - | 1 | Comptonellin analog cyclic peptide; unprocessable: all 2D NUS 25% no nuslist |
+| NP0352189 | CDCl3 | 13 | 0 | 7 | 40% | 14 | Amestolkolide meroterpenoid (CH2I/lactones/dienone); dienone/carbonyls assigned; partial |
+| NP0351578 | DMSO-d6 | 10 | 0 | 1 | 10% | 12 | Wrightriterpenoid cycloartane pentoside; dilute; anomeric/methyls partial |
+| NP0351510 | CD3OD | 10 | 0 | 4 | 40% | 14 | Kutznaposide phenol rhamnoside; anomeric/CH3/ester assigned; dilute |
