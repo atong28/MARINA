@@ -1,0 +1,11 @@
+{
+  "npid": "NP0351013",
+  "smiles": "[H][C@]12C[C@@]3([H])CC[C@@](C)(OC(=O)C3=C)[C@]3([H])C[C@@H](OC(C)=O)[C@@](C)(O3)[C@H](CC[C@]1(C)O2)OC(C)=O",
+  "formula": "C24H34O8",
+  "solvent": "CD3CN",
+  "frequency_mhz": 600.0,
+  "status": "unprocessable",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {},
+  "notes": "Sinulariolone (diterpenoid). All three 2D spectra are NUS (HSQC/COSY 32%, HMBC 25%, FnTYPE=2) with no nuslist; none can be reconstructed. Nothing curated."
+}

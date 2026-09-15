@@ -1,0 +1,71 @@
+{
+  "npid": "NP0351438",
+  "smiles": "C\\C=C(/C)[C@@H]1OC2=C([C@@H](O)[C@@]1(C)O)C(=O)NC=C2C1=CC=CC=C1",
+  "formula": "C19H21NO4",
+  "solvent": "CD3OD",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqcedetgp",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 1.70, "f1_ppm": 12.9, "assign": [0, 0], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 1.77, "f1_ppm": 14.6, "assign": [3, 3], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 1.15, "f1_ppm": 18.4, "assign": [11, 11], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 4.47, "f1_ppm": 66.8, "assign": [8, 8], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 4.58, "f1_ppm": 81.7, "assign": [4, 4], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 5.65, "f1_ppm": 124.9, "assign": [1, 1], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 7.32, "f1_ppm": 133.1, "assign": [16, 16], "sign": 1, "confidence": "high"},
+        {"f2_ppm": 7.43, "f1_ppm": 128.6, "assign": [19, 19], "sign": 1, "confidence": "low"},
+        {"f2_ppm": 7.49, "f1_ppm": 128.9, "assign": [20, 20], "sign": 1, "confidence": "low"},
+        {"f2_ppm": 7.38, "f1_ppm": 127.5, "assign": [21, 21], "sign": 1, "confidence": "low"}
+      ]
+    },
+    "COSY": {
+      "pulse_program": "cosy",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 5.65, "f1_ppm": 1.70, "assign": [1, 0], "confidence": "high"},
+        {"f2_ppm": 5.66, "f1_ppm": 1.77, "assign": [1, 3], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.15, "f1_ppm": 69.9, "assign": [11, 10], "rel_intensity": 0.98, "confidence": "high"},
+        {"f2_ppm": 1.15, "f1_ppm": 66.9, "assign": [11, 8], "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 1.15, "f1_ppm": 81.6, "assign": [11, 4], "rel_intensity": 0.68, "confidence": "high"},
+        {"f2_ppm": 1.77, "f1_ppm": 130.0, "assign": [3, 2], "rel_intensity": 0.58, "confidence": "high"},
+        {"f2_ppm": 1.77, "f1_ppm": 125.0, "assign": [3, 1], "rel_intensity": 0.48, "confidence": "high"},
+        {"f2_ppm": 1.77, "f1_ppm": 81.6, "assign": [3, 4], "rel_intensity": 0.34, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 125.0, "assign": [0, 1], "rel_intensity": 0.54, "confidence": "high"},
+        {"f2_ppm": 1.70, "f1_ppm": 130.0, "assign": [0, 2], "rel_intensity": 0.53, "confidence": "high"},
+        {"f2_ppm": 4.58, "f1_ppm": 69.9, "assign": [4, 10], "rel_intensity": 0.17, "confidence": "high"},
+        {"f2_ppm": 4.58, "f1_ppm": 125.0, "assign": [4, 1], "rel_intensity": 0.16, "confidence": "high"},
+        {"f2_ppm": 4.58, "f1_ppm": 18.3, "assign": [4, 11], "rel_intensity": 0.16, "confidence": "medium"},
+        {"f2_ppm": 4.58, "f1_ppm": 130.0, "assign": [4, 2], "rel_intensity": 0.15, "confidence": "high"},
+        {"f2_ppm": 4.58, "f1_ppm": 14.6, "assign": [4, 3], "rel_intensity": 0.12, "confidence": "medium"},
+        {"f2_ppm": 4.47, "f1_ppm": 164.7, "assign": [8, 13], "rel_intensity": 0.17, "confidence": "medium"},
+        {"f2_ppm": 4.47, "f1_ppm": 161.6, "assign": [8, 6], "rel_intensity": 0.23, "confidence": "medium"},
+        {"f2_ppm": 4.47, "f1_ppm": 108.5, "assign": [8, 7], "rel_intensity": 0.23, "confidence": "high"},
+        {"f2_ppm": 4.47, "f1_ppm": 69.9, "assign": [8, 10], "rel_intensity": 0.18, "confidence": "high"},
+        {"f2_ppm": 4.47, "f1_ppm": 81.6, "assign": [8, 4], "rel_intensity": 0.20, "confidence": "medium"},
+        {"f2_ppm": 5.65, "f1_ppm": 13.9, "assign": [1, 0], "rel_intensity": 0.10, "confidence": "high"},
+        {"f2_ppm": 5.65, "f1_ppm": 81.6, "assign": [1, 4], "rel_intensity": 0.08, "confidence": "medium"},
+        {"f2_ppm": 7.32, "f1_ppm": 164.5, "assign": [16, 13], "rel_intensity": 0.32, "confidence": "high"},
+        {"f2_ppm": 7.32, "f1_ppm": 161.6, "assign": [16, 6], "rel_intensity": 0.29, "confidence": "medium"},
+        {"f2_ppm": 7.32, "f1_ppm": 133.2, "assign": [16, 17], "rel_intensity": 0.22, "confidence": "medium"},
+        {"f2_ppm": 7.43, "f1_ppm": 133.4, "assign": [19, 17], "rel_intensity": 0.29, "confidence": "low"},
+        {"f2_ppm": 7.43, "f1_ppm": 128.0, "rel_intensity": 0.33, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "CD3OD residual at 3.39/48.9 and grease at 1.31/29.4 (no CH2 in structure) excluded."
+  },
+  "notes": "Photersone B - 3-phenyl-4-hydroxy-2-pyridinone fused to a pyran bearing a 2-methyl-2-butenyl-derived unit; CD3OD. Fully assigned via HMBC: prenyl C0=12.9/C3=14.6 methyls, C1=124.9(=CH)/C2=130.0(=C), pyran O-CH C4=81.7, carbinol C8=66.8, quaternary C10=69.9 (bears C11-Me 18.4), aromatic C7=108.5, C6(O)=161.6, C13(pyridinone)=164.7, pyridinone =CH C16=133.1, C17(phenyl-bearing)~133. Phenyl (C19-23) monosubstituted, 3 resonances 127.5-128.9 (ortho/meta/para assignment tentative). No CH2. COSY sparse (C4/C8 flanked by quaternaries); main coupling prenyl CH3(C0)->=CH(C1). HSQC edited signs reliable; 1H ref corr +0.06."
+}

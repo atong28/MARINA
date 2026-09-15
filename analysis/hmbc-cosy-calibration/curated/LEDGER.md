@@ -17,3 +17,8 @@
 | NP0350690 | CD3CN | 0 | 0 | 0 | - | 3 | Comptonellin cyclic peptide; unprocessable: all three 2D NUS 50% no nuslist |
 | NP0352144 | D2O | 9 | 0 | 0 | 0% | 18 | cyclic peptide-alkaloid; heavy overlap + t1 streak/low-13C artifacts; PARTIAL HSQC only, poor target |
 | NP0350602 | Acetone-d6 | 0 | 0 | 0 | - | 3 | Calancardin analog; unprocessable: all three 2D NUS (20/40/25%) no nuslist |
+| NP0352031 | CDCl3 | 0 | 0 | 0 | - | 2 | Talaromypyrone; unprocessable: all three 2D NUS (~50/40/50%) no nuslist |
+| NP0352115 | DMSO-d6 | 14 | 6 | 11 | 79% | 22 | dimethylpyrazine alkaloid; well-resolved; styryl+CH2OH+dihydrobenzofuran assigned via HMBC/COSY |
+| NP0351438 | CD3OD | 10 | 2 | 25 | 92% | 22 | Photersone B pyridinone/pyran; fully HMBC-assigned; COSY sparse (quaternary-flanked CH) |
+| NP0350777 | C5D5N | 6 | 0 | 0 | 0% | 12 | Dracomicin A glycopeptide (C84); MINIMAL - poor target, extreme overlap; a few resolved anomerics/ArCH only |
+| NP0351013 | CD3CN | 0 | 0 | 0 | - | 2 | Sinulariolone; unprocessable: all three 2D NUS (32/32/25%) no nuslist |
