@@ -1,0 +1,11 @@
+{
+  "npid": "NP0351880",
+  "smiles": "C[C@@H]1CCC(=O)[C@H](C)[C@@]1(C)C\\C=C(/C)[C@@H](O)CC1=C(O)C(C=O)=C(C)C=C1O",
+  "formula": "C23H32O5",
+  "solvent": "CD3OD",
+  "frequency_mhz": 500.0,
+  "status": "unprocessable",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {},
+  "notes": "Acrochlorin (meroterpenoid). All three 2D spectra are NUS (HSQC 40%, COSY 50%, HMBC 35%, FnTYPE=2) with no nuslist; none can be reconstructed. Nothing curated."
+}

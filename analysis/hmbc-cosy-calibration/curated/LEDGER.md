@@ -22,3 +22,8 @@
 | NP0351438 | CD3OD | 10 | 2 | 25 | 92% | 22 | Photersone B pyridinone/pyran; fully HMBC-assigned; COSY sparse (quaternary-flanked CH) |
 | NP0350777 | C5D5N | 6 | 0 | 0 | 0% | 12 | Dracomicin A glycopeptide (C84); MINIMAL - poor target, extreme overlap; a few resolved anomerics/ArCH only |
 | NP0351013 | CD3CN | 0 | 0 | 0 | - | 2 | Sinulariolone; unprocessable: all three 2D NUS (32/32/25%) no nuslist |
+| NP0350924 | D2O | 10 | 0 | 5 | 70% | 20 | guanidino bicyclic DKP; HMBC C=O/guanidine assigned; COSY HDO-dominated; rotamer doubling |
+| NP0350601 | Acetone-d6 | 0 | 0 | 0 | - | 2 | Calancardin analog; unprocessable: all three 2D NUS (20/40/25%) no nuslist |
+| NP0351588 | CDCl3 | 22 | 0 | 10 | 55% | 25 | Trichoharzchin PKS-NRPS macrocycle; HMBC key alkenes/ketone/CHOH assigned; aliphatic partial |
+| NP0351815 | DMSO-d6 | 8 | 2 | 7 | 88% | 15 | Lindolin D indolylacetanilide; CH2 HMBC core assigned; some indole/aniline ArCH overlap |
+| NP0351880 | CD3OD | 0 | 0 | 0 | - | 2 | Acrochlorin meroterpenoid; unprocessable: all three 2D NUS (40/50/35%) no nuslist |

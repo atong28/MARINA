@@ -1,0 +1,61 @@
+{
+  "npid": "NP0351588",
+  "smiles": "[H][C@]12[C@H](CC3=CC=CC=C3)NC(=O)[C@]11C(=O)C\\C=C(C)\\C[C@@H](C)C\\C=C\\[C@@]1([H])[C@H](O)C(=C)[C@H]2C",
+  "formula": "C28H35NO3",
+  "solvent": "CDCl3",
+  "frequency_mhz": 400.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 7.09, "f1_ppm": 129.5, "assign": [4, 4], "confidence": "medium"},
+        {"f2_ppm": 7.31, "f1_ppm": 128.9, "assign": [5, 5], "confidence": "low"},
+        {"f2_ppm": 7.25, "f1_ppm": 127.2, "assign": [6, 6], "confidence": "medium"},
+        {"f2_ppm": 5.37, "f1_ppm": 115.8, "assign": [16, 16], "confidence": "high"},
+        {"f2_ppm": 5.11, "f1_ppm": 114.3, "assign": ["29a", 29], "confidence": "high"},
+        {"f2_ppm": 5.31, "f1_ppm": 114.1, "assign": ["29b", 29], "confidence": "high"},
+        {"f2_ppm": 5.76, "f1_ppm": 127.8, "assign": [23, 23], "confidence": "medium"},
+        {"f2_ppm": 5.27, "f1_ppm": 136.4, "assign": [24, 24], "confidence": "medium"},
+        {"f2_ppm": 3.93, "f1_ppm": 70.9, "assign": [26, 26], "confidence": "high"},
+        {"f2_ppm": 3.32, "f1_ppm": 52.7, "confidence": "medium"},
+        {"f2_ppm": 2.09, "f1_ppm": 51.0, "confidence": "medium"},
+        {"f2_ppm": 2.54, "f1_ppm": 50.1, "confidence": "medium"},
+        {"f2_ppm": 2.62, "f1_ppm": 50.3, "confidence": "low"},
+        {"f2_ppm": 2.87, "f1_ppm": 41.5, "assign": ["2a", 2], "confidence": "medium"},
+        {"f2_ppm": 2.78, "f1_ppm": 44.5, "assign": ["19a", 19], "confidence": "low"},
+        {"f2_ppm": 2.48, "f1_ppm": 44.3, "assign": ["19b", 19], "confidence": "low"},
+        {"f2_ppm": 2.23, "f1_ppm": 43.6, "confidence": "low"},
+        {"f2_ppm": 2.97, "f1_ppm": 32.7, "confidence": "low"},
+        {"f2_ppm": 1.27, "f1_ppm": 29.5, "confidence": "low"},
+        {"f2_ppm": 1.59, "f1_ppm": 17.2, "assign": [18, 18], "confidence": "high"},
+        {"f2_ppm": 1.05, "f1_ppm": 13.4, "assign": [21, 21], "confidence": "medium"},
+        {"f2_ppm": 0.96, "f1_ppm": 24.5, "assign": [31, 31], "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 1.59, "f1_ppm": 140.7, "assign": [18, 17], "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 1.59, "f1_ppm": 115.8, "assign": [18, 16], "rel_intensity": 0.84, "confidence": "high"},
+        {"f2_ppm": 1.59, "f1_ppm": 50.7, "assign": [18, 19], "rel_intensity": 0.50, "confidence": "high"},
+        {"f2_ppm": 5.11, "f1_ppm": 70.9, "assign": [29, 26], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 5.11, "f1_ppm": 114.3, "rel_intensity": 0.07, "confidence": "low"},
+        {"f2_ppm": 3.93, "f1_ppm": 148.4, "assign": [26, 28], "rel_intensity": 0.04, "confidence": "high"},
+        {"f2_ppm": 3.93, "f1_ppm": 114.3, "assign": [26, 29], "rel_intensity": 0.05, "confidence": "high"},
+        {"f2_ppm": 3.93, "f1_ppm": 127.8, "assign": [26, 25], "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 2.87, "f1_ppm": 205.6, "assign": [15, 13], "rel_intensity": 0.38, "confidence": "medium"},
+        {"f2_ppm": 2.63, "f1_ppm": 174.6, "rel_intensity": 0.12, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "CHCl3 artifact at 7.26/77.2 and TMS/spurious cross-peaks at ~0.0/220 excluded; the snr-5 picker over-picked noise (193 raw) - only strong blue contour centers recorded.",
+    "COSY": "not curated: complex macrocyclic aliphatic spin systems too overlapped to assign per-pair reliably within budget."
+  },
+  "notes": "Trichoharzchin-type PKS-NRPS macrocycle (benzyl, trisubstituted + disubstituted + exocyclic alkenes, ketone, amide) in CDCl3. PARTIAL: HSQC real cross-peaks recorded; key HMBC connectivity established - trisubstituted alkene C16(115.8,=CH)/C17(140.7,=C) with C18-Me->C19(50.7); exocyclic isopropenyl-like C28(148.4)=C29(114.3,=CH2) bearing CHOH C26(70.9); ketone C13~205.6 (alpha-CH2 C15 at 2.87), amide C10=174.6. Disubstituted olefin C23(127.8)/C24(136.4). Many aliphatic CH/CH2 (40-53) recorded by position; full skeleton not exhaustively assigned. HSQC signs not reliable."
+}
