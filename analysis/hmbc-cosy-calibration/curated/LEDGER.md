@@ -37,3 +37,8 @@
 | NP0350778 | C5D5N | 8 | 0 | 0 | 0% | 6 | Dracomicin B glycopeptide (C84); MINIMAL - poor target like Dracomicin A |
 | NP0350983 | CD3CN | 8 | 0 | 8 | 75% | 18 | Macatrichocarpin dihydrochalcone; dilute (methyls folded); HMBC core assigned |
 | NP0352127 | D2O | 9 | 0 | 5 | 30% | 15 | STX/TTX caged guanidinium (6-epi); epimeric doubling; CH3-HMBC partial |
+| NP0351101 | CDCl3 | 15 | 3 | 7 | 70% | 20 | Amomaxyz B indole-diterpenoid; exocyclic/pyran/gem-diMe assigned; skeleton partial |
+| NP0354045 | DMSO-d6 | 17 | 0 | 4 | 20% | 16 | Shebamide A bis-diene tetramic acid; dilute; acetyl/Me assigned, dienes by position |
+| NP0351241 | CD3OD | 14 | 2 | 11 | 80% | 18 | Cinnaterpenol sesquiterpene diol; HMBC-assigned core; COSY weak |
+| NP0350714 | C5D5N | 10 | 0 | 11 | 70% | 18 | Rhodomollein grayanane heptaol; methyl-HMBC networks assigned; ring CH partial |
+| NP0352007 | CD3CN | 0 | 0 | 0 | - | 2 | Fissisteifol; unprocessable: all three 2D NUS (25/50/50%) no nuslist |

@@ -1,0 +1,50 @@
+{
+  "npid": "NP0354045",
+  "smiles": "[H][C@@]12C[C@H]([C@@H](C)[C@]1([H])[C@@]1([H])C\\C=C/C=C\\C(\\O)=C3\\C(=O)N[C@@]([H])([C@@H](O)CCNC(=O)\\C=C/C=C\\[C@]1([H])C2)C3=O)C(C)=O",
+  "formula": "C29H36N2O6",
+  "solvent": "DMSO-d6",
+  "frequency_mhz": 500.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 2.10, "f1_ppm": 31.3, "assign": [35, 35], "confidence": "high"},
+        {"f2_ppm": 0.90, "f1_ppm": 16.7, "assign": [4, 4], "confidence": "high"},
+        {"f2_ppm": 3.84, "f1_ppm": 68.9, "confidence": "medium"},
+        {"f2_ppm": 3.79, "f1_ppm": 71.1, "confidence": "medium"},
+        {"f2_ppm": 3.07, "f1_ppm": 56.5, "confidence": "medium"},
+        {"f2_ppm": 1.80, "f1_ppm": 59.5, "confidence": "low"},
+        {"f2_ppm": 5.70, "f1_ppm": 122.4, "confidence": "medium"},
+        {"f2_ppm": 5.67, "f1_ppm": 122.4, "confidence": "low"},
+        {"f2_ppm": 6.86, "f1_ppm": 121.1, "confidence": "medium"},
+        {"f2_ppm": 6.02, "f1_ppm": 145.0, "confidence": "medium"},
+        {"f2_ppm": 6.81, "f1_ppm": 140.5, "confidence": "medium"},
+        {"f2_ppm": 7.26, "f1_ppm": 142.8, "confidence": "medium"},
+        {"f2_ppm": 6.19, "f1_ppm": 145.2, "confidence": "low"},
+        {"f2_ppm": 5.95, "f1_ppm": 126.3, "confidence": "low"},
+        {"f2_ppm": 6.02, "f1_ppm": 134.5, "confidence": "low"},
+        {"f2_ppm": 2.70, "f1_ppm": 39.3, "confidence": "low"},
+        {"f2_ppm": 2.79, "f1_ppm": 44.5, "confidence": "low"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 2.10, "f1_ppm": 211.4, "assign": [35, 34], "rel_intensity": 0.27, "confidence": "high"},
+        {"f2_ppm": 0.90, "f1_ppm": 43.8, "assign": [4, 3], "rel_intensity": 0.11, "confidence": "medium"},
+        {"f2_ppm": 5.70, "f1_ppm": 165.7, "rel_intensity": 0.03, "confidence": "medium"},
+        {"f2_ppm": 6.85, "f1_ppm": 173.0, "rel_intensity": 0.03, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "HSQC": "DMSO-d6 residual 2.52/40.1 and HDO ~3.3 excluded; sample dilute.",
+    "COSY": "not curated: dilute + two overlapping diene spin systems in a crowded 5.5-7.3 envelope."
+  },
+  "notes": "Shebamide A - a macrocyclic bis-diene tetramic-acid alkaloid with a pendant methyl ketone (DMSO-d6, solvent blank in meta). DILUTE sample -> weak HSQC. Assigned: methyl ketone CH3 C35=31.3/2.10 -> ketone C34(211.4); secondary methyl C4=16.7/0.90 -> C3(43.8). Two conjugated dienes give ~8 olefinic CH (121-145, recorded by position, individual assignment not attempted due to overlap+dilution); carbinol CH ~69-71, alpha-CH ~56. Tetramic-acid/amide carbonyls 165.7/172-173/193.1. HSQC signs not reliable; partial curation, moderate target."
+}

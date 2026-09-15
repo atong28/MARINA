@@ -1,0 +1,11 @@
+{
+  "npid": "NP0352007",
+  "smiles": "COC1=C(O)[C@@]2(CC=C(C)[C@H]3C4C([C@H](CC=C4C)C4=CC=CC=C4)C(=O)C(C1=O)[C@]23O)OC",
+  "formula": "C27H30O6",
+  "solvent": "CD3CN",
+  "frequency_mhz": 500.0,
+  "status": "unprocessable",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {},
+  "notes": "Fissisteifol. All three 2D spectra are NUS (HSQC 25%, COSY/HMBC 50%, FnTYPE=2) with no nuslist; none can be reconstructed. Nothing curated."
+}
