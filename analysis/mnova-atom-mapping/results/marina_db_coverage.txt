@@ -1,0 +1,7 @@
+mnova records 486940 unique smiles; MARINA-DB molecules 486583
+empty_H_or_C             151  0.03%
+hsqc_not_success           2  0.00%
+no_record                 87  0.02%
+ok                    486343  99.95%
+ok_but_no_js             105  0.02%
+ok_partial_js         278523  57.24%

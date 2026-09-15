@@ -16,3 +16,12 @@ pixi run python3 analysis/mnova-atom-mapping/scripts/j_coupling_ceiling_stats.py
 ```
 
 `MNOVA_SHARDS` (glob) overrides the shard location. Environment: MARINA pixi (RDKit 2025.09.6).
+
+Full-archive coverage (all 489 shards, run 2026-09-15, ~20 min):
+
+```bash
+python3 analysis/mnova-atom-mapping/scripts/scan_all_shards.py      # -> /tmp/mnova/all_records.tsv (run from ~/Workspace)
+unzip -o -q Datasets/MARINA-DB.zip index.pkl -d /tmp/mnova/db
+python3 analysis/mnova-atom-mapping/scripts/marina_db_coverage.py   # -> results/marina_db_coverage.txt
+pixi run python3 analysis/mnova-atom-mapping/scripts/diastereotopic_check.py
+```
