@@ -1,0 +1,41 @@
+{
+  "npid": "NP0350641",
+  "smiles": "OC1=C(\\C=C\\C=C\\C=C\\C=C\\C2=CC=CC=C2)C(=O)O\\C\\1=C/C1=CNC2=C1C=CC=C2",
+  "formula": "C27H21NO3",
+  "solvent": "Acetone-d6",
+  "frequency_mhz": 599.8,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqcedetgpsisp2.3",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 7.84, "f1_ppm": 118.5, "rel_intensity": 0.17, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 7.60, "f1_ppm": 126.1, "rel_intensity": 0.02, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 7.56, "f1_ppm": 112.1, "rel_intensity": 0.01, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 7.34, "f1_ppm": 111.7, "rel_intensity": 0.18, "sign": 1, "assign": [30, 30], "confidence": "medium"},
+        {"f2_ppm": 7.32, "f1_ppm": 126.1, "rel_intensity": 0.25, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 7.17, "f1_ppm": 128.7, "rel_intensity": 0.22, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 7.06, "f1_ppm": 127.1, "rel_intensity": 0.11, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 7.04, "f1_ppm": 122.0, "rel_intensity": 0.13, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 6.98, "f1_ppm": 119.9, "rel_intensity": 0.14, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 6.87, "f1_ppm": 97.7, "rel_intensity": 0.13, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 6.82, "f1_ppm": 125.5, "rel_intensity": 0.17, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 6.72, "f1_ppm": 128.7, "rel_intensity": 0.15, "sign": 1, "confidence": "medium"},
+        {"f2_ppm": 6.57, "f1_ppm": 123.8, "rel_intensity": 0.07, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 6.44, "f1_ppm": 131.2, "rel_intensity": 0.09, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 6.37, "f1_ppm": 136.8, "rel_intensity": 0.06, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 6.27, "f1_ppm": 131.2, "rel_intensity": 0.06, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 6.23, "f1_ppm": 129.8, "rel_intensity": 0.04, "sign": 1, "confidence": "low"},
+        {"f2_ppm": 6.06, "f1_ppm": 131.2, "rel_intensity": 0.02, "sign": 1, "confidence": "low"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [],
+  "excluded": {
+    "COSY": "spectrum acquired but not curated: all 19 protonated carbons are olefinic/aromatic CH crowded into 5.9-8.0 ppm, and the magnitude-mode COSY is dominated by t1 streaks along every strong 1H column plus a broad diagonal ridge; distinct off-diagonal cross-peaks cannot be separated from streak/diagonal artifacts with any confidence, so none are recorded rather than risk invented peaks.",
+    "HMBC": "unprocessable: non-uniformly sampled (FnTYPE=2, NUS 25%) with no nuslist in the deposit, so the spectrum cannot be reconstructed."
+  },
+  "notes": "Flavoaffinin: fully conjugated, no sp3 CH; strong aliphatic negative peaks at ~1.2-2.1/20-30 ppm in HSQC are residual acetone-d6 (2.05/29.8) and grease/impurity, not the compound. All real HSQC contours are positive (CH), 6.0-7.9 ppm / 98-137 ppm. HSQC is heavily overlapped in the polyene envelope (6.2-6.5 / 129-137); the recorded set is the confidently-distinct subset (~16-18 of 17 expected distinct protonated carbons) - a couple of overlapping polyene CH are unresolved. Only assignment given: indole C7-H at 7.34/111.7 (atom 30). 1H reference correction -0.145; edited-HSQC signs reliable."
+}

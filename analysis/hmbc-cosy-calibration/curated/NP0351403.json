@@ -1,0 +1,76 @@
+{
+  "npid": "NP0351403",
+  "smiles": "[H]C12C(O)C3=CC=CC(OC)=C3C(O)C1(O)C(CC1=C2C(=O)CC(C)C1)SCC(NC(C)=O)C(O)=O",
+  "formula": "C25H31NO8S",
+  "solvent": "C5D5N",
+  "frequency_mhz": 600.0,
+  "status": "ok",
+  "curated_by": "claude session 2026-09-15",
+  "spectra": {
+    "HSQC": {
+      "pulse_program": "hsqc",
+      "snr_used": 5,
+      "peaks": [
+        {"f2_ppm": 3.83, "f1_ppm": 56.0, "assign": [9, 9], "confidence": "high"},
+        {"f2_ppm": 1.92, "f1_ppm": 22.8, "assign": [30, 30], "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 20.6, "assign": [23, 23], "confidence": "high"},
+        {"f2_ppm": 6.88, "f1_ppm": 109.6, "assign": [6, 6], "confidence": "high"},
+        {"f2_ppm": 7.09, "f1_ppm": 119.6, "assign": [4, 4], "confidence": "high"},
+        {"f2_ppm": 7.22, "f1_ppm": 127.9, "assign": [5, 5], "confidence": "high"},
+        {"f2_ppm": 4.66, "f1_ppm": 69.5, "assign": [1, 1], "confidence": "high"},
+        {"f2_ppm": 5.20, "f1_ppm": 66.9, "assign": [11, 11], "confidence": "high"},
+        {"f2_ppm": 3.18, "f1_ppm": 49.1, "assign": [0, 0], "confidence": "medium"},
+        {"f2_ppm": 3.33, "f1_ppm": 44.5, "assign": [15, 15], "confidence": "medium"},
+        {"f2_ppm": 2.05, "f1_ppm": 27.3, "assign": [22, 22], "confidence": "high"},
+        {"f2_ppm": 4.54, "f1_ppm": 52.6, "assign": [27, 27], "confidence": "high"},
+        {"f2_ppm": 2.53, "f1_ppm": 46.0, "assign": ["21a", 21], "confidence": "medium"},
+        {"f2_ppm": 2.04, "f1_ppm": 46.1, "assign": ["21b", 21], "confidence": "medium"},
+        {"f2_ppm": 2.62, "f1_ppm": 42.3, "assign": ["24a", 24], "confidence": "medium"},
+        {"f2_ppm": 2.44, "f1_ppm": 41.4, "assign": ["24b", 24], "confidence": "medium"},
+        {"f2_ppm": 3.29, "f1_ppm": 36.3, "assign": ["16a", 16], "confidence": "low"},
+        {"f2_ppm": 2.41, "f1_ppm": 36.2, "assign": ["16b", 16], "confidence": "low"},
+        {"f2_ppm": 3.05, "f1_ppm": 34.0, "assign": ["26a", 26], "confidence": "medium"},
+        {"f2_ppm": 2.83, "f1_ppm": 34.0, "assign": ["26b", 26], "confidence": "medium"}
+      ]
+    },
+    "HMBC": {
+      "pulse_program": "hmbc",
+      "snr_used": 3,
+      "peaks": [
+        {"f2_ppm": 3.83, "f1_ppm": 158.5, "assign": [9, 7], "rel_intensity": 0.89, "confidence": "high"},
+        {"f2_ppm": 1.92, "f1_ppm": 170.3, "assign": [30, 29], "rel_intensity": 1.00, "confidence": "high"},
+        {"f2_ppm": 8.32, "f1_ppm": 170.3, "assign": ["NH", 29], "exchangeable": true, "rel_intensity": 0.12, "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 27.4, "assign": [23, 22], "rel_intensity": 0.37, "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 46.0, "assign": [23, 21], "rel_intensity": 0.29, "confidence": "high"},
+        {"f2_ppm": 1.01, "f1_ppm": 41.3, "assign": [23, 24], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 6.88, "f1_ppm": 119.5, "assign": [6, 4], "rel_intensity": 0.08, "confidence": "medium"},
+        {"f2_ppm": 6.88, "f1_ppm": 125.1, "assign": [6, 10], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 6.88, "f1_ppm": 158.5, "assign": [6, 7], "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 7.09, "f1_ppm": 109.6, "assign": [4, 6], "rel_intensity": 0.18, "confidence": "high"},
+        {"f2_ppm": 7.09, "f1_ppm": 125.1, "assign": [4, 10], "rel_intensity": 0.19, "confidence": "high"},
+        {"f2_ppm": 7.09, "f1_ppm": 69.6, "assign": [4, 1], "rel_intensity": 0.08, "confidence": "medium"},
+        {"f2_ppm": 7.22, "f1_ppm": 119.7, "assign": [5, 4], "rel_intensity": 0.07, "confidence": "medium"},
+        {"f2_ppm": 7.22, "f1_ppm": 144.1, "assign": [5, 3], "rel_intensity": 0.19, "confidence": "high"},
+        {"f2_ppm": 7.22, "f1_ppm": 158.5, "assign": [5, 7], "rel_intensity": 0.19, "confidence": "high"},
+        {"f2_ppm": 5.20, "f1_ppm": 125.1, "assign": [11, 10], "rel_intensity": 0.15, "confidence": "high"},
+        {"f2_ppm": 5.20, "f1_ppm": 143.9, "assign": [11, 3], "rel_intensity": 0.14, "confidence": "high"},
+        {"f2_ppm": 5.20, "f1_ppm": 158.5, "assign": [11, 7], "rel_intensity": 0.06, "confidence": "medium"},
+        {"f2_ppm": 5.20, "f1_ppm": 44.5, "assign": [11, 15], "rel_intensity": 0.05, "confidence": "low"},
+        {"f2_ppm": 4.66, "f1_ppm": 144.1, "assign": [1, 3], "rel_intensity": 0.02, "confidence": "medium"},
+        {"f2_ppm": 4.66, "f1_ppm": 132.6, "assign": [1, 18], "rel_intensity": 0.01, "confidence": "low"},
+        {"f2_ppm": 4.54, "f1_ppm": 169.8, "assign": [27, 29], "rel_intensity": 0.04, "confidence": "medium"},
+        {"f2_ppm": 4.54, "f1_ppm": 172.6, "assign": [27, 32], "rel_intensity": 0.06, "confidence": "high"},
+        {"f2_ppm": 2.82, "f1_ppm": 172.6, "assign": [26, 32], "rel_intensity": 0.05, "confidence": "medium"},
+        {"f2_ppm": 2.53, "f1_ppm": 202.3, "assign": [21, 19], "rel_intensity": 0.05, "confidence": "high"},
+        {"f2_ppm": 2.04, "f1_ppm": 202.2, "assign": [21, 19], "rel_intensity": 0.03, "confidence": "medium"},
+        {"f2_ppm": 2.44, "f1_ppm": 162.3, "assign": [24, 17], "rel_intensity": 0.04, "confidence": "medium"},
+        {"f2_ppm": 2.62, "f1_ppm": 162.3, "assign": [24, 17], "rel_intensity": 0.03, "confidence": "medium"}
+      ]
+    }
+  },
+  "exchangeable_protons_seen": [{"ppm": 8.32, "type": "NH", "assign": 28}],
+  "excluded": {
+    "COSY": "spectrum acquired and referenced, but dominated by strong t1 streaks in both dimensions; off-diagonal picks are weak (I<=0.13) and their positions do not cleanly correspond to the HSQC-derived proton shifts, so no cross-peaks are recorded with confidence rather than risk invented/streak-artifact pairs. Diagonal positions do match HSQC (couplings are present but not cleanly extractable)."
+  },
+  "notes": "Angucycline-type aglycone with an N-acetyl-cysteine thioether at C15. Solvent mismatch in deposit: 2D and 1H are pyridine-d5 (C5D5N) but the 13C 1D zip is labelled DMSO - 13C 1D not used for referencing; F1 shifts from HSQC/HMBC. Pyridine-d5 fully deuterated so no solvent HSQC. Connectivity fully cross-checked via HMBC: OMe->C7(158.5); C23-Me->C22(27.3)/C21(46.0)/C24(41.3); aromatic ring C3(144.1)/C7(158.5)/C10(125.1) with C4(119.6)/C5(127.9)/C6(109.6); benzylic carbinols C1(69.5/4.66, on C3) and C11(66.9/5.20, on C10); enone O=C19(202.3)-C18(132.6)=C17(162.3); NAc amide C29(170.3, from acetyl-Me + NH 8.32); COOH C32(172.6, from C27 4.54 + C26 2.82). HSQC signs not reliable (no multiplicity); CH/CH2 assigned by shift+HMBC."
+}
