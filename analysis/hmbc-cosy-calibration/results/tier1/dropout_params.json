@@ -1,0 +1,271 @@
+{
+ "source": "calibrate.py",
+ "tier": [
+  "NP0351071",
+  "NP0351101",
+  "NP0351238",
+  "NP0351241",
+  "NP0351319",
+  "NP0351403",
+  "NP0351438",
+  "NP0351815",
+  "NP0352091",
+  "NP0352115",
+  "NP0352202",
+  "NP0354171"
+ ],
+ "prior_strength": 10.0,
+ "model": "keep = clip(m * P[ptype][ctype], 0, 1) for 2J/3J carbon-bound HMBC pairs; keep_4J for 4J; keep_exch[solventclass] for OH/NH/SH protons; COSY keep = clip(m * cosy[class]); m ~ molecule_multiplier",
+ "pooled_2J3J_rate": 0.317,
+ "bond_rates": {
+  "2J": {
+   "raw": 0.34615384615384615,
+   "n": 312
+  },
+  "3J": {
+   "raw": 0.2966292134831461,
+   "n": 445
+  },
+  "4J": {
+   "raw": 0.0043859649122807015,
+   "n": 456
+  }
+ },
+ "P_hmbc": {
+  "CH": {
+   "carbonyl": {
+    "raw": 0.8666666666666667,
+    "n": 15,
+    "keep": 0.647
+   },
+   "protonated": {
+    "raw": 0.13953488372093023,
+    "n": 129,
+    "keep": 0.152
+   },
+   "quaternary": {
+    "raw": 0.3018867924528302,
+    "n": 53,
+    "keep": 0.304
+   }
+  },
+  "CH2": {
+   "carbonyl": {
+    "raw": 0.7222222222222222,
+    "n": 18,
+    "keep": 0.578
+   },
+   "protonated": {
+    "raw": 0.1111111111111111,
+    "n": 90,
+    "keep": 0.132
+   },
+   "quaternary": {
+    "raw": 0.29411764705882354,
+    "n": 51,
+    "keep": 0.298
+   }
+  },
+  "CH3": {
+   "carbonyl": {
+    "raw": 1.0,
+    "n": 6,
+    "keep": 0.573
+   },
+   "protonated": {
+    "raw": 0.8787878787878788,
+    "n": 66,
+    "keep": 0.805
+   },
+   "quaternary": {
+    "raw": 0.975,
+    "n": 40,
+    "keep": 0.843
+   }
+  },
+  "arom": {
+   "carbonyl": {
+    "raw": 0.75,
+    "n": 4,
+    "keep": 0.441
+   },
+   "protonated": {
+    "raw": 0.1282051282051282,
+    "n": 78,
+    "keep": 0.15
+   },
+   "quaternary": {
+    "raw": 0.3142857142857143,
+    "n": 70,
+    "keep": 0.315
+   }
+  },
+  "olef": {
+   "carbonyl": {
+    "raw": 0.0,
+    "n": 2,
+    "keep": 0.264
+   },
+   "protonated": {
+    "raw": 0.25925925925925924,
+    "n": 27,
+    "keep": 0.275
+   },
+   "quaternary": {
+    "raw": 0.47058823529411764,
+    "n": 17,
+    "keep": 0.414
+   }
+  }
+ },
+ "keep_4J": {
+  "raw": 0.0043859649122807015,
+  "raw_incl_low": 0.010964912280701754,
+  "n": 456,
+  "keep": 0.005
+ },
+ "keep_exch": {
+  "aprotic": {
+   "raw": 0.03636363636363636,
+   "n": 55,
+   "keep": 0.038
+  },
+  "protic": {
+   "raw": 0.0,
+   "n": 36,
+   "keep": 0.011
+  }
+ },
+ "cosy": {
+  "3J": {
+   "raw": 0.24615384615384617,
+   "raw_incl_low": 0.2923076923076923,
+   "n": 65,
+   "keep": 0.253
+  },
+  "gem": {
+   "raw": 0.5714285714285714,
+   "raw_incl_low": 0.5714285714285714,
+   "n": 7,
+   "keep": 0.529
+  },
+  "4J": {
+   "raw": 0.0,
+   "raw_incl_low": 0.019417475728155338,
+   "n": 103,
+   "keep": 0.002
+  }
+ },
+ "molecule_multiplier": {
+  "n": 12,
+  "values": [
+   0.26,
+   0.52,
+   0.53,
+   0.67,
+   0.76,
+   0.98,
+   1.09,
+   1.12,
+   1.38,
+   1.38,
+   1.56,
+   2.09
+  ],
+  "min": 0.26,
+  "max": 2.09,
+  "lognormal_mu": -0.109,
+  "lognormal_sigma": 0.581,
+  "table": [
+   {
+    "npid": "NP0351071",
+    "observed": 9.0,
+    "expected": 9.2,
+    "ratio": 0.98
+   },
+   {
+    "npid": "NP0351101",
+    "observed": 6.0,
+    "expected": 23.4,
+    "ratio": 0.26
+   },
+   {
+    "npid": "NP0351238",
+    "observed": 23.0,
+    "expected": 11.0,
+    "ratio": 2.09
+   },
+   {
+    "npid": "NP0351241",
+    "observed": 9.0,
+    "expected": 17.2,
+    "ratio": 0.52
+   },
+   {
+    "npid": "NP0351319",
+    "observed": 3.0,
+    "expected": 2.2,
+    "ratio": 1.38
+   },
+   {
+    "npid": "NP0351403",
+    "observed": 23.0,
+    "expected": 20.6,
+    "ratio": 1.12
+   },
+   {
+    "npid": "NP0351438",
+    "observed": 23.0,
+    "expected": 14.7,
+    "ratio": 1.56
+   },
+   {
+    "npid": "NP0351815",
+    "observed": 6.0,
+    "expected": 7.9,
+    "ratio": 0.76
+   },
+   {
+    "npid": "NP0352091",
+    "observed": 17.0,
+    "expected": 25.4,
+    "ratio": 0.67
+   },
+   {
+    "npid": "NP0352115",
+    "observed": 9.0,
+    "expected": 16.9,
+    "ratio": 0.53
+   },
+   {
+    "npid": "NP0352202",
+    "observed": 10.0,
+    "expected": 7.2,
+    "ratio": 1.38
+   },
+   {
+    "npid": "NP0354171",
+    "observed": 15.0,
+    "expected": 13.8,
+    "ratio": 1.09
+   }
+  ]
+ },
+ "per_molecule_observed_fraction_2J3J": {
+  "n": 12,
+  "values": [
+   0.06,
+   0.13043478260869565,
+   0.140625,
+   0.1590909090909091,
+   0.18478260869565216,
+   0.23076923076923078,
+   0.2727272727272727,
+   0.2830188679245283,
+   0.3333333333333333,
+   0.45098039215686275,
+   0.45454545454545453,
+   0.5609756097560976
+  ]
+ }
+}

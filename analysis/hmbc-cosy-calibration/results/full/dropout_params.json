@@ -1,0 +1,226 @@
+{
+ "source": "calibrate.py",
+ "tier": [
+  "NP0351071",
+  "NP0351238",
+  "NP0351319",
+  "NP0351403",
+  "NP0351438",
+  "NP0352202",
+  "NP0354171"
+ ],
+ "prior_strength": 10.0,
+ "model": "keep = clip(m * P[ptype][ctype], 0, 1) for 2J/3J carbon-bound HMBC pairs; keep_4J for 4J; keep_exch[solventclass] for OH/NH/SH protons; COSY keep = clip(m * cosy[class]); m ~ molecule_multiplier",
+ "pooled_2J3J_rate": 0.547,
+ "bond_rates": {
+  "2J": {
+   "raw": 0.5684210526315789,
+   "n": 190
+  },
+  "3J": {
+   "raw": 0.5301204819277109,
+   "n": 249
+  },
+  "4J": {
+   "raw": 0.01020408163265306,
+   "n": 196
+  }
+ },
+ "P_hmbc": {
+  "CH": {
+   "carbonyl": {
+    "raw": 0.8666666666666667,
+    "n": 15,
+    "keep": 0.739
+   },
+   "protonated": {
+    "raw": 0.3673469387755102,
+    "n": 49,
+    "keep": 0.398
+   },
+   "quaternary": {
+    "raw": 0.5161290322580645,
+    "n": 31,
+    "keep": 0.524
+   }
+  },
+  "CH2": {
+   "carbonyl": {
+    "raw": 0.7647058823529411,
+    "n": 17,
+    "keep": 0.684
+   },
+   "protonated": {
+    "raw": 0.2631578947368421,
+    "n": 38,
+    "keep": 0.322
+   },
+   "quaternary": {
+    "raw": 0.5769230769230769,
+    "n": 26,
+    "keep": 0.569
+   }
+  },
+  "CH3": {
+   "carbonyl": {
+    "raw": 1.0,
+    "n": 6,
+    "keep": 0.717
+   },
+   "protonated": {
+    "raw": 0.9354838709677419,
+    "n": 62,
+    "keep": 0.881
+   },
+   "quaternary": {
+    "raw": 1.0,
+    "n": 39,
+    "keep": 0.907
+   }
+  },
+  "arom": {
+   "carbonyl": {
+    "raw": 0.75,
+    "n": 4,
+    "keep": 0.605
+   },
+   "protonated": {
+    "raw": 0.29411764705882354,
+    "n": 34,
+    "keep": 0.352
+   },
+   "quaternary": {
+    "raw": 0.5789473684210527,
+    "n": 38,
+    "keep": 0.572
+   }
+  },
+  "olef": {
+   "carbonyl": {
+    "raw": 0.0,
+    "n": 1,
+    "keep": 0.497
+   },
+   "protonated": {
+    "raw": 0.7,
+    "n": 10,
+    "keep": 0.623
+   },
+   "quaternary": {
+    "raw": 0.8,
+    "n": 10,
+    "keep": 0.673
+   }
+  }
+ },
+ "keep_4J": {
+  "raw": 0.01020408163265306,
+  "raw_incl_low": 0.025510204081632654,
+  "n": 196,
+  "keep": 0.011
+ },
+ "keep_exch": {
+  "aprotic": {
+   "raw": 0.0625,
+   "n": 32,
+   "keep": 0.06
+  },
+  "protic": {
+   "raw": 0.0,
+   "n": 27,
+   "keep": 0.014
+  }
+ },
+ "cosy": {
+  "3J": {
+   "raw": 0.5161290322580645,
+   "raw_incl_low": 0.6129032258064516,
+   "n": 31,
+   "keep": 0.463
+  },
+  "gem": {
+   "raw": 0.8,
+   "raw_incl_low": 0.8,
+   "n": 5,
+   "keep": 0.6
+  },
+  "4J": {
+   "raw": 0.0,
+   "raw_incl_low": 0.044444444444444446,
+   "n": 45,
+   "keep": 0.004
+  }
+ },
+ "molecule_multiplier": {
+  "n": 7,
+  "values": [
+   0.62,
+   0.65,
+   0.67,
+   0.9,
+   1.01,
+   1.1,
+   1.18
+  ],
+  "min": 0.62,
+  "max": 1.18,
+  "lognormal_mu": -0.163,
+  "lognormal_sigma": 0.269,
+  "table": [
+   {
+    "npid": "NP0351071",
+    "observed": 9.0,
+    "expected": 14.4,
+    "ratio": 0.62
+   },
+   {
+    "npid": "NP0351238",
+    "observed": 23.0,
+    "expected": 19.5,
+    "ratio": 1.18
+   },
+   {
+    "npid": "NP0351319",
+    "observed": 3.0,
+    "expected": 2.7,
+    "ratio": 1.1
+   },
+   {
+    "npid": "NP0351403",
+    "observed": 23.0,
+    "expected": 35.3,
+    "ratio": 0.65
+   },
+   {
+    "npid": "NP0351438",
+    "observed": 23.0,
+    "expected": 22.8,
+    "ratio": 1.01
+   },
+   {
+    "npid": "NP0352202",
+    "observed": 10.0,
+    "expected": 11.1,
+    "ratio": 0.9
+   },
+   {
+    "npid": "NP0354171",
+    "observed": 15.0,
+    "expected": 22.3,
+    "ratio": 0.67
+   }
+  ]
+ },
+ "per_molecule_observed_fraction_2J3J": {
+  "n": 7,
+  "values": [
+   0.23076923076923078,
+   0.2727272727272727,
+   0.2830188679245283,
+   0.3333333333333333,
+   0.45098039215686275,
+   0.45454545454545453,
+   0.5609756097560976
+  ]
+ }
+}
