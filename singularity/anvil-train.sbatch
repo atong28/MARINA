@@ -6,8 +6,8 @@
 #     / account bio260190-ai (1000 SU; SU factor 1 => 1 SU per GPU-hour).
 #   * x86-64, so the amd64 marina.sif (the Delta/Expanse image) runs as-is.
 #   * apptainer 1.4 at /usr/bin/apptainer, no module needed.
-#   * CODE is staged by anvil-stage.sh as a `git archive` of a pinned COMMIT (GitHub is not
-#     reachable from Anvil with a key, so no clone); $CODE_DIR/COMMIT records the SHA.
+#   * CODE is git-cloned at a pinned COMMIT by anvil-stage.sh on the login node (Anvil's id_rsa is
+#     on GitHub); this chunk binds it read-only. $CODE_DIR/COMMIT records the SHA.
 #   * Slurm reports TmpDisk=0 for the ai nodes: node-local /tmp size is unknown up front, so the
 #     dataset is unpacked to /tmp only if it has >= TMP_MIN_GB free, else to $SCRATCH_ROOT.
 #   * W&B mode decided per chunk by an egress probe from the compute node (online if api.wandb.ai

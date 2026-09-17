@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Stage code + verify data for the Purdue Anvil (AnvilAI) MARINA training chain.
 #
-# Code is shipped as `git archive <COMMIT>` (an exact, clean snapshot of one commit) because Anvil
-# has no GitHub deploy key and the repo is private; $CODE_DIR/COMMIT records the SHA so the pin is
-# auditable on-box. Data (dataset zip, benchmark journal, W&B key) lives on
+# Code staging is GIT-CLONE at a pinned COMMIT on the Anvil login node (Anvil's ~/.ssh/id_rsa is
+# registered on GitHub, 2026-09-16), the same convention as DeltaAI; $CODE_DIR/COMMIT records the SHA
+# so the pin is auditable on-box. Data (dataset zip, benchmark journal, W&B key) lives on
 # /anvil/projects/x-bio260190/atong1 and is rsync'd only when missing/changed.
 #
 #   Usage:  COMMIT=<full-40-char-SHA> bash singularity/anvil-stage.sh [DATASET ...]
@@ -16,6 +16,7 @@ PROJECT_ROOT="${PROJECT_ROOT:-/anvil/projects/x-bio260190/atong1}"
 LOCAL_ROOT="${LOCAL_ROOT:-$HOME/Workspace}"
 COMMIT="${COMMIT:?set COMMIT=<full 40-char SHA>: experiments are pinned to an exact commit}"
 CODE_NAME="${CODE_NAME:-MARINA-2d}"
+REPO="${REPO:-git@github.com:atong28/MARINA.git}"
 DATASETS=("$@")
 
 SSH=(ssh -o BatchMode=yes "$HOST")
@@ -23,11 +24,23 @@ SSH=(ssh -o BatchMode=yes "$HOST")
 echo "==> layout under $PROJECT_ROOT"
 "${SSH[@]}" "mkdir -p '$PROJECT_ROOT'/{code,images,datasets,benchmark,runs/wandb,slurm-logs,fp-artifacts}"
 
-echo "==> code: git archive $COMMIT -> $PROJECT_ROOT/code/$CODE_NAME"
-git -C "$LOCAL_ROOT/MARINA" cat-file -e "$COMMIT^{commit}" || { echo "  no such commit locally: $COMMIT" >&2; exit 1; }
-git -C "$LOCAL_ROOT/MARINA" archive --format=tar "$COMMIT" \
-    | "${SSH[@]}" "rm -rf '$PROJECT_ROOT/code/$CODE_NAME' && mkdir -p '$PROJECT_ROOT/code/$CODE_NAME' && tar -x -C '$PROJECT_ROOT/code/$CODE_NAME' && echo '$COMMIT' > '$PROJECT_ROOT/code/$CODE_NAME/COMMIT'"
-"${SSH[@]}" "test -f '$PROJECT_ROOT/code/$CODE_NAME/singularity/anvil-train.sbatch' && echo '  code staged, pinned at' \$(cat '$PROJECT_ROOT/code/$CODE_NAME/COMMIT')"
+echo "==> code: git clone/checkout $COMMIT -> $PROJECT_ROOT/code/$CODE_NAME"
+"${SSH[@]}" bash -s <<EOF
+set -euo pipefail
+export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+CODE="$PROJECT_ROOT/code/$CODE_NAME"
+if [ ! -d "\$CODE/.git" ]; then
+    git clone --quiet "$REPO" "\$CODE"
+fi
+cd "\$CODE"
+git fetch --all --quiet
+git checkout --quiet --detach "$COMMIT"
+head=\$(git rev-parse HEAD)
+[ "\$head" = "$COMMIT" ] || { echo "  checkout landed on \$head, not $COMMIT" >&2; exit 1; }
+[ -z "\$(git status --porcelain)" ] || { echo "  clone tree is dirty after checkout:" >&2; git status --porcelain >&2; exit 1; }
+echo "$COMMIT" > COMMIT
+echo "  code pinned at \$head (clean detached checkout)"
+EOF
 
 echo "==> datasets"
 for ds in "${DATASETS[@]}"; do
