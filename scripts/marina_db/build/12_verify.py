@@ -60,6 +60,10 @@ def main():
     root = Path(a.dataset_root)
 
     index = pickle.load(open(root / "index.pkl", "rb"))
+    global MODALITIES
+    if 'has_hmbc' in next(iter(index.values())):        # MARINA2.0 ceiling 2D shards (build_2d.py)
+        MODALITIES = MODALITIES + ("HMBC_NMR", "COSY_NMR")
+        HAS_FLAG.update({"HMBC_NMR": "has_hmbc", "COSY_NMR": "has_cosy"})
     retrieval = pickle.load(open(root / "retrieval.pkl", "rb"))
     retrieval_smiles = {entry["smiles"] for entry in retrieval.values()}
 

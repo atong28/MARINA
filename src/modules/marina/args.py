@@ -15,7 +15,7 @@ class MARINAArgs(SMARTArgs):
     )
 
     additional_test_types: list[list[str]] = field(default_factory=lambda: [
-        ['hsqc'], ['h_nmr'], ['c_nmr'], ['mass_spec'], ['mass_spec_neg']
+        ['hsqc'], ['h_nmr'], ['c_nmr'], ['mass_spec'], ['mass_spec_neg'], ['hmbc'], ['cosy'], ['hsqc', 'hmbc', 'cosy']
     ])
 
     dim_model: int = 784
@@ -25,12 +25,23 @@ class MARINAArgs(SMARTArgs):
     c_nmr_is_sign_encoding: List[bool] = field(default_factory=lambda: [False])
     h_nmr_dim_coords: List[int] = field(default_factory=lambda: [784])
     h_nmr_is_sign_encoding: List[bool] = field(default_factory=lambda: [False])
+    # MARINA2.0 2D modalities: HMBC (dC, dH) and COSY (dH, dH) as two-coordinate peaks
+    hmbc_dim_coords: List[int] = field(default_factory=lambda: [392, 392])
+    hmbc_is_sign_encoding: List[bool] = field(default_factory=lambda: [False, False])
+    cosy_dim_coords: List[int] = field(default_factory=lambda: [392, 392])
+    cosy_is_sign_encoding: List[bool] = field(default_factory=lambda: [False, False])
+    # training-time per-peak dropout of the ceiling 2D lists (calibrated on curated deposits;
+    # analysis/hmbc-cosy-calibration/results/marina2_dropout_params.json is the default table)
+    dropout_2d: bool = True
+    dropout_2d_params: str = ''
+    hmbc_max_peaks: int = 200
+    cosy_max_peaks: int = 120
     ms_dim_coords: List[int] = field(default_factory=lambda: [392, 392])
     ms_is_sign_encoding: List[bool] = field(default_factory=lambda: [False, False])
     heads: int = 8
     layers: int = 8
     self_attn_layers: Dict[str, int] = field(default_factory=
-        lambda: {'hsqc': 2, 'h_nmr': 1, 'c_nmr': 2, 'mass_spec': 1, 'mass_spec_neg': 1}
+        lambda: {'hsqc': 2, 'h_nmr': 1, 'c_nmr': 2, 'mass_spec': 1, 'mass_spec_neg': 1, 'hmbc': 2, 'cosy': 1}
     )
     ff_dim: int = 3072
     out_dim: int = 16384

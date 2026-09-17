@@ -6,13 +6,13 @@ from ..log import get_logger
 
 logger = get_logger(__file__)
 
-INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
-INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
+INPUT_TYPES = Literal['hsqc', 'h_nmr', 'c_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula', 'hmbc', 'cosy']
+INPUTS_CANONICAL_ORDER: List[INPUT_TYPES] = ['hsqc', 'hmbc', 'cosy', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula']
 
 DEBUG_LEN: int = 3000
 
 NON_SPECTRAL_INPUTS: Set[INPUT_TYPES] = {'mw', 'formula'}
-SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg'}
+SELF_ATTN_INPUTS: Set[INPUT_TYPES] = {'hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'hmbc', 'cosy'}
 
 
 if 'src/marina/src/modules' in __file__:
@@ -71,6 +71,8 @@ MW_TYPE = 3
 MS_TYPE = 4
 MS_NEG_TYPE = 5
 FORMULA_TYPE = 6
+HMBC_TYPE = 7
+COSY_TYPE = 8
 
 INPUT_MAP = {
     'hsqc': HSQC_TYPE,
@@ -79,7 +81,9 @@ INPUT_MAP = {
     'mw': MW_TYPE,
     'mass_spec': MS_TYPE,
     'mass_spec_neg': MS_NEG_TYPE,
-    'formula': FORMULA_TYPE
+    'formula': FORMULA_TYPE,
+    'hmbc': HMBC_TYPE,
+    'cosy': COSY_TYPE,
 }
 
 FORMULA_ELEMENTS: List[str] = [
