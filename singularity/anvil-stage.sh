@@ -37,7 +37,8 @@ git fetch --all --quiet
 git checkout --quiet --detach "$COMMIT"
 head=\$(git rev-parse HEAD)
 [ "\$head" = "$COMMIT" ] || { echo "  checkout landed on \$head, not $COMMIT" >&2; exit 1; }
-[ -z "\$(git status --porcelain)" ] || { echo "  clone tree is dirty after checkout:" >&2; git status --porcelain >&2; exit 1; }
+dirty=\$(git status --porcelain | grep -v "^?? COMMIT\$" || true)
+[ -z "\$dirty" ] || { echo "  clone tree is dirty after checkout:" >&2; echo "\$dirty" >&2; exit 1; }
 echo "$COMMIT" > COMMIT
 echo "  code pinned at \$head (clean detached checkout)"
 EOF
