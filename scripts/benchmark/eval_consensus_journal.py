@@ -99,6 +99,7 @@ def main():
         models.append(m)
         print(f"[consensus] loaded {ck}")
     models[0].setup_ranker()          # 531k CSR bank; seed-independent -> shared for ranking
+    models[0].ranker.to(dev)          # move the bank onto the model device (else CPU bank vs GPU query)
     ranker = models[0].ranker
 
     bench_path = a.benchmark or os.path.join(BENCHMARK_ROOT, "benchmark-journal.pkl")
