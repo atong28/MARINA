@@ -133,24 +133,8 @@ class MARINA(pl.LightningModule):
             [args.mz_wavelength_bounds, args.intensity_wavelength_bounds],
             args.ms_is_sign_encoding
         )
-        # MARINA2.0: HMBC shares the HSQC coordinate system (13C, 1H); COSY is (1H, 1H).
-        # Built only when requested so checkpoints of 2D-free runs keep their exact state_dict.
-        self.enc_hmbc = build_encoder(
-            args.dim_model,
-            args.hmbc_dim_coords,
-            [args.c_wavelength_bounds, args.h_wavelength_bounds],
-            args.hmbc_is_sign_encoding
-        ) if 'hmbc' in self.args.input_types else None
-        self.enc_cosy = build_encoder(
-            args.dim_model,
-            args.cosy_dim_coords,
-            [args.h_wavelength_bounds, args.h_wavelength_bounds],
-            args.cosy_is_sign_encoding
-        ) if 'cosy' in self.args.input_types else None
         self.encoders = {
             "hsqc": self.enc_nmr,
-            "hmbc": self.enc_hmbc,
-            "cosy": self.enc_cosy,
             "h_nmr": self.enc_h_nmr,
             "c_nmr": self.enc_c_nmr,
             "mass_spec": self.enc_ms,
@@ -165,7 +149,7 @@ class MARINA(pl.LightningModule):
                     dim_feedforward=self.ff_dim,
                     batch_first=True, dropout=self.dropout
                 ),
-                num_layers=args.self_attn_layers.get(modality, 1),
+                num_layers=args.self_attn_layers[modality],
                 enable_nested_tensor=False
             )
             for modality in self.encoders

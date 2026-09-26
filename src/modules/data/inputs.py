@@ -1,8 +1,5 @@
 # inputs.py
-import json
-import math
 import os
-from pathlib import Path
 from typing import Iterable, Dict, Optional
 import numpy as np
 import pickle
@@ -61,7 +58,7 @@ class SpectralInputLoader:
         arrow_split_dir = os.path.join(arrow_base, self.split)
         if not os.path.isdir(arrow_split_dir):
             raise FileNotFoundError(f"Arrow split directory not found: {arrow_split_dir}")
-        for mod in ("HSQC_NMR", "H_NMR", "C_NMR", "MassSpec", "MassSpecNeg", "HMBC_NMR", "COSY_NMR"):
+        for mod in ("HSQC_NMR", "H_NMR", "C_NMR", "MassSpec", "MassSpecNeg"):
             path = os.path.join(arrow_split_dir, f"{mod}.parquet")
             if os.path.isfile(path):
                 self._arrow[mod] = open_tensor_store(path)
@@ -115,100 +112,7 @@ class SpectralInputLoader:
     def _load_mw(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         raise NotImplementedError()
 
-    def _load_hmbc(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
-        raise NotImplementedError()
-
-    def _load_cosy(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
-        raise NotImplementedError()
-
-# MARINA2.0 ceiling 2D shards (scripts/marina_db/build_2d.py):
-#   HMBC_NMR row = [dC, dH, ptype, ctype, n_bonds, |J|]   COSY_NMR row = [dHa, dHb, cls, ptype_a, ptype_b, exch, |J|]
-# The model sees only the first two columns; the rest drive the calibrated training-time dropout
-# (wiki/experiments/marina-experiments/hmbc-cosy-dropout-calibration.md).
-PTYPE_NAMES = ('CH3', 'CH2', 'CH', 'arom', 'olef', 'exch')
-CTYPE_NAMES = ('protonated', 'quaternary', 'carbonyl')
-DROPOUT_2D_PARAMS_DEFAULT = Path(__file__).resolve().parents[3] / 'analysis' / 'hmbc-cosy-calibration' / 'results' / 'marina2_dropout_params.json'
-
-
 class MARINAInputLoader(SpectralInputLoader):
-    # ---- MARINA2.0 2D modalities -------------------------------------------------------
-    dropout_2d: bool = False
-    hmbc_max_peaks: int = 200
-    cosy_max_peaks: int = 120
-
-    def configure_2d(self, args, split: str) -> None:
-        '''Load the calibrated dropout table; dropout is applied on the train split only.'''
-        self.hmbc_max_peaks = int(getattr(args, 'hmbc_max_peaks', 200))
-        self.cosy_max_peaks = int(getattr(args, 'cosy_max_peaks', 120))
-        self.dropout_2d = bool(getattr(args, 'dropout_2d', True)) and split == 'train'
-        if not self.dropout_2d:
-            return
-        path = getattr(args, 'dropout_2d_params', '') or str(DROPOUT_2D_PARAMS_DEFAULT)
-        with open(path) as f:
-            p = json.load(f)
-        self._P_hmbc = torch.tensor([[float(p['P_hmbc'][pt][ct]) for ct in CTYPE_NAMES] for pt in PTYPE_NAMES[:-1]],
-                                    dtype=torch.float32)                      # (5 carbon-bound ptypes, 3 ctypes)
-        self._keep_exch = (float(p['keep_exch']['aprotic']), float(p['keep_exch']['protic']))
-        self._cosy_keep = torch.tensor([float(p['cosy']['3J']), float(p['cosy']['gem'])], dtype=torch.float32)
-        mm = p['molecule_multiplier']
-        self._mult = (float(mm['mu']), float(mm['sigma']), float(mm['m_min']), float(mm['m_max']))
-
-    def _molecule_draws(self):
-        mu, sigma, lo, hi = self._mult
-        m = math.exp(mu + sigma * torch.randn(1).item())
-        m = min(max(m, lo), hi)
-        protic = torch.rand(1).item() < 0.5                 # solvent class is unknown for simulated data
-        exch_visible = torch.rand(1).item() < self._keep_exch[1 if protic else 0]
-        return m, exch_visible
-
-    @staticmethod
-    def _apply_keep(t: torch.Tensor, keep_p: torch.Tensor, exch: torch.Tensor, exch_visible: bool) -> torch.Tensor:
-        keep = torch.rand(t.shape[0]) < keep_p.clamp(0.0, 1.0)
-        keep[exch] = exch_visible                            # exchangeable protons: all-or-nothing per molecule
-        if not bool(keep.any()):                             # never hand the model an empty modality
-            cand = torch.nonzero(~exch).flatten()
-            pick = cand[torch.randint(len(cand), (1,))] if len(cand) else torch.randint(t.shape[0], (1,))
-            keep[pick] = True
-        return t[keep]
-
-    def _cap(self, xy: torch.Tensor, max_rows: int) -> torch.Tensor:
-        if xy.shape[0] <= max_rows:
-            return xy
-        if self.dropout_2d:
-            return xy[torch.randperm(xy.shape[0])[:max_rows]]
-        return xy[:max_rows]                                 # deterministic for val/test (rows are sorted by dC/dH)
-
-    def _load_hmbc(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
-        t = self._get_tensor(idx, 'HMBC_NMR')                # (N, 6)
-        if self.dropout_2d and t.shape[0] > 0:
-            m, exch_visible = self._molecule_draws()
-            ptype = t[:, 2].long()
-            ctype = t[:, 3].long()
-            exch = ptype == len(PTYPE_NAMES) - 1
-            keep_p = torch.zeros(t.shape[0])
-            keep_p[~exch] = m * self._P_hmbc[ptype[~exch], ctype[~exch]]
-            t = self._apply_keep(t, keep_p, exch, exch_visible)
-        xy = t[:, :2].clone()
-        if jittering > 0:
-            xy[:, 0] = xy[:, 0] + torch.randn_like(xy[:, 0]) * jittering
-            xy[:, 1] = xy[:, 1] + torch.randn_like(xy[:, 1]) * jittering * 0.1
-        return {'hmbc': self._cap(xy, self.hmbc_max_peaks)}
-
-    def _load_cosy(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
-        t = self._get_tensor(idx, 'COSY_NMR')                # (N, 7), one row per unordered pair
-        if self.dropout_2d and t.shape[0] > 0:
-            m, exch_visible = self._molecule_draws()
-            cls = t[:, 2].long()
-            exch = t[:, 5] > 0.5
-            keep_p = m * self._cosy_keep[cls]
-            t = self._apply_keep(t, keep_p, exch, exch_visible)
-        xy = self._cap(t[:, :2].clone(), max(1, self.cosy_max_peaks // 2))
-        xy = torch.cat([xy, xy[:, [1, 0]]], dim=0)           # symmetric spectrum: both orderings
-        if jittering > 0:
-            xy = xy + torch.randn_like(xy) * jittering * 0.1
-        return {'cosy': xy}
-
-    # ---- existing modalities ------------------------------------------------------------
     def _load_mw(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         mw = torch.tensor(self.data_dict[idx]['mw'], dtype=self.dtype)
         mw = mw.view(1, 1)

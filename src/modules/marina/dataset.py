@@ -79,7 +79,7 @@ class MARINADataset(Dataset):
                 idx: entry for idx, entry in data.items()
                 if entry['split'] == split and
                 any(
-                    entry.get(f'has_{input_type}', False)
+                    entry[f'has_{input_type}']
                     for input_type in self.input_types
                     if input_type not in NON_SPECTRAL_INPUTS
                 )
@@ -89,7 +89,7 @@ class MARINADataset(Dataset):
                 f'[MARINADataset] Requiring the following items to be present: {self.requires}')
             data = {
                 idx: entry for idx, entry in data.items()
-                if all(entry.get(f'has_{dtype}', False) for dtype in self.requires)
+                if all(entry[f'has_{dtype}'] for dtype in self.requires)
             }
             logger.debug(
                 f'[MARINADataset] Purged {data_len - len(data)}/{data_len} items. {len(data)} items remain')
@@ -106,7 +106,6 @@ class MARINADataset(Dataset):
             self.jittering = args.jittering if split == 'train' else 0.0
             self.spectral_loader = MARINAInputLoader(
                 DATASET_ROOT, data, split=split)
-            self.spectral_loader.configure_2d(args, split)
             self.mfp_loader = MFInputLoader(fp_loader)
 
             if split == 'train' and (args.aug_add_prob > 0 or args.aug_remove_prob > 0):
@@ -147,7 +146,7 @@ class MARINADataset(Dataset):
                 # so leaving it at the hardcoded 0.5 keeps it identical across runs.
                 drop_percentage[input_type] = override
             elif input_type not in NON_SPECTRAL_INPUTS:
-                percent_present = sum(1 for entry in data.values() if entry.get(f'has_{input_type}', False)) / len(data)
+                percent_present = sum(1 for entry in data.values() if entry[f'has_{input_type}']) / len(data)
                 drop_percentage[input_type] = 1 - (0.5 / percent_present) if percent_present > 0.5 else 0.0
             else:
                 drop_percentage[input_type] = 0.5 # hard coded for now for mw (always present)
@@ -177,9 +176,7 @@ class MARINADataset(Dataset):
             'c_nmr': data_obj['has_c_nmr'],
             'h_nmr': data_obj['has_h_nmr'],
             'mass_spec': data_obj['has_mass_spec'],
-            'mass_spec_neg': data_obj.get('has_mass_spec_neg', False),
-            'hmbc': data_obj.get('has_hmbc', False),
-            'cosy': data_obj.get('has_cosy', False),
+            'mass_spec_neg': data_obj.get('has_mass_spec_neg', False)
         }
         drop_candidates = [
             k for k, v in available_types.items() if k in self.input_types and v]
@@ -188,7 +185,7 @@ class MARINADataset(Dataset):
         always_keep = drop_candidates[torch.randint(len(drop_candidates), (1,)).item()]
         input_types = set(self.input_types)
         for input_type in self.input_types:
-            if not data_obj.get(f'has_{input_type}', False):
+            if not data_obj[f'has_{input_type}']:
                 input_types.remove(input_type)
             elif (input_type != always_keep and
                   input_type not in self.requires and
@@ -203,7 +200,7 @@ class MARINADataset(Dataset):
         filters which compounds enter the split); every present modality is a free
         candidate. Rejection-samples the (rare) all-non-spectral subset, which can only
         occur at cardinality <= len(NON_SPECTRAL_INPUTS).'''
-        available = [m for m in self.input_types if data_obj.get(f'has_{m}', False)]
+        available = [m for m in self.input_types if data_obj[f'has_{m}']]
         assert available, 'Found an empty entry!'
         has_spectral = any(m not in NON_SPECTRAL_INPUTS for m in available)
         k = torch.randint(1, len(available) + 1, (1,)).item()

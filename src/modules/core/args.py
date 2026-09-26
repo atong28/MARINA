@@ -22,13 +22,13 @@ class SMARTArgs:
     # whether to do benchmarking
     benchmark: bool = True
     # restrictions on the input types to be used for benchmarking
-    restrictions: Optional[List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula', 'hmbc', 'cosy']]] = None
+    restrictions: Optional[List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']]] = None
 
-    input_types: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula', 'hmbc', 'cosy']] = field(
+    input_types: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']] = field(
         default_factory=lambda: ['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mw']
     )
 
-    requires: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw', 'formula', 'hmbc', 'cosy']] = field(
+    requires: List[Literal['hsqc', 'c_nmr', 'h_nmr', 'mass_spec', 'mass_spec_neg', 'mw']] = field(
         default_factory=lambda: []
     )
 
