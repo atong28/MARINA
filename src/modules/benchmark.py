@@ -429,6 +429,9 @@ def benchmark_marina(
     base = args.input_types if args.restrictions is None else args.restrictions
     if load_from_checkpoint is not None:
         load_model(args, model)
+    # Lightning leaves the module in train mode after trainer.test(); without this the in-training
+    # journal benchmark runs with dropout active.
+    model.eval()
     if BENCHMARK_ROOT is None:
         raise ValueError('Benchmarking is not supported on this setup')
 
