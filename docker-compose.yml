@@ -55,6 +55,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # Repo root, from which the Dockerfile copies src/ (and nothing else).
+      additional_contexts:
+        marina: .
       # Default index builds CPU-only wheels.
       # CUDA 12.4: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
       # CUDA 12.8: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
@@ -76,7 +79,7 @@ services:
       UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
 
       # ── Model paths ─────────────────────────────────────────────────────────
-      # The MARINA project root is mounted at /marina (see volumes below).
+      # src/ is baked into the image at /marina/src (see backend/Dockerfile).
       MARINA_ROOT: /marina
       # The model data directory is mounted at /data.
       DATA_DIR: /data
@@ -103,8 +106,6 @@ services:
       PYTHONUNBUFFERED: "1"
 
     volumes:
-      # MARINA project root (read-only) – needed so the backend can import src.*
-      - ${MARINA_PROJECT_ROOT:-.}:/marina:ro
       # Model data directory (read-only) – contains models.json + per-model dirs
       - ${MODEL_DATA_DIR:-./checkpoints}:/data:ro
       # Writable state (usage counters). Survives container replacement.

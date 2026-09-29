@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Repo root, from which the Dockerfile copies src/.
+      additional_contexts:
+        marina: ..
       # To build with GPU support:
       #   TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
       args:
@@ -41,8 +44,6 @@ services:
       PYTHONUNBUFFERED: "1"
 
     volumes:
-      # Mount the MARINA project root so the backend can import src.modules.*
-      - ${MARINA_PROJECT_ROOT:-./../}:/marina:ro
       # Mount your model data directory
       - ${MODEL_DATA_DIR:-./data}:/data:ro
 

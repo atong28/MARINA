@@ -57,7 +57,11 @@ COPY --from=deps /usr/local/bin            /usr/local/bin
 # Copy application source
 COPY app/ ./app/
 
-# MARINA source is mounted at runtime via a bind mount (see docker-compose.yml).
+# MARINA model code (src/ only) from the repo root, passed in as the named build
+# context "marina" (additional_contexts in docker-compose.yml). Baked in rather
+# than bind-mounted so the container sees nothing else of the repository.
+COPY --from=marina src/ /marina/src/
+
 ENV MARINA_ROOT=/marina \
     PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \

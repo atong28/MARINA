@@ -198,7 +198,6 @@ match: `docker compose up -d --build`.
 | Variable | Default | Notes |
 |---|---|---|
 | `MODEL_DATA_DIR` | `./checkpoints` | Mounted read-only at `/data`. Relative paths resolve from the repo root. |
-| `MARINA_PROJECT_ROOT` | `.` | Mounted read-only at `/marina` so the backend can `import src.*`. |
 | `NGINX_PORT` | `8643` | Host port for the edge proxy. Ignored in tunnel mode. |
 | `EXPOSE_API_VIA_NGINX` | `false` | Routes the API docs endpoints; see above. |
 | `DEVICE` | `cpu` | `cpu`, `cuda`, or `cuda:0`. |
@@ -263,7 +262,7 @@ tunnel mode.
 | `NGINX_PORT` | `docker compose up -d` |
 | `TORCH_INDEX_URL`, `LEGACY_NUMPY` | `docker compose build backend && docker compose up -d` |
 | Files in `checkpoints/` | `docker compose restart backend` |
-| Backend or frontend source | `docker compose up -d --build` |
+| Backend or frontend source, or `src/` (baked into the backend image) | `docker compose up -d --build` |
 
 ---
 

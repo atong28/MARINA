@@ -143,7 +143,6 @@ silently producing wrong predictions.
 ```bash
 cp .env.example .env
 # Edit .env:
-#   MARINA_PROJECT_ROOT=/absolute/path/to/MARINA
 #   MODEL_DATA_DIR=/absolute/path/to/model-data
 ```
 
