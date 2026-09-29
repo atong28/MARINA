@@ -35,17 +35,19 @@ Full deployment documentation lives in [`docs/website/`](docs/website/README.md)
 - [Local deployment](docs/website/local-deployment.md) — expose a host port on `localhost` or a LAN
 - [Cloudflare Tunnel](docs/website/cloudflare-tunnel.md) — public HTTPS hostname with no inbound ports
 
-Quick version: ensure `docker` and `docker-compose` are installed, and copy `.env.example` to `.env`, and configure the variables as you see fit. `MODEL_DATA_DIR` defaults to `./checkpoints` (or you can set an absolute path), and by default the website will run on cpu inference. Note that some legacy machines may be buggy with numpy, so if there is a repeated import error then set `LEGACY_NUMPY=true`.
+Quick version, on any host with Docker + Compose, `curl` and `unzip`:
 
-Download the model (run it in a environment with `gdown` installed, it is installed if you download `pixi` and install the environment below)
 ```bash
-bash scripts/website/download_model.sh
+git clone git@github.com:atong28/MARINA.git && cd MARINA
+bash scripts/website/deploy.sh        # serves on port 8643; pass a port to override
 ```
 
-Start the docker containers:
-```bash
-bash scripts/website/start.sh
-```
+This downloads the model weights into `./checkpoints` (skipped if already there), builds
+the images, starts the stack and waits for the model to load. Re-run it after `git pull`
+to update. Everything else runs on defaults (CPU inference); to change them, copy
+`.env.example` to `.env`. On older CPUs that hit a repeated NumPy import error, set
+`LEGACY_NUMPY=true` there. Day-to-day control (`start`, `stop`, `logs`, `status`) is
+`bash scripts/website/start.sh <command>`.
 
 ### Website tests
 

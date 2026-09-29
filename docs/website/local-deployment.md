@@ -48,7 +48,7 @@ docker compose logs -f backend
 Wait for:
 
 ```
-Model marina_best ready
+Model marina_uniqmult_s1 ready
 MARINA backend ready
 ```
 
@@ -143,7 +143,7 @@ To restrict the site to the host machine only, change the port mapping in
 
 ```yaml
     ports:
-      - "127.0.0.1:${NGINX_PORT:-80}:80"
+      - "127.0.0.1:${NGINX_PORT:-8643}:80"
 ```
 
 ---

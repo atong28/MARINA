@@ -12,7 +12,7 @@ services:
     container_name: marina-nginx
     ports:
       # Set NGINX_PORT in .env to change the host port.
-      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_PORT:-8643}:80"
     depends_on:
       - frontend
       - backend
@@ -80,8 +80,8 @@ services:
       MARINA_ROOT: /marina
       # The model data directory is mounted at /data.
       DATA_DIR: /data
-      MODEL_ROOT: /data/marina_best
-      DEFAULT_MODEL_ID: marina_best
+      MODEL_ROOT: /data/marina_uniqmult_s1
+      DEFAULT_MODEL_ID: marina_uniqmult_s1
       MODELS_JSON_PATH: /data/models.json
 
       # ── Compute pool ─────────────────────────────────────────────────────────

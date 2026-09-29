@@ -91,7 +91,7 @@ case "$CMD" in
         require_model_data
         info "Starting containers (DEVICE=${DEVICE}, TORCH_INDEX_URL=${TORCH_INDEX_URL})"
         docker compose up -d
-        info "App → http://localhost:${NGINX_PORT:-80}"
+        info "App → http://localhost:${NGINX_PORT:-8643}"
         ;;
 
     stop)
@@ -109,7 +109,7 @@ case "$CMD" in
         info "  MODEL_DATA_DIR    = ${MODEL_DATA_DIR}"
         docker compose build
         docker compose up -d --force-recreate
-        info "App → http://localhost:${NGINX_PORT:-80}"
+        info "App → http://localhost:${NGINX_PORT:-8643}"
         ;;
 
     build)

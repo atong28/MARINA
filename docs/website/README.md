@@ -13,6 +13,18 @@ Pick a deployment path:
 Both paths share the same prerequisites, model download, and `.env` file —
 covered below. Read this page first, then follow one of the two guides.
 
+**Quick deploy on a new host** (Docker + Compose, `curl`, `unzip`): clone the
+repository, then
+
+```bash
+bash scripts/website/deploy.sh          # port 8643; `deploy.sh <port>` to override
+```
+
+It downloads the weights (skipped if present), records the port as `NGINX_PORT`
+in `.env`, builds the images, starts the stack and waits until the model is
+loaded. Re-run it after a `git pull` to rebuild and restart. Every other setting
+keeps its default (CPU inference); see [Settings reference](#settings-reference).
+
 ---
 
 ## Architecture
@@ -58,75 +70,57 @@ All commands below run from the repository root (the directory containing
 
 ## 1. Download the model
 
-Needs `gdown`. If you have the pixi environment installed (`pixi i`), run it
-inside `pixi shell`; otherwise `pip install gdown`. Run it from the repository
-root — it writes to a relative `checkpoints/` path.
-
-Before running, set the two gdown file ids at the top of the script
-(`MULTIPLICITY_ID`, `MORGAN_ID`). Each points at a self-contained zip whose
-entries sit at the model-directory root, so it unpacks straight into
-`checkpoints/<root>/`. An id left empty skips that model.
+Needs only `curl` and `unzip` (`gdown` is used instead if installed). Run from
+anywhere; the script resolves the repository root itself.
 
 ```bash
-bash scripts/website/download_model.sh
+bash scripts/website/download_model.sh          # skips a model already on disk
+bash scripts/website/download_model.sh --force  # re-download
 ```
 
-This downloads and unpacks both model directories and writes
+The Google Drive file id sits at the top of the script (`UNIQMULT_S1_ID`, also
+overridable from the environment). It points at a self-contained zip, shared
+as "Anyone with the link", whose entries sit at the model-directory root, so it
+unpacks straight into `checkpoints/marina_uniqmult_s1/`. The script then writes
 `checkpoints/models.json`:
 
 ```json
 {
     "models": [
         {
-            "id": "marina_multiplicity",
-            "root": "marina_multiplicity",
+            "id": "marina_uniqmult_s1",
+            "root": "marina_uniqmult_s1",
             "type": "marina",
             "default": true,
-            "display_name": "MARINA (multiplicity FP)"
-        },
-        {
-            "id": "marina_best",
-            "root": "marina_best",
-            "type": "marina",
-            "default": false,
-            "display_name": "MARINA (Morgan FP)"
+            "display_name": "MARINA-DB (unique-multiplicity, formula-capable)"
         }
     ]
 }
 ```
 
-`marina_multiplicity` is the served default; `marina_best` (Morgan) is kept
-selectable. The two vocabularies are **not** interchangeable — each directory
-carries its own `calibration.json` (a bit-confidence curve is only valid for the
-checkpoint it was fitted on) and its own count table and `RankingEntropy*`
-vocabulary. Copying either across models would silently serve wrong confidences
-or rank in the wrong space.
+`marina_uniqmult_s1` is the flagship `marina-db-uniqmult-formula-s1` checkpoint
+(`RankingEntropyUniqueMultiplicity`, radius 10). Its `calibration.json`, count
+table and vocabulary are only valid for this checkpoint: copying them across
+models would silently serve wrong confidences or rank in the wrong space.
 
 Expected layout afterwards:
 
 ```
 checkpoints/
 ├── models.json
-├── marina_multiplicity/
-│   ├── params.json
-│   ├── best.ckpt
-│   ├── calibration.json
-│   ├── count_multiplicity_under_radius_6.pkl
-│   ├── retrieval.pkl
-│   ├── metadata.json
-│   ├── mw_index.json        (optional; see below)
-│   └── RankingEntropyMultiplicity/
-│       ├── rankingset.pt
-│       └── bitinfo_to_idx.pkl
-└── marina_best/
+└── marina_uniqmult_s1/
     ├── params.json
     ├── best.ckpt
     ├── calibration.json
-    ├── count_hashes_under_radius_6.pkl
+    ├── metrics.json
+    ├── count_unique_multiplicity_under_radius_10.pkl
+    ├── index.pkl
     ├── retrieval.pkl
     ├── metadata.json
-    ├── mw_index.json        (optional; see below)
-    └── RankingEntropy/
+    ├── npclassifier.json
+    ├── mw_index.json
+    ├── formula_index.json
+    └── RankingEntropyUniqueMultiplicity/
         ├── rankingset.pt
         └── bitinfo_to_idx.pkl
 ```
@@ -145,15 +139,13 @@ at roughly 2k structures/s — minutes for a full database — and happens on th
 first MW-filtered request unless it is precomputed:
 
 ```bash
-python scripts/website/build_mw_index.py checkpoints/marina_multiplicity
-python scripts/website/build_mw_index.py checkpoints/marina_best
+python scripts/website/build_mw_index.py checkpoints/marina_uniqmult_s1
 ```
 
 Precompute it whenever a model directory is first deployed. The download bundles
 already ship `mw_index.json`, so this is only needed for a directory assembled
 without one. If the mount is read-only the index is rebuilt on every start,
-which is correct but slow; run the script and ship the file instead. Both models
-draw on the same MARINA1 retrieval set, so their indices are identical.
+which is correct but slow; run the script and ship the file instead.
 
 Hosting more than one model, or a SPECTRE checkpoint, is documented in
 [`backend/README.md`](../../backend/README.md#data-layout).
@@ -207,7 +199,7 @@ match: `docker compose up -d --build`.
 |---|---|---|
 | `MODEL_DATA_DIR` | `./checkpoints` | Mounted read-only at `/data`. Relative paths resolve from the repo root. |
 | `MARINA_PROJECT_ROOT` | `.` | Mounted read-only at `/marina` so the backend can `import src.*`. |
-| `NGINX_PORT` | `80` | Host port for the edge proxy. Ignored in tunnel mode. |
+| `NGINX_PORT` | `8643` | Host port for the edge proxy. Ignored in tunnel mode. |
 | `EXPOSE_API_VIA_NGINX` | `false` | Routes the API docs endpoints; see above. |
 | `DEVICE` | `cpu` | `cpu`, `cuda`, or `cuda:0`. |
 | `TORCH_INDEX_URL` | CPU wheels | Build-time. `.../whl/cu124` or `.../whl/cu128` for GPU. |
