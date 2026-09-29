@@ -75,10 +75,13 @@ CORS_ALLOW_ORIGINS: list = [
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 # Format: "<count> per <second|minute|hour>". Set to "" to disable a limit.
-# Enforced per client IP, per process — with UVICORN_WORKERS > 1 the effective
-# limit is multiplied by the worker count.
+# Enforced per client (IPv4 address or IPv6 /64), per process — with
+# UVICORN_WORKERS > 1 the effective limit is multiplied by the worker count.
+# RATE_LIMIT_SMILES is one budget shared by every endpoint that fingerprints a
+# user SMILES (search, custom card, fingerprints/*); a person clicking through
+# results stays far below it.
 RATE_LIMIT_PREDICT: str = os.getenv("RATE_LIMIT_PREDICT", "30 per minute")
-RATE_LIMIT_SMILES: str = os.getenv("RATE_LIMIT_SMILES", "20 per minute")
+RATE_LIMIT_SMILES: str = os.getenv("RATE_LIMIT_SMILES", "60 per minute")
 
 # ── Usage stats ───────────────────────────────────────────────────────────────
 # Where the query/visitor counters are persisted. Must be writable — DATA_DIR is
@@ -93,4 +96,9 @@ MAX_HSQC_PEAKS: int = int(os.getenv("MAX_HSQC_PEAKS", "2000"))
 MAX_NMR_PEAKS: int = int(os.getenv("MAX_NMR_PEAKS", "2000"))
 MAX_MS_PEAKS: int = int(os.getenv("MAX_MS_PEAKS", "5000"))
 MAX_SMILES_LENGTH: int = int(os.getenv("MAX_SMILES_LENGTH", "1000"))
+# Fingerprinting a SMILES enumerates every atom's environment up to radius 10, so
+# its cost grows with molecule size, not string length: a 1000-atom chain takes
+# ~8 s. Anything larger than this is rejected before any fingerprint work.
+MAX_HEAVY_ATOMS: int = int(os.getenv("MAX_HEAVY_ATOMS", "150"))
+MAX_MODEL_ID_LENGTH: int = 64
 MAX_FP_LENGTH: int = int(os.getenv("MAX_FP_LENGTH", "65536"))

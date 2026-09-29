@@ -14,6 +14,7 @@ almost all confident matches; the short list of confident bits the candidate
 """
 from __future__ import annotations
 
+import functools
 import logging
 from typing import Dict, List, Optional, Tuple
 
@@ -117,6 +118,7 @@ def _locations(smiles: str, max_radius: int, bitinfo_to_col: dict,
 _MULTIPLICITY_KINDS = ("multiplicity", "multiplicity_uncapped", "unique_multiplicity")
 
 
+@functools.lru_cache(maxsize=None)  # keyed by vocabulary fragments only: bounded
 def _fragment_radius(frag: str) -> int:
     """
     Approximate Morgan radius of a substructure from its fragment SMILES: the graph
@@ -220,16 +222,16 @@ def _collapse_multiplicity(pred_fp, considered, present, locs, index_to_bitinfo,
 
 
 def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
-                 calibrator=None, include_fragment_svg: bool = False) -> dict:
+                 calibrator=None) -> dict:
     """
     Join predicted confidence, substructure identity and in-molecule location.
 
     Returns the rows plus per-group totals, so the UI can say "+N more" without
     the whole 16,384-row table crossing the wire.
 
-    `include_fragment_svg` attaches a drawing of each substructure. It is opt-in
-    because it is only worth the payload in the expanded view — the detail
-    overlay asks for it, and nothing else does.
+    Substructure thumbnails are drawn in the browser from `fragment_smiles`
+    (frontend/src/services/fragmentDrawing.ts): the vocabulary is fixed, so
+    drawing ~13k of them per request here only cost CPU and ~90 MB of payload.
     """
     fp_loader = session.fp_loader
     index_to_bitinfo = getattr(fp_loader, "fp_index_to_bitinfo_map", {})
@@ -292,18 +294,6 @@ def explain_bits(session, smiles: str, pred_fp: List[float], limit: int,
         rows.sort(key=lambda r: (r["radius"], r.get("entropy_rank", r["index"])))
     else:
         rows.sort(key=lambda r: (_GROUP_RANK[r["group"]], -r["confidence"], r["index"]))
-
-    if include_fragment_svg:
-        from app.renderer import render_fragment_svg
-        # Only the returned rows are drawn, and identical fragments are drawn
-        # once: the same substructure string names many distinct bits, so a
-        # 60-row panel typically holds far fewer unique pictures.
-        drawn: Dict[tuple, Optional[str]] = {}
-        for row in rows[:limit]:
-            key = (row["fragment_smiles"], row["atom_symbol"])
-            if key not in drawn:
-                drawn[key] = render_fragment_svg(key[0], key[1])
-            row["fragment_svg"] = drawn[key]
 
     totals: Dict[str, int] = {g: 0 for g in _GROUP_RANK}
     for r in rows:

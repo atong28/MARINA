@@ -73,3 +73,14 @@ def test_limits_are_off_when_unset(client):
     """The default config ships with limits disabled for local development."""
     codes = {_predict(client).status_code for _ in range(20)}
     assert 429 not in codes
+
+
+def test_smiles_endpoints_share_one_budget(throttled_client):
+    """Spreading requests over the SMILES endpoints must not multiply the limit (3/min)."""
+    # No model is loaded here, so the endpoints themselves fail; only the limiter matters.
+    c = TestClient(throttled_client.app, raise_server_exceptions=False)
+    body = {"smiles": "CCO", "pred_fp": [0.5], "reference_fp": [0.5]}
+    paths = ["/api/smiles-search", "/api/custom-smiles-card", "/api/fingerprints/explain"]
+    codes = [c.post(p, json=body).status_code for p in paths]
+    assert 429 not in codes
+    assert c.post("/api/fingerprints/indices", json=body).status_code == 429

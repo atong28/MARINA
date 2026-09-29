@@ -294,6 +294,19 @@ rather than offering a switch with one position.
 | `PRELOAD_MODELS` | `default` | `default` / `all` / comma-separated model IDs |
 | `MAX_LOADED_MODELS` | `0` | Max models in memory (0 = unlimited, LRU eviction when > 0) |
 
+### Request limits
+
+| Variable | Default | Description |
+|---|---|---|
+| `RATE_LIMIT_PREDICT` | `30 per minute` | Per client on `/predict`. `""` disables. |
+| `RATE_LIMIT_SMILES` | `60 per minute` | One budget per client shared by `/smiles-search`, `/custom-smiles-card` and `/fingerprints/*`. `""` disables. |
+| `MAX_SMILES_LENGTH` | `1000` | Characters per SMILES |
+| `MAX_HEAVY_ATOMS` | `150` | Molecules above this are rejected (422) before any fingerprint work, which scales with atom count |
+
+A client is its IPv4 address or its IPv6 /64, read from `X-Forwarded-For` as set
+by the edge nginx. Limits are per uvicorn worker process. The edge nginx adds a
+coarse `10r/s` (burst 40) cap on `/api/` in front of these.
+
 ---
 
 ## API examples

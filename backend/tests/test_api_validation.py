@@ -137,3 +137,50 @@ def test_internal_errors_do_not_leak_exception_text(client):
     detail = r.json().get("detail", "")
     assert detail == "Prediction failed."
     assert "compute_pool" not in detail and "Traceback" not in detail
+
+
+# ── Molecule size and error hygiene ──────────────────────────────────────────
+
+@pytest.mark.parametrize("path,extra", [
+    ("/api/smiles-search", {}),
+    ("/api/fingerprints/indices", {}),
+    ("/api/fingerprints/explain", {"pred_fp": [0.5]}),
+    ("/api/custom-smiles-card", {"reference_fp": [0.5]}),
+])
+def test_oversized_molecules_are_rejected_before_fingerprinting(client, path, extra):
+    """Fingerprint cost scales with atom count (~8 s for 1000 atoms), not string length."""
+    from app.config import MAX_HEAVY_ATOMS
+    r = client.post(path, json={"smiles": "C" * (MAX_HEAVY_ATOMS + 1), **extra})
+    assert r.status_code == 422
+    assert f"limit is {MAX_HEAVY_ATOMS}" in r.json()["detail"]
+
+
+def test_molecules_at_the_heavy_atom_cap_pass_validation():
+    from app.config import MAX_HEAVY_ATOMS
+    from app.schemas import SmilesSearchRequest
+    assert SmilesSearchRequest(smiles="C" * MAX_HEAVY_ATOMS).smiles
+
+
+def test_hydrogens_do_not_count_toward_the_cap():
+    from app.config import MAX_HEAVY_ATOMS
+    from app.schemas import SmilesSearchRequest
+    smiles = "[H]" + "C" * MAX_HEAVY_ATOMS + "[H]"
+    assert SmilesSearchRequest(smiles=smiles).smiles == smiles
+
+
+def test_validation_errors_do_not_echo_the_input(client):
+    """exc.errors() carries the offending value and pydantic doc URLs; neither is returned."""
+    marker = "<script>alert(1)</script>"
+    r = client.post("/api/smiles-search", json={"smiles": "CCO", "k": marker})
+    assert r.status_code == 422
+    body = r.json()
+    assert set(body) == {"error", "detail"}
+    assert body["detail"].startswith("k:")
+    assert marker not in r.text
+    assert "pydantic.dev" not in r.text
+
+
+def test_model_id_is_length_capped_and_not_echoed(client):
+    r = client.post("/api/smiles-search", json={"smiles": "CCO", "model_id": "x" * 65})
+    assert r.status_code == 422
+    assert "x" * 65 not in r.text

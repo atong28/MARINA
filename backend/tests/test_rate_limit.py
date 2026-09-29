@@ -76,3 +76,23 @@ def test_window_sweeps_expired_entries():
         w.allow(f"client-{i}", 10, 60.0, 100.0)
     w.allow("trigger", 10, 60.0, 100_000.0)
     assert len(w._hits) < 5000
+
+
+def test_client_key_groups_an_ipv6_slash64():
+    """One subscriber gets a whole /64; rotating within it must not reset the budget."""
+    from app.rate_limit import client_key
+
+    a = client_key(_Req({"x-forwarded-for": "2001:db8:1:2::1"}))
+    b = client_key(_Req({"x-forwarded-for": "2001:db8:1:2:ffff:ffff:ffff:ffff"}))
+    c = client_key(_Req({"x-forwarded-for": "2001:db8:1:3::1"}))
+    assert a == b == "2001:db8:1:2::/64"
+    assert c != a
+
+
+def test_client_key_keeps_ipv4_and_unwraps_mapped_addresses():
+    from app.rate_limit import client_key
+
+    assert client_key(_Req({"x-forwarded-for": "203.0.113.7"})) == "203.0.113.7"
+    assert client_key(_Req({"x-forwarded-for": "::ffff:203.0.113.7"})) == "203.0.113.7"
+    assert client_key(_Req({}, host=None)) == "unknown"
+

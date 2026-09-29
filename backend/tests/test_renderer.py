@@ -366,57 +366,6 @@ def test_map_is_none_when_the_molecule_cannot_be_weighted(predicted_fp):
     assert render_enhanced_svg(RETRIEVED, predicted_fp, _Empty(), img_size=300) is None
 
 
-# ── Fragment thumbnails ───────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("frag", [
-    "CCCCC",              # plain chain
-    "C=O",                # double bond
-    "ccc",                # aromatic atoms clipped out of their ring
-    "cc(C)oc(c)c",        # aromatic heterocycle fragment
-    "CC(O)C(O)C(C)O",     # several dangling valences
-])
-def test_render_fragment_svg_draws_partial_structures(frag):
-    """
-    PathToSubmol fragments are partial: lowercase atoms are non-ring and fail a
-    normal sanitize, so a plain MolFromSmiles path would return None for half
-    the bit pool.
-    """
-    from app.renderer import render_fragment_svg
-
-    svg = render_fragment_svg(frag)
-    assert svg is not None and "<svg" in svg
-
-
-def test_render_fragment_svg_falls_back_to_the_centre_atom():
-    """Radius-0 bits carry no fragment SMILES at all — 52 of the 16,384."""
-    from app.renderer import render_fragment_svg
-
-    assert render_fragment_svg("", "O") is not None
-
-
-def test_render_fragment_svg_does_not_invent_hydrogens():
-    """
-    Open valences are bonds to the rest of the molecule, not hydrogens. Left to
-    RDKit a lone oxygen draws as "H2O" and an ether oxygen as "OH", asserting
-    atoms the parent structure may not have.
-    """
-    from app.renderer import render_fragment_svg
-
-    assert "H" not in _svg_text(render_fragment_svg("", "O"))
-    assert "H" not in _svg_text(render_fragment_svg("CC(O)C(O)C(C)O"))
-
-
-def _svg_text(svg: str) -> str:
-    """Concatenate the glyph labels an SVG draws, ignoring markup."""
-    import re
-    return "".join(re.findall(r">([^<>]*)</text>", svg or ""))
-
-
-def test_render_fragment_svg_returns_none_when_nothing_to_draw():
-    from app.renderer import render_fragment_svg
-
-    assert render_fragment_svg("", "") is None
-
 # ── HIGHLIGHT_ENABLED switch ──────────────────────────────────────────────────
 
 def test_highlighting_off_returns_none_rather_than_a_plain_copy(

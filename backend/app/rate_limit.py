@@ -1,13 +1,14 @@
 """
 Per-client rate limiting for the expensive endpoints.
 
-A fixed-window counter keyed by (client IP, endpoint group). State is in-process,
+A fixed-window counter keyed by (client, endpoint group). State is in-process,
 so with UVICORN_WORKERS > 1 the effective limit is the configured value times
 the worker count — good enough to stop a single client monopolising inference,
 not a substitute for a shared limiter if you need exact global caps.
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
 import threading
@@ -50,6 +51,25 @@ def client_ip(request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def client_key(request) -> str:
+    """
+    The identity a limit is counted against: the IPv4 address, or the IPv6 /64.
+
+    One IPv6 subscriber is routinely handed a whole /64, so keying on the full
+    address would give a single client 2^64 fresh budgets.
+    """
+    ip = client_ip(request)
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if addr.version == 6:
+        if addr.ipv4_mapped is not None:
+            return str(addr.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{addr}/64", strict=False))
+    return str(addr)
+
+
 class _FixedWindow:
     """Counts hits per key within a window, discarding expired windows."""
 
@@ -84,28 +104,30 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         predict_limit = parse_limit(RATE_LIMIT_PREDICT)
         smiles_limit  = parse_limit(RATE_LIMIT_SMILES)
 
-        # Longest-prefix wins, so /api/predict does not also match a broader rule.
+        # (path prefix, budget name, limit). Every endpoint that fingerprints a
+        # user SMILES draws on one "smiles" budget, so spreading requests across
+        # them buys nothing.
         self._rules = [
-            ("/api/predict", predict_limit),
-            ("/api/smiles-search", smiles_limit),
-            ("/api/custom-smiles-card", smiles_limit),
-            ("/api/fingerprints/", smiles_limit),
+            ("/api/predict", "predict", predict_limit),
+            ("/api/smiles-search", "smiles", smiles_limit),
+            ("/api/custom-smiles-card", "smiles", smiles_limit),
+            ("/api/fingerprints/", "smiles", smiles_limit),
         ]
         self._window = _FixedWindow()
 
     def _rule_for(self, path: str):
-        for prefix, limit in self._rules:
+        for prefix, budget, limit in self._rules:
             if limit and path.startswith(prefix):
-                return prefix, limit
+                return budget, limit
         return None, None
 
     async def dispatch(self, request, call_next):
-        prefix, limit = self._rule_for(request.url.path)
+        budget, limit = self._rule_for(request.url.path)
         if limit is None:
             return await call_next(request)
 
         count, period = limit
-        key = f"{client_ip(request)}|{prefix}"
+        key = f"{client_key(request)}|{budget}"
         allowed, retry_after = self._window.allow(key, count, period, time.monotonic())
         if not allowed:
             return JSONResponse(

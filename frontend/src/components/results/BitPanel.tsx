@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   api, BitExplanation, BitGroup, BitExplainResponse, BucketPrediction, DepictionGeometry,
 } from '../../services/api'
+import FragmentThumb from './FragmentThumb'
 import './BitPanel.css'
 
 /**
@@ -153,8 +154,8 @@ function BitPanel({ smiles, predFp, modelId, onSelect, onGeometry, selectedIndex
     setLoading(true)
     setError(null)
     api
-      // No practical limit: show every substructure, never a truncated "+k more".
-      .explainBits({ smiles, pred_fp: predFp, model_id: modelId, limit: 100000, include_fragment_svg: true })
+      // Every substructure, never a truncated "+k more": a bit has at most one row.
+      .explainBits({ smiles, pred_fp: predFp, model_id: modelId, limit: predFp.length })
       .then((res) => {
         if (cancelled) return
         setData(res)
@@ -193,15 +194,11 @@ function BitPanel({ smiles, predFp, modelId, onSelect, onGeometry, selectedIndex
         disabled={!bit.present}
         title={bitTitle(bit)}
       >
-        {bit.fragment_svg ? (
-          <img
-            className="bit-panel__thumb"
-            src={`data:image/svg+xml,${encodeURIComponent(bit.fragment_svg)}`}
-            alt={bitLabel(bit)}
-          />
-        ) : (
-          <span className="bit-panel__thumb bit-panel__thumb--empty" />
-        )}
+        <FragmentThumb
+          fragmentSmiles={bit.fragment_smiles}
+          atomSymbol={bit.atom_symbol}
+          alt={bitLabel(bit)}
+        />
         <span className="bit-panel__labels">
           <code className="bit-panel__frag">{bitLabel(bit)}</code>
           <span className="bit-panel__meta">{bitMeta(bit)}</span>

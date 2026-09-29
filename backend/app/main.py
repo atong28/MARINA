@@ -19,7 +19,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from fastapi import Request, status
 
 logging.basicConfig(
@@ -124,12 +123,25 @@ from app.rate_limit import RateLimitMiddleware
 
 app.add_middleware(RateLimitMiddleware)
 
-# Validation error handler
+# Validation error handler. Returns the field and pydantic's short message only:
+# exc.errors() also carries the offending input (echoed back verbatim) and
+# pydantic doc URLs (which reveal its version).
+def _validation_message(err: dict) -> str:
+    loc = ".".join(str(p) for p in err.get("loc", ()) if p != "body")
+    msg = str(err.get("msg", "invalid value")).removeprefix("Value error, ")
+    return f"{loc}: {msg}" if loc else msg
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({"error": "Validation error", "details": exc.errors()}),
+        content={
+            "error": "Validation error",
+            # The first problem, readable; the client shows `detail`.
+            "detail": _validation_message(errors[0]) if errors else "Invalid request.",
+        },
     )
 
 # General error handler

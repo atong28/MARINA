@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // ES-module workers, so the fragment-drawing worker can import RDKit.js.
+    worker: { format: 'es' },
     test: {
       // Node environment: the suite covers pure logic (scales, formatting,
       // store reducers), not component rendering, so no DOM shim is needed.

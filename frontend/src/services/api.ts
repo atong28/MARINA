@@ -185,8 +185,6 @@ export interface BitExplanation {
   bonds: number[]
   /** Each instance of the substructure separately; `atoms`/`bonds` are their union. */
   occurrences: FragmentOccurrence[]
-  /** Drawing of the substructure, present only when requested. */
-  fragment_svg?: string | null
   /** Multiplicity vocabularies only: the fragment's ≥1×, ≥2×, … thermometer. */
   buckets?: BucketPrediction[] | null
   /** Multiplicity vocabularies only: how many times the candidate contains the fragment. */
@@ -207,7 +205,6 @@ export interface BitExplainRequest {
   pred_fp: number[]
   model_id?: string
   limit?: number
-  include_fragment_svg?: boolean
 }
 
 export interface FragmentOccurrence {

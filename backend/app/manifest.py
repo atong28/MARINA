@@ -190,6 +190,6 @@ def resolve_model_id(model_id: Optional[str]) -> tuple[str, Optional[tuple[int, 
         return default, None          # no manifest → always use default, no error
 
     if get_model_info(mid) is None:
-        return mid, (400, f"Unknown model_id {mid!r}")
+        return mid, (400, "Unknown model_id.")
 
     return mid, None

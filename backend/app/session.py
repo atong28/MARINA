@@ -634,7 +634,7 @@ class ModelSession:
             # ignored: the caller asked to narrow the search and got the whole
             # database back, with nothing to say so.
             raise MWDataUnavailable(
-                f"No molecular masses are available for the model at {self.model_root!r}, "
+                "No molecular masses are available for this model, "
                 "so the MW filter cannot be applied."
             )
 
@@ -692,7 +692,7 @@ class ModelSession:
         self._ensure_formula_index()
         if not self._formula_index:
             raise FormulaDataUnavailable(
-                f"No atom-count data is available for the model at {self.model_root!r}, "
+                "No atom-count data is available for this model, "
                 "so the molecular-formula filter cannot be applied.")
 
         items = list(constraints.items())

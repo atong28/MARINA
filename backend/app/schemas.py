@@ -7,13 +7,44 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import (
-    MAX_FP_LENGTH, MAX_HSQC_PEAKS, MAX_MS_PEAKS, MAX_NMR_PEAKS, MAX_SMILES_LENGTH,
-    MAX_TOP_K, DEFAULT_TOP_K,
+    MAX_FP_LENGTH, MAX_HEAVY_ATOMS, MAX_HSQC_PEAKS, MAX_MODEL_ID_LENGTH, MAX_MS_PEAKS,
+    MAX_NMR_PEAKS, MAX_SMILES_LENGTH, MAX_TOP_K, DEFAULT_TOP_K,
 )
 
 # Peak counts are converted to flat-array lengths: HSQC is triplets, MS is pairs.
 _MAX_HSQC_LEN = MAX_HSQC_PEAKS * 3
 _MAX_MS_LEN   = MAX_MS_PEAKS * 2
+
+
+def check_heavy_atoms(smiles: str) -> str:
+    """
+    Reject molecules over MAX_HEAVY_ATOMS before any fingerprint work.
+
+    Parsed without sanitisation, which is cheap even at the length cap; a string
+    RDKit cannot parse at all passes through so the route reports it as invalid.
+    """
+    from rdkit import Chem
+    from rdkit.rdBase import BlockLogs
+
+    with BlockLogs():
+        mol = Chem.MolFromSmiles(smiles.strip(), sanitize=False)
+    if mol is None:
+        return smiles
+    heavy = sum(1 for atom in mol.GetAtoms() if atom.GetAtomicNum() > 1)
+    if heavy > MAX_HEAVY_ATOMS:
+        raise ValueError(
+            f"Molecule has {heavy} heavy atoms; the limit is {MAX_HEAVY_ATOMS}."
+        )
+    return smiles
+
+
+class _SmilesInput(BaseModel):
+    """Mixin for requests carrying a user SMILES in `smiles`."""
+
+    @field_validator("smiles", check_fields=False)
+    @classmethod
+    def _smiles_size(cls, v: str) -> str:
+        return check_heavy_atoms(v)
 
 
 # ── Spectral data input ───────────────────────────────────────────────────────
@@ -76,7 +107,7 @@ class PredictRequest(BaseModel):
     request_id: Optional[str]      = Field(None, max_length=64,
                                            description="Opaque id for queue tracking")
     k:         int                 = Field(DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
-    model_id:  Optional[str]       = Field(None)
+    model_id:  Optional[str]       = Field(None, max_length=MAX_MODEL_ID_LENGTH)
     mw_min:    Optional[float]     = Field(None, gt=0, description="Min MW filter (Da)")
     mw_max:    Optional[float]     = Field(None, gt=0, description="Max MW filter (Da)")
     formula_filter: Optional[List[FormulaConstraint]] = Field(
@@ -85,11 +116,11 @@ class PredictRequest(BaseModel):
 
 # ── SMILES search ─────────────────────────────────────────────────────────────
 
-class SmilesSearchRequest(BaseModel):
+class SmilesSearchRequest(_SmilesInput):
     smiles:   str              = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
                                         description="Query SMILES")
     k:        int              = Field(DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
-    model_id: Optional[str]   = Field(None)
+    model_id: Optional[str]   = Field(None, max_length=MAX_MODEL_ID_LENGTH)
     mw_min:   Optional[float] = Field(None, gt=0)
     mw_max:   Optional[float] = Field(None, gt=0)
     formula_filter: Optional[List[FormulaConstraint]] = Field(None, max_length=40)
@@ -97,9 +128,9 @@ class SmilesSearchRequest(BaseModel):
 
 # ── Fingerprints ──────────────────────────────────────────────────────────────
 
-class FingerprintIndicesRequest(BaseModel):
+class FingerprintIndicesRequest(_SmilesInput):
     smiles:   str            = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH)
-    model_id: Optional[str] = Field(None)
+    model_id: Optional[str] = Field(None, max_length=MAX_MODEL_ID_LENGTH)
 
 
 class FingerprintIndicesResponse(BaseModel):
@@ -107,14 +138,13 @@ class FingerprintIndicesResponse(BaseModel):
     fp_indices: Optional[List[int]] = Field(None, description="Active bit indices (sorted)")
 
 
-class BitExplainRequest(BaseModel):
+class BitExplainRequest(_SmilesInput):
     smiles:   str           = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
                                      description="Candidate structure to locate bits on")
     pred_fp:  List[float]   = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
                                      description="Predicted fingerprint from /predict or /smiles-search")
-    model_id: Optional[str] = Field(None)
-    limit:    int           = Field(60, ge=1, le=100000, description="Max rows to return")
-    include_fragment_svg: bool = Field(False, description="Attach a drawing of each substructure")
+    model_id: Optional[str] = Field(None, max_length=MAX_MODEL_ID_LENGTH)
+    limit:    int           = Field(60, ge=1, le=MAX_FP_LENGTH, description="Max rows to return")
 
 
 class BucketPrediction(BaseModel):
@@ -154,7 +184,6 @@ class BitExplanation(BaseModel):
     occurrences:     List[FragmentOccurrence] = Field(
         default_factory=list,
         description="Each instance of the substructure separately; atoms/bonds are their union")
-    fragment_svg:    Optional[str] = Field(None, description="Drawing of the substructure, when requested")
     # Multiplicity vocabularies only: the fragment's whole thermometer collapsed into one
     # row. buckets are all vocabulary levels (≥1, ≥2, …) with their predicted confidence;
     # true_count is how many times the candidate actually contains the fragment.
@@ -252,12 +281,12 @@ class SmilesSearchResponse(BaseModel):
 
 # ── Custom SMILES card ────────────────────────────────────────────────────────
 
-class CustomSmilesCardRequest(BaseModel):
+class CustomSmilesCardRequest(_SmilesInput):
     smiles:       str              = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
                                             description="Target SMILES")
     reference_fp: List[float]      = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
                                             description="Reference fingerprint (predicted or query FP)")
-    model_id:     Optional[str]    = Field(None)
+    model_id:     Optional[str]    = Field(None, max_length=MAX_MODEL_ID_LENGTH)
 
 
 class CustomSmilesCardResponse(BaseModel):

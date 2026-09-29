@@ -49,8 +49,8 @@ services:
 
 
   # ── Backend ───────────────────────────────────────────────────────────────────
-  # No host port – only reachable from the frontend container via backend-net.
-  # The nginx proxy has no route to this container.
+  # No host port. Reachable on backend-net only: the edge nginx proxies /api/*
+  # to it, and the frontend's own nginx can too.
   backend:
     build:
       context: ./backend
@@ -68,6 +68,10 @@ services:
         LEGACY_NUMPY: ${LEGACY_NUMPY:-false}
     image: marina-backend:latest
     container_name: marina-backend
+    # Resident size is ~3 GB per model copy, and there are
+    # UVICORN_WORKERS * (1 + MAX_COMPUTE_WORKERS) copies (3 by default, ~9.5 GB).
+    # Raise this with the worker counts.
+    mem_limit: ${BACKEND_MEM_LIMIT:-16g}
     environment:
       # ── Inference device ────────────────────────────────────────────────────
       # "cpu" | "cuda" | "cuda:0"

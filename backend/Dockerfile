@@ -67,6 +67,13 @@ ENV MARINA_ROOT=/marina \
     PYTHONUNBUFFERED=1 \
     KMP_DUPLICATE_LIB_OK=TRUE
 
+# Run unprivileged. /var/lib/marina holds the usage counters (the marina-state
+# volume); a fresh named volume copies this directory's ownership on first use.
+RUN useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin marina \
+    && mkdir -p /var/lib/marina \
+    && chown marina:marina /var/lib/marina
+USER marina
+
 EXPOSE 5000
 
 # One uvicorn worker by default. Each worker runs the lifespan hook, so it

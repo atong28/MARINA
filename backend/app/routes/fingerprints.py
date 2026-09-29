@@ -96,7 +96,7 @@ async def fingerprints_explain(body: BitExplainRequest) -> BitExplainResponse:
     try:
         result = await asyncio.to_thread(
             explain_bits, session, body.smiles.strip(), body.pred_fp,
-            body.limit, calibrator, body.include_fragment_svg,
+            body.limit, calibrator,
         )
     except Exception as exc:
         logger.error("fingerprints_explain error: %s", exc, exc_info=True)

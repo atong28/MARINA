@@ -63,6 +63,11 @@ fetch() {
 
 fetch marina_uniqmult_s1 "$UNIQMULT_S1_ID"
 
+# The backend container runs as an unprivileged user, so the weights must be
+# world-readable (checkpoints copied in by hand are often owner-only).
+chmod -R a+rX "$MODEL_DATA_DIR" 2>/dev/null \
+    || error "could not make $MODEL_DATA_DIR world-readable; the backend may fail to load it"
+
 cat << EOF > "$MODEL_DATA_DIR/models.json"
 {
     "models": [

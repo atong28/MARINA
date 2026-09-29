@@ -206,11 +206,12 @@ match: `docker compose up -d --build`.
 | `UVICORN_WORKERS` | `1` | Multiplies memory use, and the effective rate limit, by its value. `backend/docker-compose.yml` defaults to 2; this stack defaults to 1. |
 | `MAX_COMPUTE_WORKERS` | `2` | Worker processes serving `/api/predict`. |
 | `MAX_COMPUTE_QUEUE` | `8` | Pending jobs before the API returns 503. |
+| `BACKEND_MEM_LIMIT` | `16g` | Memory cap for the backend container (~3 GB per model copy). |
 | `PRELOAD_MODELS` | `default` | `default`, `all`, or comma-separated model IDs. |
 | `HIGHLIGHT_ENABLED` | `true` | `false` serves plain depictions only and hides the UI's **Similarity map** toggle. Saves a per-atom fingerprint ablation on every result card, which is the bulk of card-building time on CPU. |
 | `STATS_PATH` | `/var/lib/marina/stats.json` | On the writable `marina-state` volume; `/data` is read-only. |
 
-Backend-only variables (`RATE_LIMIT_PREDICT`, `MAX_TOP_K`, `PREDICT_TIMEOUT_S`,
+Backend-only variables (`RATE_LIMIT_PREDICT`, `MAX_HEAVY_ATOMS`, `MAX_TOP_K`, `PREDICT_TIMEOUT_S`,
 `CORS_ALLOW_ORIGINS`, …) are documented in
 [`backend/README.md`](../../backend/README.md#environment-variables-reference).
 To set them, add them under `backend.environment` in `docker-compose.yml`.
