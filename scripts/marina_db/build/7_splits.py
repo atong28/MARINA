@@ -74,6 +74,26 @@ def load_benchmark_smiles(journal_pkl, workers):
     return _canon_set(raw, workers)
 
 
+def free_pool_allocation(n, forced, n_free):
+    """GLOBAL SPLIT_WEIGHTS (D9) targets over n entries, and how many free-pool entries each
+    split draws: target - already-forced (clamped at 0), reconciled to exactly n_free."""
+    tw, vw, _ = SPLIT_WEIGHTS
+    t_train, t_val = round(tw * n), round(vw * n)
+    targets = {"train": t_train, "val": t_val, "test": n - t_train - t_val}
+    # free share = target - already-forced, clamped at 0 (forced may exceed a target)
+    needs = {s: max(0, targets[s] - forced.get(s, 0)) for s in targets}
+    # reconcile to exactly the free-pool size; train is the sink, cascade to test then val
+    delta = n_free - sum(needs.values())
+    for s in ("train", "test", "val"):
+        if delta == 0:
+            break
+        adj = delta if delta > 0 else max(-needs[s], delta)
+        needs[s] += adj
+        delta -= adj
+    assert delta == 0 and sum(needs.values()) == n_free, "free-pool reconcile failed"
+    return targets, needs
+
+
 def main():
     ap = argparse.ArgumentParser(description="Unified MARINA-DB split assignment (D7 + D9).")
     ap.add_argument("--index", type=Path, default=INDEX_PKL, help="index.pkl to assign (in place)")
@@ -116,20 +136,7 @@ def main():
     forced = Counter(assign.values())
 
     # --- free-pool allocation to hit GLOBAL SPLIT_WEIGHTS (D9) ---
-    tw, vw, _ = SPLIT_WEIGHTS
-    t_train, t_val = round(tw * n), round(vw * n)
-    targets = {"train": t_train, "val": t_val, "test": n - t_train - t_val}
-    # free share = target - already-forced, clamped at 0 (forced may exceed a target)
-    needs = {s: max(0, targets[s] - forced.get(s, 0)) for s in targets}
-    # reconcile to exactly the free-pool size; train is the sink, cascade to test then val
-    delta = len(free_idxs) - sum(needs.values())
-    for s in ("train", "test", "val"):
-        if delta == 0:
-            break
-        adj = delta if delta > 0 else max(-needs[s], delta)
-        needs[s] += adj
-        delta -= adj
-    assert delta == 0 and sum(needs.values()) == len(free_idxs), "free-pool reconcile failed"
+    targets, needs = free_pool_allocation(n, forced, len(free_idxs))
 
     rng = random.Random(SEED)
     rng.shuffle(free_idxs)

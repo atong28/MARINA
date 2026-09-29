@@ -5,12 +5,14 @@ One checker over config.DATA_DATASET:
 
   1. index <-> arrow split consistency: each modality shard holds exactly the index
      idx for that split (gated by the has_* flags; FragIdx covers every molecule),
-     with no duplicate idx within a shard and disjoint shards across splits. The
+     with no duplicate idx within a shard and disjoint shards across splits; checked for
+     every FragIdx*.parquet family present, not just the Morgan one. The
      arrow shards are what the dataloader reads, so consistency is checked against
      them rather than against JSONL (this dataset ships none).
   2. retrieval superset: every index molecule AND every Journal-benchmark molecule is
      present in the retrieval bank by canonical SMILES (the journal is folded into
-     retrieval at stage 3, so all 467 must be present).
+     retrieval at stage 3, so all 467 must be present). Retrieval idx are 0..N-1 and every
+     FP family's rankingset.pt has exactly one row per retrieval row.
   3. no duplicate canonical SMILES in the index.
   4. split-distribution sanity: labels are exactly train/val/test, none empty.
 
@@ -34,7 +36,7 @@ from config import DATA_DATASET, BENCH_JOURNAL, SPLIT_WEIGHTS
 from src.modules.data.smiles import canonicalize_smiles
 
 SPLITS = ("train", "val", "test")
-MODALITIES = ("HSQC_NMR", "C_NMR", "H_NMR", "MassSpec", "MassSpecNeg", "FragIdx")
+MODALITIES = ("HSQC_NMR", "C_NMR", "H_NMR", "MassSpec", "MassSpecNeg")   # + FragIdx* families found
 HAS_FLAG = {"HSQC_NMR": "has_hsqc", "C_NMR": "has_c_nmr", "H_NMR": "has_h_nmr",
             "MassSpec": "has_mass_spec", "MassSpecNeg": "has_mass_spec_neg"}
 # Canonical last-dim per spectral modality in an entry's input dict.
@@ -63,8 +65,10 @@ def main():
     retrieval = pickle.load(open(root / "retrieval.pkl", "rb"))
     retrieval_smiles = {entry["smiles"] for entry in retrieval.values()}
 
-    # ---- 1. index <-> arrow split consistency ----
-    for mod in MODALITIES:
+    # ---- 1. index <-> arrow split consistency (every FragIdx* family present) ----
+    fragidx = sorted(p.stem for p in (root / "arrow" / "train").glob("FragIdx*.parquet"))
+    check("at least one FragIdx family present", bool(fragidx), ", ".join(fragidx))
+    for mod in MODALITIES + tuple(fragidx):
         shard_idx = {}
         for sp in SPLITS:
             t = pq.read_table(root / "arrow" / sp / f"{mod}.parquet", columns=["idx"])
@@ -72,7 +76,7 @@ def main():
             check(f"{sp}/{mod}: no duplicate idx in shard",
                   len(shard_idx[sp]) == t.num_rows)
             expect = ({i for i in index if index[i]["split"] == sp}
-                      if mod == "FragIdx" else
+                      if mod.startswith("FragIdx") else
                       {i for i in index if index[i]["split"] == sp and index[i][HAS_FLAG[mod]]})
             check(f"{sp}/{mod}: shard idx set == index has_* flags",
                   shard_idx[sp] == expect,
@@ -86,6 +90,13 @@ def main():
                   if index[i]["smiles"] not in retrieval_smiles]
     check("retrieval superset: every index molecule present", not miss_index,
           f"{len(retrieval_smiles)} bank, {len(index)} index, {len(miss_index)} missing")
+
+    # ---- 2a. retrieval idx contiguous; every FP family's rankingset has one row per retrieval row ----
+    check("retrieval idx is exactly 0..N-1", sorted(retrieval) == list(range(len(retrieval))))
+    for d in sorted(p.parent for p in root.glob("*/rankingset.pt")):
+        rows = torch.load(d / "rankingset.pt", weights_only=True).shape[0]
+        check(f"{d.name}: rankingset rows == retrieval rows", rows == len(retrieval),
+              f"{rows} vs {len(retrieval)}")
 
     # ---- 2b. retrieval superset (benchmark molecules; canonicalized) ----
     def bench_missing(path, label):
