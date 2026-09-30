@@ -19,7 +19,8 @@ MARINA-DB-OPEN (2026-09-16) is reproducible from MARINA 4913309.
                  (N-oxides, [n+] aromatics), Mnova is the broken side and CH-NMR-NP is kept.
      Per-idx provenance goes to nmr_sources.parquet at the dataset root (idx, hsqc, c_nmr,
      h_nmr in {"chnmr","mnova","absent"}, chnmr_id = the chosen confirmed record linked to the
-     molecule whether or not any modality used it, null if none; is_new), so index.pkl rows keep
+     molecule whether or not any modality used it, null if none; chnmr_solvent = that record's
+     free-text solvent, read by the solvent-jitter augmentation; is_new), so index.pkl rows keep
      MARINA-DB's schema.
   B. retrieval: confirmed structures not yet in retrieval.pkl are appended (idx max+1.., no
      filter); metadata.json gains `ch_nmr_np` (always a LIST of {id,no,chs,name,reference}, one
@@ -212,17 +213,17 @@ def main():
     fallback = Counter()        # (mod, reason)
     maes, maes_cov_ok = [], {False: [], True: []}     # coverage-ok MAEs keyed by charged
     buckets = Counter()
-    provenance = {}                                  # idx -> (hsqc, c_nmr, h_nmr sources, chnmr_id)
+    provenance = {}                                  # idx -> (hsqc, c_nmr, h_nmr sources, chnmr_id, chnmr_solvent)
     for e in tqdm(index.values(), desc="Materializing existing rows"):
         m = mapping.get(e["smiles"], {})
         row = {"idx": e["idx"], "smiles": e["smiles"]}
         for mod, order in OPEN_PRIORITY.items():
             row[mod] = assemble._priority_access(m.get(mod, {}), order)
         src_of = {mod: ("mnova" if row[mod] else "absent") for mod in NMR}
-        chnmr_id = None
+        chnmr_id = chnmr_solvent = None
         if e["smiles"] in info:
             v = info[e["smiles"]]
-            chnmr_id = v["rec"]["id"]
+            chnmr_id, chnmr_solvent = v["rec"]["id"], v["rec"]["solvent"]
             use, why, mae, bucket = chnmr_choice(v, row["c_nmr"], a.mae_max, a.mae_trust_above)
             if bucket:
                 buckets[bucket] += 1
@@ -238,7 +239,7 @@ def main():
         for mod in NMR:
             e[f"has_{mod}"] = row[mod] != []
             source[(mod, src_of[mod], e["split"])] += 1
-        provenance[e["idx"]] = (src_of["hsqc"], src_of["c_nmr"], src_of["h_nmr"], chnmr_id)
+        provenance[e["idx"]] = (src_of["hsqc"], src_of["c_nmr"], src_of["h_nmr"], chnmr_id, chnmr_solvent)
         handles[e["split"]].write(json.dumps(row) + "\n")
     del mapping
 
@@ -285,7 +286,8 @@ def main():
             "formula_vec": formula_to_vector(formula),
         }
         new_rows[next_idx] = row
-        provenance[next_idx] = (*("chnmr" if row[m] else "absent" for m in NMR), info[c]["rec"]["id"])
+        provenance[next_idx] = (*("chnmr" if row[m] else "absent" for m in NMR), info[c]["rec"]["id"],
+                                info[c]["rec"]["solvent"])
         next_idx += 1
 
     # splits: stage 7's forced rules on new rows only; free pool fills the GLOBAL targets
@@ -325,13 +327,15 @@ def main():
         "idx": pa.array(ids, pa.int64()),
         **{mod: pa.array([provenance[i][k] for i in ids], pa.string()) for k, mod in enumerate(NMR)},
         "chnmr_id": pa.array([provenance[i][3] for i in ids], pa.int64()),
+        "chnmr_solvent": pa.array([provenance[i][4] for i in ids], pa.string()),
         "is_new": pa.array([i in new_index for i in ids], pa.bool_()),
     }), out / "nmr_sources.parquet")
     summary["nmr_sources"] = {
         "file": "nmr_sources.parquet", "rows": len(ids),
         "columns": "idx int64; hsqc/c_nmr/h_nmr string chnmr|mnova|absent; chnmr_id int64 = chosen "
                    "confirmed CH-NMR-NP record linked to the molecule (null if none; set even when "
-                   "every modality fell back); is_new bool (appended index row)",
+                   "every modality fell back); chnmr_solvent string = that record's free-text solvent "
+                   "(null if none); is_new bool (appended index row)",
         "with_chnmr_id": sum(p[3] is not None for p in provenance.values()),
         "any_modality_from_chnmr": sum("chnmr" in p[:3] for p in provenance.values())}
 

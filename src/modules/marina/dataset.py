@@ -17,6 +17,7 @@ from ..core.const import DEBUG_LEN, INPUTS_CANONICAL_ORDER, DATASET_ROOT, NON_SP
 from ..data.fp_loader import FPLoader
 from ..data.inputs import MARINAInputLoader, MFInputLoader
 from ..data.augment import PeakAugmenter
+from ..data.solvent import SolventJitter
 from ..log import get_logger
 
 logger = get_logger(__file__)
@@ -119,6 +120,13 @@ class MARINADataset(Dataset):
                 )
             else:
                 self.augmenter = None
+
+            solvent_p = getattr(args, 'solvent_jitter_p', 0.0)
+            self.solvent_jitter = (SolventJitter.from_dataset(DATASET_ROOT, data.keys(), solvent_p)
+                                   if split == 'train' and solvent_p > 0 else None)
+            if self.solvent_jitter is not None:
+                logger.info(f'[MARINADataset] Solvent jitter p={solvent_p}; '
+                            f'{len(self.solvent_jitter.source_mean)} train molecules carry experimental-solvent spectra')
             
             self.drop_percentage = self.compute_drop_percentage(data)
             self.dropout_scheme = getattr(args, 'modality_dropout_scheme', 'bernoulli')
@@ -166,7 +174,10 @@ class MARINADataset(Dataset):
             input_types = self._sample_uniform_cardinality(data_obj)
         else:
             input_types = self._sample_bernoulli(data_obj)
-        return self.spectral_loader.load(data_idx, input_types, jittering=self.jittering, augmenter=self.augmenter), self.mfp_loader.load(data_idx)
+        inputs = self.spectral_loader.load(data_idx, input_types, jittering=self.jittering, augmenter=self.augmenter)
+        if self.solvent_jitter is not None:
+            inputs = self.solvent_jitter.apply(data_idx, inputs)
+        return inputs, self.mfp_loader.load(data_idx)
 
     def _sample_bernoulli(self, data_obj):
         '''Legacy scheme: force-keep one random present spectral modality, then drop every

@@ -66,6 +66,10 @@ class SMARTArgs:
     aug_alpha_add: float = 0.1
     aug_alpha_remove: float = 0.1
 
+    # solvent-offset augmentation (training only; model stays solvent-blind): probability that a sample's
+    # NMR is moved to a solvent drawn from the journal mix, see modules/data/solvent.py. 0 = off.
+    solvent_jitter_p: float = 0.0
+
     # BCE and cosine similarity loss lambda. 0 for full cosine similarity loss, 1 for full BCE loss.
     lambda_hybrid: float = 0.5
     
