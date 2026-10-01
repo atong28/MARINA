@@ -1,0 +1,42 @@
+{
+  "experiment": "spectre-deployed",
+  "model": "SPECTRE (released website model)",
+  "used_in": [
+    "spectre_comparison"
+  ],
+  "fp_type": "RankingEntropy (Sherlock, 16,384 bits)",
+  "eval_flags": "--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre",
+  "checkpoint": {
+    "file": "best.ckpt",
+    "bytes": 1553473934,
+    "sha256": "3df8ae48f5552668cef172808a256a943498b3056347b965baf2ae74ebdc2471"
+  },
+  "locations": {
+    "anthony3": "/home/atong/Deployments/SPECTRE-web/checkpoints/spectre_flexible/best.ckpt"
+  },
+  "params": {
+    "dim_model": 784,
+    "heads": 8,
+    "layers": 16,
+    "ff_dim": 3072,
+    "dropout": 0.1,
+    "out_dim": 16384,
+    "dim_coords": [
+      365,
+      365,
+      54
+    ],
+    "coord_enc": "sce",
+    "use_peak_values": false,
+    "wavelength_bounds": [
+      [
+        0.01,
+        400.0
+      ],
+      [
+        0.01,
+        20.0
+      ]
+    ]
+  }
+}

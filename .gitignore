@@ -217,6 +217,7 @@ spectre_ckpt/
 cache.pkl
 logs/
 checkpoints/
+!paper/checkpoints/
 old_ckpt/
 
 # pixi environments

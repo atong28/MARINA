@@ -1,0 +1,157 @@
+{
+  "experiment": "marina-db-sherlock-formula-s2",
+  "seed": 2,
+  "model": "MARINA",
+  "used_in": [
+    "fp_comparison"
+  ],
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "fp_type": "RankingEntropy",
+  "input_types": [
+    "hsqc",
+    "c_nmr",
+    "h_nmr",
+    "mass_spec",
+    "mass_spec_neg",
+    "mw",
+    "formula"
+  ],
+  "cluster": "Nautilus",
+  "training_commit": "b0424019aa5728cef65380557735a23c35f2f920",
+  "checkpoint": {
+    "file": "epoch_epoch=660.ckpt",
+    "epoch": 660,
+    "bytes": 1473887867,
+    "sha256": "8ebbc02ecd317afd6d46631421398d7e8fa98c0fcae0730488c9b8d2fd1c4b9c",
+    "selection": "early-stopping best (max val/mean_cos); the only epoch_*.ckpt kept in the run dir"
+  },
+  "locations": {
+    "nautilus_pvc": "atong-spectre:/root/gurusmart/Moonshot/results/marina-db-sherlock-formula-s2/2026-09-02_21-01-49/epoch_epoch=660.ckpt"
+  },
+  "params": {
+    "experiment_name": "marina-db-sherlock-formula-s2",
+    "project_name": "MARINA",
+    "seed": 2,
+    "load_from_checkpoint": null,
+    "resume": false,
+    "checkpoint_every_n_epochs": 5,
+    "train": true,
+    "test": true,
+    "benchmark": true,
+    "restrictions": null,
+    "input_types": [
+      "hsqc",
+      "c_nmr",
+      "h_nmr",
+      "mass_spec",
+      "mass_spec_neg",
+      "mw",
+      "formula"
+    ],
+    "requires": [],
+    "debug": false,
+    "batch_size": 32,
+    "num_workers": 4,
+    "val_num_workers": 2,
+    "epochs": 750,
+    "patience": 30,
+    "early_stopping_metric": "val/mean_cos",
+    "persistent_workers": true,
+    "lr": 0.0002,
+    "eta_min": 1e-05,
+    "weight_decay": 0.0,
+    "scheduler": "cosine",
+    "freeze_weights": false,
+    "use_jaccard": false,
+    "warmup": false,
+    "accumulate_grad_batches_num": 4,
+    "precision": "bf16-mixed",
+    "dropout": 0.1,
+    "jittering": 0.5,
+    "modality_drop_override": null,
+    "modality_dropout_scheme": "bernoulli",
+    "aug_add_prob": 0.0,
+    "aug_remove_prob": 0.0,
+    "aug_alpha_add": 0.1,
+    "aug_alpha_remove": 0.1,
+    "lambda_hybrid": 0.5,
+    "fp_type": "RankingEntropy",
+    "additional_test_types": [
+      [
+        "hsqc"
+      ],
+      [
+        "h_nmr"
+      ],
+      [
+        "c_nmr"
+      ],
+      [
+        "mass_spec"
+      ],
+      [
+        "mass_spec_neg"
+      ]
+    ],
+    "benchmark_split": "val",
+    "dim_model": 784,
+    "nmr_dim_coords": [
+      391,
+      391,
+      2
+    ],
+    "nmr_is_sign_encoding": [
+      false,
+      false,
+      true
+    ],
+    "c_nmr_dim_coords": [
+      784
+    ],
+    "c_nmr_is_sign_encoding": [
+      false
+    ],
+    "h_nmr_dim_coords": [
+      784
+    ],
+    "h_nmr_is_sign_encoding": [
+      false
+    ],
+    "ms_dim_coords": [
+      392,
+      392
+    ],
+    "ms_is_sign_encoding": [
+      false,
+      false
+    ],
+    "heads": 8,
+    "layers": 8,
+    "self_attn_layers": {
+      "hsqc": 2,
+      "h_nmr": 1,
+      "c_nmr": 2,
+      "mass_spec": 1,
+      "mass_spec_neg": 1
+    },
+    "ff_dim": 3072,
+    "out_dim": 16384,
+    "formula_tokens": 1,
+    "c_wavelength_bounds": [
+      0.01,
+      400.0
+    ],
+    "h_wavelength_bounds": [
+      0.01,
+      20.0
+    ],
+    "mz_wavelength_bounds": [
+      0.01,
+      3100.0
+    ],
+    "intensity_wavelength_bounds": [
+      0.001,
+      2.0
+    ]
+  }
+}
