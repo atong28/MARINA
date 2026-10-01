@@ -97,8 +97,11 @@ def cell(s, pct=True, digits=2, sign=False):
     return f"{m}{pc}\\pmm{{{s['std']:.{digits}f}}}"
 
 
+OUT_DIR = os.path.join(HERE, "results", "tables")
+
+
 def out(name, tex, data):
-    d = os.path.join(HERE, "results", "tables")
+    d = OUT_DIR
     os.makedirs(d, exist_ok=True)
     open(os.path.join(d, f"{name}.tex"), "w").write(tex)
     json.dump(data, open(os.path.join(d, f"{name}.json"), "w"), indent=2)
@@ -249,9 +252,12 @@ def results_training_regime(raw, spec, split):
 
 
 def main():
+    global OUT_DIR
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default=os.path.join(HERE, "results", "raw"))
+    ap.add_argument("--out", default=OUT_DIR, help="e.g. paper/results/tables-cosine with --raw .../raw-cosine")
     a = ap.parse_args()
+    OUT_DIR = a.out
     specs = {k: json.load(open(os.path.join(HERE, "specs", f"{k}.json")))
              for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")}
     summary = {}

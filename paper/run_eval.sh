@@ -22,6 +22,8 @@
 #   regime   <exp...>  Table results_training_regime: full journal + simulated MARINA-DB-PRIVATE test (4 NMR combos)
 #   collect            copy W/results/*/benchmarks/* into paper/results/raw/<bench>/ (then commit)
 # Each step is skipped when its output exists, so reruns after an interruption are safe.
+# RANK_METRIC=cosine (comparison only; the paper uses jaccard) writes to W/results-cosine and collects to
+# paper/results/raw-cosine instead.
 set -uo pipefail
 : "${W:?set W=<work dir>}"
 GROUP=$1; shift
@@ -31,9 +33,12 @@ cd "$REPO"
 export PYTHONPATH=$REPO
 mkdir -p "$W/logs"
 LOG="$W/logs/run_eval_${GROUP}_$(date +%Y%m%d-%H%M%S).log"
-echo "[run-eval] code=$(git rev-parse --short HEAD) group=$GROUP exps=${EXPS[*]} log=$LOG" | tee -a "$LOG"
 FILT='it/s\]|s/it\]|UserWarning|warnings.warn'
-EVAL="pixi run python scripts/benchmark/eval_journal_benchmark.py --rank_metric jaccard --deltas"
+RANK_METRIC=${RANK_METRIC:-jaccard}
+case "$RANK_METRIC" in jaccard) RES=results; RAW=raw ;; cosine) RES=results-cosine; RAW=raw-cosine ;;
+    *) echo "RANK_METRIC must be jaccard or cosine" >&2; exit 2 ;; esac
+EVAL="pixi run python scripts/benchmark/eval_journal_benchmark.py --rank_metric $RANK_METRIC --deltas"
+echo "[run-eval] code=$(git rev-parse --short HEAD) group=$GROUP rank_metric=$RANK_METRIC exps=${EXPS[*]} log=$LOG" | tee -a "$LOG"
 
 run() {  # run <label> <command...>; logs, never aborts the whole runner
     echo "[run-eval] ===== $(date) $1" | tee -a "$LOG"
@@ -42,8 +47,8 @@ run() {  # run <label> <command...>; logs, never aborts the whole runner
     [ "${PIPESTATUS[0]}" = 0 ] || echo "[run-eval] FAILED (continuing)" | tee -a "$LOG"
 }
 
-bench_root() {  # bench_root <bench> -> W/results/<bench> (journal pkl linked in, outputs beside it)
-    local r="$W/results/$1"
+bench_root() {  # bench_root <bench> -> W/$RES/<bench> (journal pkl linked in, outputs beside it)
+    local r="$W/$RES/$1"
     mkdir -p "$r/benchmarks"
     ln -sfn "$W/bench/$1/benchmark-journal.pkl" "$r/benchmark-journal.pkl"
     echo "$r"
@@ -90,10 +95,10 @@ regime)
         fi
     done ;;
 collect)
-    for r in "$W"/results/*/; do
+    for r in "$W/$RES"/*/; do
         b=$(basename "$r")
-        mkdir -p "paper/results/raw/$b"
-        cp -v "$r"benchmarks/*_benchmark_journal_results.pkl "$r"benchmarks/*_sim_results.json "paper/results/raw/$b/" 2>/dev/null \
+        mkdir -p "paper/results/$RAW/$b"
+        cp -v "$r"benchmarks/*_benchmark_journal_results.pkl "$r"benchmarks/*_sim_results.json "paper/results/$RAW/$b/" 2>/dev/null \
             | tee -a "$LOG"
     done ;;
 *)
