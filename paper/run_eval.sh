@@ -65,7 +65,8 @@ flagship)
         done
     done ;;
 spectre)
-    S=(--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre
+    # the released SPECTRE params.json has no input_types; its 4-row type embedding is HSQC / 13C / 1H / MW
+    S=(--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre --input_types hsqc c_nmr h_nmr mw
        --ckpt "$W/ckpt/spectre-deployed/best.ckpt" --params "$W/ckpt/spectre-deployed/params.json"
        --name spectre-deployed)
     journal clean_test SPECTRE-clean-test spectre-deployed "${S[@]}"

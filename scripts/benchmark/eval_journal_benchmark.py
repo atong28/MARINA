@@ -81,7 +81,7 @@ def find_run(results_root: str, experiment: str) -> tuple[str, str]:
 
 
 def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=False, sim=False, deltas=False,
-               rank_metric=None):
+               rank_metric=None, input_types=None):
     valid = {f.name for f in dc_fields(argcls)}
     kw = {k: v for k, v in params.items() if k in valid}
     if sim:
@@ -97,6 +97,8 @@ def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=
         kw["fp_type"] = fp_type
     if rank_metric:
         kw["rank_metric"] = rank_metric
+    if input_types:  # e.g. the released SPECTRE bundle, whose params.json does not record its inputs
+        kw["input_types"] = list(input_types)
     if legacy_spectre and "legacy_type_embedding" in valid:
         kw["legacy_type_embedding"] = True
     return argcls(**kw)
@@ -177,11 +179,12 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
 
 
 def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False,
-             rank_metric=None):
+             rank_metric=None, input_types=None):
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
-    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, rank_metric=rank_metric)
+    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, rank_metric=rank_metric,
+                      input_types=input_types)
     print(f"[{name}] project={project} fp_type={args.fp_type} rank_metric={args.rank_metric} ckpt={ckpt}",
           flush=True)
 
@@ -215,6 +218,8 @@ def main():
                     help="MARINA-DB splits for --sim (val needs --deltas)")
     ap.add_argument("--rank_metric", default=None, choices=["cosine", "jaccard"],
                     help="retrieval ranking metric (default: the run's params.json, i.e. cosine)")
+    ap.add_argument("--input_types", nargs="+", default=None,
+                    help="override the run's input_types (journal eval), e.g. hsqc c_nmr h_nmr mw for SPECTRE")
     ap.add_argument("--sim_only", nargs="+", default=None,
                     help="--sim --deltas: only these combos (names like hsqc_c_nmr_h_nmr hsqc)")
     ap.add_argument("--num_workers", type=int, default=2)
@@ -230,7 +235,7 @@ def main():
     def run(name, ckpt, params_path):
         if not a.no_journal:
             out = eval_one(a.project_name, ckpt, params_path, name, a.fp_type,
-                           a.num_workers, a.legacy_spectre, a.deltas, a.rank_metric)
+                           a.num_workers, a.legacy_spectre, a.deltas, a.rank_metric, a.input_types)
             print(f"[{name}] wrote {out}", flush=True)
         if a.sim:
             for split in a.sim_splits:
