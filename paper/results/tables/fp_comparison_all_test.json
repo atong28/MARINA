@@ -47,10 +47,42 @@
       }
     },
     "Uncapped mult.": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "tani": null
+      "rank@1": {
+        "mean": 58.40455840455841,
+        "std": 2.8454393668715334,
+        "seeds": [
+          60.256410256410255,
+          59.82905982905983,
+          55.12820512820513
+        ]
+      },
+      "rank@5": {
+        "mean": 83.04843304843305,
+        "std": 2.353662627045338,
+        "seeds": [
+          85.47008547008546,
+          82.90598290598291,
+          80.76923076923077
+        ]
+      },
+      "rank@10": {
+        "mean": 87.17948717948718,
+        "std": 1.5408338784034186,
+        "seeds": [
+          88.46153846153847,
+          87.6068376068376,
+          85.47008547008546
+        ]
+      },
+      "tani": {
+        "mean": 0.7597619953148725,
+        "std": 0.007800337550797524,
+        "seeds": [
+          0.7643055527383446,
+          0.7642253729013296,
+          0.7507550603049433
+        ]
+      }
     },
     "Capped mult.\\ ($k{=}5$)": {
       "rank@1": null,
@@ -101,9 +133,6 @@
     "results/raw/full/marina-db-cap5-formula-s0_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-cap5-formula-s1_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-cap5-formula-s2_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s0_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s1_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s2_benchmark_journal_results.pkl"

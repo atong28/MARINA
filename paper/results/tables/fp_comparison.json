@@ -51,9 +51,6 @@
     "results/raw/full/marina-db-cap5-formula-s0_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-cap5-formula-s1_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-cap5-formula-s2_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s0_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s1_benchmark_journal_results.pkl",
     "results/raw/full/marina-db-uniqmult-formula-s2_benchmark_journal_results.pkl"
