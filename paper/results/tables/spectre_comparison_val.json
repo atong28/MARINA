@@ -94,7 +94,7 @@
             47.34299516908212
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 16.42512077294686
       },
       "rank@5": {
         "MARINA": {
@@ -106,7 +106,7 @@
             66.66666666666667
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 39.61352657004831
       },
       "rank@10": {
         "MARINA": {
@@ -118,7 +118,7 @@
             73.91304347826087
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 49.27536231884058
       }
     },
     "ME-HSQC": {
@@ -132,7 +132,7 @@
             36.71497584541063
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 15.942028985507246
       },
       "rank@5": {
         "MARINA": {
@@ -144,7 +144,7 @@
             55.072463768115945
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 39.130434782608695
       },
       "rank@10": {
         "MARINA": {
@@ -156,7 +156,7 @@
             60.869565217391305
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 47.34299516908212
       }
     },
     "$^{13}$C": {
@@ -170,7 +170,7 @@
             17.391304347826086
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 2.898550724637681
       },
       "rank@5": {
         "MARINA": {
@@ -182,7 +182,7 @@
             31.884057971014492
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 8.695652173913043
       },
       "rank@10": {
         "MARINA": {
@@ -194,7 +194,7 @@
             38.64734299516908
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 15.458937198067632
       }
     },
     "$^{1}$H": {
@@ -208,7 +208,7 @@
             0.4830917874396135
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       },
       "rank@5": {
         "MARINA": {
@@ -220,7 +220,7 @@
             2.4154589371980677
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       },
       "rank@10": {
         "MARINA": {
@@ -232,11 +232,9 @@
             4.3478260869565215
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       }
     }
   },
-  "missing": [
-    "results/raw/clean_val/spectre-deployed_benchmark_journal_results.pkl"
-  ]
+  "missing": []
 }

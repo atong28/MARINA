@@ -94,7 +94,7 @@
             46.34146341463415
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 15.609756097560975
       },
       "rank@5": {
         "MARINA": {
@@ -106,7 +106,7 @@
             72.6829268292683
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 44.390243902439025
       },
       "rank@10": {
         "MARINA": {
@@ -118,7 +118,7 @@
             79.51219512195122
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 57.5609756097561
       }
     },
     "ME-HSQC": {
@@ -132,7 +132,7 @@
             40.0
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 17.5609756097561
       },
       "rank@5": {
         "MARINA": {
@@ -144,7 +144,7 @@
             67.3170731707317
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 44.390243902439025
       },
       "rank@10": {
         "MARINA": {
@@ -156,7 +156,7 @@
             72.1951219512195
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 57.073170731707314
       }
     },
     "$^{13}$C": {
@@ -170,7 +170,7 @@
             16.585365853658537
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 4.878048780487805
       },
       "rank@5": {
         "MARINA": {
@@ -182,7 +182,7 @@
             34.146341463414636
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 9.75609756097561
       },
       "rank@10": {
         "MARINA": {
@@ -194,7 +194,7 @@
             43.41463414634146
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 13.170731707317072
       }
     },
     "$^{1}$H": {
@@ -208,7 +208,7 @@
             0.0
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       },
       "rank@5": {
         "MARINA": {
@@ -220,7 +220,7 @@
             2.4390243902439024
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       },
       "rank@10": {
         "MARINA": {
@@ -232,11 +232,9 @@
             5.365853658536586
           ]
         },
-        "SPECTRE": null
+        "SPECTRE": 0.0
       }
     }
   },
-  "missing": [
-    "results/raw/clean_test/spectre-deployed_benchmark_journal_results.pkl"
-  ]
+  "missing": []
 }
