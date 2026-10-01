@@ -202,7 +202,7 @@ def build_bank_ecfp(fp_loader, ranker, cache_path: str | None = None):
 
 @torch.no_grad()
 def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
-             on_combo=None, metrics=None) -> dict:
+             on_combo=None, metrics=None, split: str = 'test', items=None) -> dict:
     """Memory-light simulated MARINA-DB test eval — one combo's test dataset at a time (so
     all combos' datasets are never built at once, unlike trainer.test which OOMs at ~24
     combos). Per combo computes, matching the trainer.test metrics exactly:
@@ -214,7 +214,11 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
                                         to the gold (the test molecule's own library row).
     `on_combo(metrics)` is called after each combo for incremental checkpointing (resumable
     across pod loss). Pass a pre-loaded `metrics` dict to RESUME: any combo whose keys are
-    already present is skipped. Returns a flat {metric_key: value} dict."""
+    already present is skipped. Returns a flat {metric_key: value} dict.
+    `split` picks the MARINA-DB split ('test' or 'val'); metric keys are prefixed with it.
+    If `items` (a dict) is given, per-item results are stored in it per combo as
+    {'idx', 'rank', 'cos'[, 'ann']} lists (dataset idx; strict rank; cosine; first annotation
+    hit rank, ANN_TOPK if none) so subsets (e.g. by NMR source) can be scored afterwards."""
     import gc
     from .marina.dataset import MARINADataset  # local import avoids a module cycle
     nrm = torch.nn.functional.normalize
@@ -231,20 +235,21 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
         return gold_cache[smi]
     for combo in combos:
         name = '_'.join(combo)
-        need = [f'test/mean_rank_1/{name}', f'test/mean_cos/{name}']
+        need = [f'{split}/mean_rank_1/{name}', f'{split}/mean_cos/{name}']
         if bank_ecfp is not None:
-            need.append(f'test/mean_ann_1/{name}')
-        if all(kk in metrics for kk in need):
-            logger.info(f'[sim-eval/{name}] already present; skipping (resume)')
+            need.append(f'{split}/mean_ann_1/{name}')
+        if all(kk in metrics for kk in need) and (items is None or name in items):
+            logger.info(f'[sim-eval/{split}/{name}] already present; skipping (resume)')
             continue
-        ds = MARINADataset(model.args, data_module.fp_loader, split='test',
+        ds = MARINADataset(model.args, data_module.fp_loader, split=split,
                            override_input_types=list(combo))
+        rec = {'idx': [d[0] for d in ds.data], 'rank': [], 'cos': []}
         gold_smiles = [d[1].get('smiles') for d in ds.data]  # gold structure per item, ds order
         n = len(ds)
         rk = {1: 0, 5: 0, 10: 0}
         cos_sum = 0.0
         ann = {1: 0, 5: 0, 10: 0}
-        for start in tqdm(range(0, n, batch_size), desc=f'sim-eval/{name}'):
+        for start in tqdm(range(0, n, batch_size), desc=f'sim-eval/{split}/{name}'):
             sl = list(range(start, min(start + batch_size, n)))
             batch_inputs, mfps = data_module._collate_fn([ds[i] for i in sl])
             batch_inputs = _to_device({'batch': batch_inputs}, dev)
@@ -252,10 +257,13 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
             logits = model(**batch_inputs)                            # (B, D)
             # rank/cos (matches core.metrics.cm: cos on binarized preds, rank on sigmoid)
             fp_pred = (logits >= 0.0).float()
-            cos_sum += float(do_cos(mfps, fp_pred).sum().item())
+            cos_b = do_cos(mfps, fp_pred)
+            cos_sum += float(cos_b.sum().item())
             rank_res = model.ranker.batched_rank(torch.sigmoid(logits), mfps)  # (B,) strict
             for k in (1, 5, 10):
                 rk[k] += int((rank_res < k).sum().item())
+            rec['cos'] += cos_b.tolist()
+            rec['rank'] += rank_res.tolist()
             # annotation (optional)
             if bank_ecfp is not None:
                 top = model.ranker.retrieve_idx(torch.sigmoid(logits), ANN_TOPK)  # (k,B)/(k,)
@@ -269,16 +277,21 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
                 good = (retr * gold.unsqueeze(1)).sum(-1) >= ANN_THRESH  # (B, k)
                 for k in (1, 5, 10):
                     ann[k] += int(good[:, :k].any(dim=1).sum().item())
+                first = torch.where(good.any(dim=1), good.float().argmax(dim=1),
+                                    torch.full((good.size(0),), good.size(1)))
+                rec.setdefault('ann', []).extend(first.tolist())
         for k in (1, 5, 10):
-            metrics[f'test/mean_rank_{k}/{name}'] = rk[k] / n
-        metrics[f'test/mean_cos/{name}'] = cos_sum / n
-        msg = (f"[sim-eval/{name}] n={n} rank@1/5/10="
+            metrics[f'{split}/mean_rank_{k}/{name}'] = rk[k] / n
+        metrics[f'{split}/mean_cos/{name}'] = cos_sum / n
+        msg = (f"[sim-eval/{split}/{name}] n={n} rank@1/5/10="
                f"{100*rk[1]/n:.2f}/{100*rk[5]/n:.2f}/{100*rk[10]/n:.2f} cos={cos_sum/n:.4f}")
         if bank_ecfp is not None:
             for k in (1, 5, 10):
-                metrics[f'test/mean_ann_{k}/{name}'] = ann[k] / n
+                metrics[f'{split}/mean_ann_{k}/{name}'] = ann[k] / n
             msg += f" ann@1/5/10={100*ann[1]/n:.2f}/{100*ann[5]/n:.2f}/{100*ann[10]/n:.2f}"
         logger.info(msg)
+        if items is not None:
+            items[name] = rec
         del ds, gold_smiles
         gc.collect()
         if on_combo is not None:

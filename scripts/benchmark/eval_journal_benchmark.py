@@ -21,6 +21,7 @@ import argparse
 import glob
 import json
 import os
+import pickle
 from dataclasses import fields as dc_fields
 
 import torch
@@ -97,19 +98,25 @@ def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=
     return argcls(**kw)
 
 
-def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False):
+def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False,
+             split='test'):
     """Simulated test: trainer.test() over the MARINA-DB test split → per-combo
     test/mean_rank_{1,5,10} + test/mean_cos, dumped to <name>_sim_results.json. With --deltas
     the combo set is the 24 Table-S1 {spectra,+F,+MW} combos and a batched annotation pass
     adds test/mean_ann_{1,5,10} per combo (Table S1b sim side).
-    Requires the test-split arrow shards + index.pkl staged under DATASET_ROOT."""
+    Requires the split's arrow shards + index.pkl staged under DATASET_ROOT.
+    split='val' (deltas path only) scores the val split instead, writing
+    <name>_sim_val_results.json; with --deltas per-item results also go to
+    <name>_sim_<split>_items.pkl (see sim_eval)."""
     import pytorch_lightning as pl
     from src.modules.benchmark import build_bank_ecfp, sim_eval
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
     args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, sim=True, deltas=deltas)
-    print(f"[{name}] SIM test fp_type={args.fp_type} ckpt={ckpt} deltas={deltas}", flush=True)
+    if split != 'test' and not deltas:
+        raise ValueError("--sim_splits other than test need --deltas (sim_eval path)")
+    print(f"[{name}] SIM {split} fp_type={args.fp_type} ckpt={ckpt} deltas={deltas}", flush=True)
     fp_loader = make_fp_loader(
         args.fp_type, entropy_out_dim=args.out_dim,
         retrieval_path=os.path.join(DATASET_ROOT, "retrieval.pkl"),
@@ -117,18 +124,24 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     model = modelcls(args, fp_loader)
     data_module = dmcls(args, fp_loader)
     load_model(args, model)  # load_state_dict(strict) + setup_ranker + eval
-    out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_results.json")
+    tag = "sim" if split == 'test' else f"sim_{split}"
+    out = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_{tag}_results.json")
+    items_path = os.path.join(BENCHMARK_ROOT, "benchmarks", f"{name}_sim_{split}_items.pkl")
 
     if deltas:
         # Memory-light path: sim_eval builds one combo's test dataset at a time (trainer.test
         # OOMs building all 24 combos' datasets at once) and computes rank/cos + annotation,
         # checkpointing the json after every combo so a pod loss is resumable.
-        combos = sim_combos(True)
+        # only combos the model was trained on (e.g. no formula / MS/MS for the regime arms)
+        combos = [c for c in sim_combos(True) if set(c) <= set(args.input_types)]
         stypes = ['_'.join(c) for c in combos]
         bank, _ = build_bank_ecfp(
             fp_loader, model.ranker,
             cache_path=os.path.join(DATASET_ROOT, "ecfp_bank_2048.pt"))
-        prev = {}
+        prev, items = {}, {}
+        if os.path.exists(items_path):
+            with open(items_path, 'rb') as f:
+                items = pickle.load(f)
         if os.path.exists(out):  # resume: reuse combos already checkpointed (pod-loss safe)
             try:
                 prev = json.load(open(out)).get("metrics", {})
@@ -136,10 +149,12 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
             except Exception:
                 prev = {}
         def _dump(m):
+            with open(items_path, "wb") as f:
+                pickle.dump(items, f)
             with open(out, "w") as f:
-                json.dump({"ckpt": ckpt, "spectral_types": stypes, "metrics": m}, f, indent=2)
+                json.dump({"ckpt": ckpt, "split": split, "spectral_types": stypes, "metrics": m}, f, indent=2)
         metrics = sim_eval(model, data_module, combos, args.batch_size, bank,
-                           on_combo=_dump, metrics=prev)
+                           on_combo=_dump, metrics=prev, split=split, items=items)
         _dump(metrics)
     else:
         trainer = pl.Trainer(accelerator='auto', devices=1, logger=False, enable_checkpointing=False)
@@ -186,6 +201,8 @@ def main():
                     help="skip the journal benchmark (e.g. sim-only)")
     ap.add_argument("--deltas", action="store_true",
                     help="also compute per-combo +Formula/+MW subsets (flagship Tables 1 & S1)")
+    ap.add_argument("--sim_splits", nargs="+", default=["test"], choices=["test", "val"],
+                    help="MARINA-DB splits for --sim (val needs --deltas)")
     ap.add_argument("--num_workers", type=int, default=2)
     # mode A
     ap.add_argument("--results_root")
@@ -202,9 +219,10 @@ def main():
                            a.num_workers, a.legacy_spectre, a.deltas)
             print(f"[{name}] wrote {out}", flush=True)
         if a.sim:
-            out = sim_test(a.project_name, ckpt, params_path, name, a.fp_type,
-                           a.num_workers, a.legacy_spectre, a.deltas)
-            print(f"[{name}] wrote {out}", flush=True)
+            for split in a.sim_splits:
+                out = sim_test(a.project_name, ckpt, params_path, name, a.fp_type,
+                               a.num_workers, a.legacy_spectre, a.deltas, split)
+                print(f"[{name}] wrote {out}", flush=True)
 
     if a.ckpt:
         run(a.name, a.ckpt, a.params)
