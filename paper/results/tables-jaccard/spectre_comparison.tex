@@ -1,0 +1,27 @@
+% spectre_comparison — SPECTRE-clean journal test (n=205), flagship=stand-in: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2; ranking = binary Tanimoto for both models.
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{{\color{cInk!35}\textrm{--}}}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l cc cc cc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}}
+      & \multicolumn{2}{c}{\hd{exp-rank@1}}
+      & \multicolumn{2}{c}{\hd{exp-rank@5}}
+      & \multicolumn{2}{c}{\hd{exp-rank@10}} \\
+  \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      & \hd{MARINA} & \hd{SPECTRE}
+      & \hd{MARINA} & \hd{SPECTRE}
+      & \hd{MARINA} & \hd{SPECTRE} \\
+  \midrule
+  NMR$+$MS/MS$+$Formula*    & \best{68.46}\pmm{1.41} & \na & \best{89.11}\pmm{0.56} & \na & \best{91.54}\pmm{0.28} & \na \\
+  NMR$+$MS/MS*              & \best{65.69}\pmm{2.86} & \na & \best{87.64}\pmm{1.49} & \na & \best{90.24}\pmm{0.49} & \na \\
+  NMR                       & \best{50.89}\pmm{4.91} & 15.61 & \best{74.47}\pmm{1.97} & 44.39 & \best{79.84}\pmm{0.56} & 57.56 \\
+  ME-HSQC                   & \best{41.46}\pmm{3.41} & 17.56 & \best{66.83}\pmm{0.84} & 44.39 & \best{71.87}\pmm{0.56} & 57.07 \\
+  $^{13}$C                  & \best{15.93}\pmm{1.13} & 4.88 & \best{36.10}\pmm{3.38} & 9.76 & \best{44.23}\pmm{1.85} & 13.17 \\
+  $^{1}$H                   & \best{0.65}\pmm{0.56} & 0.00 & \best{2.76}\pmm{0.28} & 0.00 & \best{4.23}\pmm{1.02} & 0.00 \\
+  \bottomrule
+\end{tabular}
+\endgroup

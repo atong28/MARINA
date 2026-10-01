@@ -1,0 +1,22 @@
+# Small CPU pod that mounts the atong-spectre PVC read-only so paper/tools/fetch_pvc_ckpts.py can stream checkpoints
+# out with `kubectl exec ... cat`. Delete it when the fetch is done.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: atong-pvc-reader-20261001
+  namespace: guru-research
+  labels: { owner: atong }
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 172800
+  containers:
+    - name: reader
+      image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+      command: ["sleep", "172800"]
+      resources:
+        requests: { cpu: "1", memory: 2Gi }
+        limits:   { cpu: "2", memory: 4Gi }
+      volumeMounts:
+        - { mountPath: /root/gurusmart, name: atong-spectre, readOnly: true }
+  volumes:
+    - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }

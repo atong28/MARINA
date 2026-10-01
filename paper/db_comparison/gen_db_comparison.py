@@ -20,6 +20,8 @@ SPECTRE_DB = {"train": 173422, "val": 4056, "test": 4056, "has_hsqc": 117806, "h
               "has_h_nmr": 101486, "has_mass_spec": 0, "has_mass_spec_neg": 0, "total": 181534,
               "retrieval": 526163}
 NA = "{\\na}"
+# SPECTRE-DB has experimental spectra but the paper does not give their counts; the * points to the caption note.
+SPECTRE_DB.update({k: NA + "*" for k in ["exp_hsqc", "exp_c_nmr", "exp_h_nmr"]})
 
 
 def stats(root, sources=False):

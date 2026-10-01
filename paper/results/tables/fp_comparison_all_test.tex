@@ -1,4 +1,4 @@
-% fp_comparison — MARINA-DB-PRIVATE arms, journal test, input nmr_formula (NMR + formula; MW and MS/MS withheld); ranking = binary Tanimoto; all five fingerprints (appendix).
+% fp_comparison — MARINA-DB-PRIVATE arms, journal test, input nmr_formula (NMR + formula; MW and MS/MS withheld); ranking = cosine; all five fingerprints (appendix).
 \begingroup
 \color{cInk}
 \providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
@@ -8,13 +8,13 @@
 \begin{tabular}{@{}l cccc@{}}
   \toprule
   \hd{Fingerprint}
-      & \hd{exp-rank@1} & \hd{exp-rank@5} & \hd{exp-rank@10} & \hd{exp-mean-Tanimoto} \\
+      & \hd{exp-rank@1} & \hd{exp-rank@5} & \hd{exp-rank@10} & \hd{exp-mean-cos} \\
   \midrule
-  Unique mult.\ (ours)    & \best{63.96}\pmm{0.49} & \best{84.47}\pmm{3.09} & \best{87.89}\pmm{0.89} & \best{0.784}\pmm{0.007} \\
-  Sherlock                & 42.74\pmm{4.08} & 65.67\pmm{2.35} & 74.50\pmm{3.03} & 0.620\pmm{0.017} \\
-  Uncapped mult.          & 58.40\pmm{2.85} & 83.05\pmm{2.35} & 87.18\pmm{1.54} & 0.760\pmm{0.008} \\
+  Unique mult.\ (ours)    & \tbd & \tbd & \tbd & \tbd \\
+  Sherlock                & \tbd & \tbd & \tbd & \tbd \\
+  Uncapped mult.          & \tbd & \tbd & \tbd & \tbd \\
   Capped mult.\ ($k{=}5$) & \tbd & \tbd & \tbd & \tbd \\
-  Substructure            & 37.18\pmm{5.60} & 64.25\pmm{6.23} & 72.79\pmm{5.74} & 0.650\pmm{0.026} \\
+  Substructure            & \tbd & \tbd & \tbd & \tbd \\
   \bottomrule
 \end{tabular}
 \endgroup

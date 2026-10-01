@@ -9,232 +9,93 @@
   "rows": {
     "NMR$+$MS/MS$+$Formula*": {
       "rank@1": {
-        "MARINA": {
-          "mean": 68.45528455284553,
-          "std": 1.4081713882673792,
-          "seeds": [
-            69.26829268292683,
-            69.26829268292683,
-            66.82926829268293
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 89.10569105691057,
-          "std": 0.5632685553069484,
-          "seeds": [
-            89.7560975609756,
-            88.78048780487805,
-            88.78048780487805
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 91.54471544715447,
-          "std": 0.2816342776534742,
-          "seeds": [
-            91.70731707317073,
-            91.21951219512195,
-            91.70731707317073
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       }
     },
     "NMR$+$MS/MS*": {
       "rank@1": {
-        "MARINA": {
-          "mean": 65.6910569105691,
-          "std": 2.8582757449182057,
-          "seeds": [
-            67.8048780487805,
-            66.82926829268293,
-            62.4390243902439
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 87.64227642276423,
-          "std": 1.4902685186848244,
-          "seeds": [
-            89.26829268292683,
-            87.3170731707317,
-            86.34146341463415
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 90.2439024390244,
-          "std": 0.4878048780487845,
-          "seeds": [
-            90.73170731707317,
-            90.2439024390244,
-            89.7560975609756
-          ]
-        },
+        "MARINA": null,
         "SPECTRE": null
       }
     },
     "NMR": {
       "rank@1": {
-        "MARINA": {
-          "mean": 50.89430894308943,
-          "std": 4.910461421314306,
-          "seeds": [
-            50.24390243902439,
-            56.09756097560975,
-            46.34146341463415
-          ]
-        },
-        "SPECTRE": 15.609756097560975
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 74.47154471544715,
-          "std": 1.9714399435743268,
-          "seeds": [
-            74.14634146341463,
-            76.58536585365853,
-            72.6829268292683
-          ]
-        },
-        "SPECTRE": 44.390243902439025
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 79.83739837398375,
-          "std": 0.5632685553069484,
-          "seeds": [
-            79.51219512195122,
-            80.48780487804878,
-            79.51219512195122
-          ]
-        },
-        "SPECTRE": 57.5609756097561
+        "MARINA": null,
+        "SPECTRE": null
       }
     },
     "ME-HSQC": {
       "rank@1": {
-        "MARINA": {
-          "mean": 41.46341463414634,
-          "std": 3.4146341463414642,
-          "seeds": [
-            39.02439024390244,
-            45.36585365853659,
-            40.0
-          ]
-        },
-        "SPECTRE": 17.5609756097561
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 66.82926829268293,
-          "std": 0.8449028329604226,
-          "seeds": [
-            65.85365853658537,
-            67.3170731707317,
-            67.3170731707317
-          ]
-        },
-        "SPECTRE": 44.390243902439025
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 71.86991869918698,
-          "std": 0.5632685553069484,
-          "seeds": [
-            72.1951219512195,
-            71.21951219512195,
-            72.1951219512195
-          ]
-        },
-        "SPECTRE": 57.073170731707314
+        "MARINA": null,
+        "SPECTRE": null
       }
     },
     "$^{13}$C": {
       "rank@1": {
-        "MARINA": {
-          "mean": 15.934959349593496,
-          "std": 1.126537110613904,
-          "seeds": [
-            14.634146341463415,
-            16.585365853658537,
-            16.585365853658537
-          ]
-        },
-        "SPECTRE": 4.878048780487805
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 36.09756097560976,
-          "std": 3.3796113318417107,
-          "seeds": [
-            34.146341463414636,
-            40.0,
-            34.146341463414636
-          ]
-        },
-        "SPECTRE": 9.75609756097561
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 44.22764227642276,
-          "std": 1.84679946204887,
-          "seeds": [
-            42.926829268292686,
-            46.34146341463415,
-            43.41463414634146
-          ]
-        },
-        "SPECTRE": 13.170731707317072
+        "MARINA": null,
+        "SPECTRE": null
       }
     },
     "$^{1}$H": {
       "rank@1": {
-        "MARINA": {
-          "mean": 0.6504065040650406,
-          "std": 0.563268555306952,
-          "seeds": [
-            0.975609756097561,
-            0.975609756097561,
-            0.0
-          ]
-        },
-        "SPECTRE": 0.0
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@5": {
-        "MARINA": {
-          "mean": 2.7642276422764227,
-          "std": 0.281634277653476,
-          "seeds": [
-            2.926829268292683,
-            2.926829268292683,
-            2.4390243902439024
-          ]
-        },
-        "SPECTRE": 0.0
+        "MARINA": null,
+        "SPECTRE": null
       },
       "rank@10": {
-        "MARINA": {
-          "mean": 4.227642276422764,
-          "std": 1.0154468290078698,
-          "seeds": [
-            3.902439024390244,
-            3.4146341463414633,
-            5.365853658536586
-          ]
-        },
-        "SPECTRE": 0.0
+        "MARINA": null,
+        "SPECTRE": null
       }
     }
   },
-  "missing": []
+  "missing": [
+    "results/raw-cosine/clean_test/marina-db-open-chnmr-uniqmult-formula-s0_benchmark_journal_results.pkl",
+    "results/raw-cosine/clean_test/marina-db-open-chnmr-uniqmult-formula-s1_benchmark_journal_results.pkl",
+    "results/raw-cosine/clean_test/marina-db-open-chnmr-uniqmult-formula-s2_benchmark_journal_results.pkl",
+    "results/raw-cosine/clean_test/spectre-deployed_benchmark_journal_results.pkl"
+  ]
 }

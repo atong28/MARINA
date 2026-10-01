@@ -1,10 +1,11 @@
 {
   "table": "spectre_comparison",
   "ranking": {
-    "metric": "jaccard",
-    "definition": "binary Tanimoto |P∩B|/|P∪B| between the predicted on-bits P (sigmoid(logit) >= 0.5) and each retrieval row's on-bits B",
-    "rank": "strict: retrieval rows with Jaccard >= Jaccard(P, gold) count against the gold, minus the gold's own row (ties count against)",
-    "eval_flag": "--rank_metric jaccard"
+    "metric": "cosine",
+    "definition": "cosine between the predicted probabilities (sigmoid) and each retrieval row's fingerprint (rankingset rows are L2-normalised on-bit sets)",
+    "rank": "strict: retrieval rows with cosine >= cosine(prediction, gold) count against the gold, minus the gold's own row (ties count against)",
+    "eval_flag": "--rank_metric cosine (RANK_METRIC=cosine, the run_eval.sh default)",
+    "comparison": "binary-Tanimoto (jaccard) results for the same tables are kept in paper/results/raw-jaccard and tables-jaccard"
   },
   "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
   "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",

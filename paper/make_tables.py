@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build the main-paper result tables from the raw evaluation outputs.
 
-Reads paper/specs/<table>.json and paper/results/raw/<bench>/ (written by `paper/run_eval.sh collect`), and writes
-paper/results/tables/<table>.{tex,json} for the split the paper reports plus <table>_<other split>.{tex,json}.
+Reads paper/specs/<table>.json and paper/results/raw-<metric>/<bench>/ (written by `paper/run_eval.sh collect`), and
+writes paper/results/tables[-jaccard]/<table>.{tex,json} for the split the paper reports plus <table>_<other split>.
+--metric cosine (paper, default) or jaccard picks the raw dir, the output dir and the mean-similarity column.
 Missing inputs become \\tbd cells and are listed under "missing" in the json, so the tables can be rebuilt as runs land.
 
 Run (from the MARINA repo root):  DATASET_ROOT=/tmp pixi run python paper/make_tables.py
@@ -16,6 +17,9 @@ import statistics as st
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KS = (1, 5, 10)
+METRIC = "cosine"                       # ranking metric of the raw results; set from --metric
+SIM = {"cosine": "cos", "jaccard": "tani"}  # per-record / sim-json key of the mean similarity column
+LABEL = {"cosine": ("exp-mean-cos", "cos", "cosine"), "jaccard": ("exp-mean-Tanimoto", "Tani", "binary Tanimoto")}
 
 PRE = r"""\begingroup
 \color{cInk}
@@ -50,7 +54,7 @@ class Raw:
 
 
 def jmetrics(saved, key):
-    """rank@k / ann@k (%) and mean Tanimoto for one split/subset of a journal result pkl."""
+    """rank@k / ann@k (%) and mean cosine / Tanimoto for one split/subset of a journal result pkl."""
     if saved is None or key not in saved:
         return None
     recs = saved[key]
@@ -63,6 +67,7 @@ def jmetrics(saved, key):
     if all("tani" in r for r in recs):
         m["tani"] = sum(r["tani"] for r in recs) / n
     m["cos"] = sum(r["cos"] for r in recs) / n
+    m["sim"] = m.get(SIM[METRIC])
     return m
 
 
@@ -97,7 +102,7 @@ def cell(s, pct=True, digits=2, sign=False):
     return f"{m}{pc}\\pmm{{{s['std']:.{digits}f}}}"
 
 
-OUT_DIR = os.path.join(HERE, "results", "tables")
+OUT_DIR = os.path.join(HERE, "results", "tables")  # tables-jaccard for --metric jaccard
 
 
 def out(name, tex, data):
@@ -139,7 +144,7 @@ def results_main(raw, spec, split):
             "      & \\multicolumn{2}{c}{\\hd{@10}} \\\\\n"
             "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
             "      & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} \\\\\n  \\midrule\n")
-    note = f"% {spec['table']} — journal {split}, flagship={which}: {', '.join(exps)}; ranking = binary Tanimoto.\n"
+    note = f"% {spec['table']} — journal {split}, flagship={which}: {', '.join(exps)}; ranking = {LABEL[METRIC][2]}.\n"
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
@@ -174,7 +179,7 @@ def spectre_comparison(raw, spec, split):
             "      & \\hd{MARINA} & \\hd{SPECTRE}\n      & \\hd{MARINA} & \\hd{SPECTRE}\n"
             "      & \\hd{MARINA} & \\hd{SPECTRE} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — SPECTRE-clean journal {split} (n={spec['benchmark']['n'][split]}), "
-            f"flagship={which}: {', '.join(exps)}; ranking = binary Tanimoto for both models.\n")
+            f"flagship={which}: {', '.join(exps)}; ranking = {LABEL[METRIC][2]} for both models.\n")
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
@@ -184,22 +189,22 @@ def fp_comparison(raw, spec, split, main_only):
     stats = {}
     for lab, a in arms.items():
         per = [jmetrics(raw.journal(bench, e), f"{split}/{sub}") for e in a["experiments"]]
-        stats[lab] = {**{f"rank@{k}": seed_stat(per, f"rank@{k}") for k in KS}, "tani": seed_stat(per, "tani")}
-    cols = [f"rank@{k}" for k in KS] + ["tani"]
+        stats[lab] = {**{f"rank@{k}": seed_stat(per, f"rank@{k}") for k in KS}, "sim": seed_stat(per, "sim")}
+    cols = [f"rank@{k}" for k in KS] + ["sim"]
     best = {c: max((s[c]["mean"] for s in stats.values() if s[c]), default=None) for c in cols}
     lines = []
     for lab, s in stats.items():
         cells = []
         for c in cols:
-            txt = cell(s[c], pct=False, digits=3 if c == "tani" else 2)
+            txt = cell(s[c], pct=False, digits=3 if c == "sim" else 2)
             if s[c] and best[c] is not None and s[c]["mean"] == best[c] and len(stats) > 1:
                 txt = r"\best{" + txt.replace(r"\pmm", r"}\pmm", 1)
             cells.append(txt)
         lines.append(f"  {lab:<24}& " + " & ".join(cells) + " \\\\")
     head = (PRE % ("", "7pt", "1.2") + "\\begin{tabular}{@{}l cccc@{}}\n  \\toprule\n  \\hd{Fingerprint}\n"
-            "      & \\hd{exp-rank@1} & \\hd{exp-rank@5} & \\hd{exp-rank@10} & \\hd{exp-mean-Tanimoto} \\\\\n  \\midrule\n")
+            "      & \\hd{exp-rank@1} & \\hd{exp-rank@5} & \\hd{exp-rank@10} & \\hd{" + LABEL[METRIC][0] + "} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — MARINA-DB-PRIVATE arms, journal {split}, input {sub} (NMR + formula; MW and MS/MS "
-            f"withheld); ranking = binary Tanimoto; {'main rows' if main_only else 'all five fingerprints (appendix)'}.\n")
+            f"withheld); ranking = {LABEL[METRIC][2]}; {'main rows' if main_only else 'all five fingerprints (appendix)'}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, {"split": split, "subset": sub, "rows": stats}
 
 
@@ -213,14 +218,14 @@ def results_training_regime(raw, spec, split):
         for label, jsub, scombo in spec["eval_inputs"]:
             per = [jmetrics(j, f"{split}/{jsub}") for j in js]
             st_ = {f"exp_r@{k}": seed_stat(per, f"rank@{k}") for k in KS}
-            st_["exp_tani"] = seed_stat(per, "tani")
+            st_["exp_sim"] = seed_stat(per, "sim")
             for k in KS:
                 st_[f"sim_r@{k}"] = agg([None if s is None or f"test/mean_rank_{k}/{scombo}" not in s
                                          else 100.0 * s[f"test/mean_rank_{k}/{scombo}"] for s in ss])
-            st_["sim_tani"] = agg([None if s is None or f"test/mean_tani/{scombo}" not in s
-                                   else s[f"test/mean_tani/{scombo}"] for s in ss])
+            key = f"test/mean_{SIM[METRIC]}/{scombo}"
+            st_["sim_sim"] = agg([None if s is None or key not in s else s[key] for s in ss])
             stats[(regime, label)] = st_
-    cols = [f"exp_r@{k}" for k in KS] + ["exp_tani"] + [f"sim_r@{k}" for k in KS] + ["sim_tani"]
+    cols = [f"exp_r@{k}" for k in KS] + ["exp_sim"] + [f"sim_r@{k}" for k in KS] + ["sim_sim"]
     regimes = list(spec["arms"])
     lines = []
     for ri, regime in enumerate(regimes):
@@ -230,7 +235,7 @@ def results_training_regime(raw, spec, split):
             cells = []
             for c in cols:
                 s = stats[(regime, label)][c]
-                txt = cell(s, pct=False, digits=3 if "tani" in c else 2)
+                txt = cell(s, pct=False, digits=3 if c.endswith("_sim") else 2)
                 others = [stats[(r, label)][c] for r in regimes if r != regime]
                 if s and all(o for o in others) and all(s["mean"] - s["std"] > o["mean"] + o["std"] for o in others):
                     txt = r"\best{" + txt.replace(r"\pmm", r"}\pmm", 1)
@@ -242,22 +247,25 @@ def results_training_regime(raw, spec, split):
     head = (PRE % ("\\small\n", "5pt", "1.15") + "\\begin{tabular}{@{}l l cccc cccc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Training}} & \\multirow{2}{*}{\\hd{Eval input}}\n"
             f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (journal {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
-            "      & \\multicolumn{4}}{c}{\\hd{Simulated (MARINA-DB-PRIVATE test)}} \\\\\n"
+            "      & \\multicolumn{4}{c}{\\hd{Simulated (MARINA-DB-PRIVATE test)}} \\\\\n"
             "  \\cmidrule(lr){3-6}\\cmidrule(lr){7-10}\n"
-            "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{Tani}\n"
-            "        & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{Tani} \\\\\n  \\midrule\n")
+            "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "}\n"
+            "        & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — uncapped-multiplicity MARINA-DB-PRIVATE arms; experimental = journal {split}, "
-            "simulated = MARINA-DB-PRIVATE test; ranking = binary Tanimoto.\n")
+            f"simulated = MARINA-DB-PRIVATE test; ranking = {LABEL[METRIC][2]}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
 def main():
-    global OUT_DIR
+    global OUT_DIR, METRIC
     ap = argparse.ArgumentParser()
-    ap.add_argument("--raw", default=os.path.join(HERE, "results", "raw"))
-    ap.add_argument("--out", default=OUT_DIR, help="e.g. paper/results/tables-cosine with --raw .../raw-cosine")
+    ap.add_argument("--metric", default="cosine", choices=["cosine", "jaccard"])
+    ap.add_argument("--raw", default=None, help="default paper/results/raw-<metric>")
+    ap.add_argument("--out", default=None, help="default paper/results/tables (cosine) or tables-jaccard")
     a = ap.parse_args()
-    OUT_DIR = a.out
+    METRIC = a.metric
+    a.raw = a.raw or os.path.join(HERE, "results", f"raw-{METRIC}")
+    OUT_DIR = a.out or os.path.join(HERE, "results", "tables" if METRIC == "cosine" else "tables-jaccard")
     specs = {k: json.load(open(os.path.join(HERE, "specs", f"{k}.json")))
              for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")}
     summary = {}
