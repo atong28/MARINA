@@ -1,0 +1,20 @@
+% fp_comparison — MARINA-DB-PRIVATE arms, journal test, input nmr_formula (NMR + formula; MW and MS/MS withheld); ranking = binary Tanimoto; all five fingerprints (appendix).
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{{\color{cInk!35}\textrm{--}}}
+\setlength{\tabcolsep}{7pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l cccc@{}}
+  \toprule
+  \hd{Fingerprint}
+      & \hd{exp-rank@1} & \hd{exp-rank@5} & \hd{exp-rank@10} & \hd{exp-mean-Tanimoto} \\
+  \midrule
+  Unique mult.\ (ours)    & \tbd & \tbd & \tbd & \tbd \\
+  Sherlock                & \best{42.74}\pmm{4.08} & \best{65.67}\pmm{2.35} & \best{74.50}\pmm{3.03} & 0.620\pmm{0.017} \\
+  Uncapped mult.          & \tbd & \tbd & \tbd & \tbd \\
+  Capped mult.\ ($k{=}5$) & \tbd & \tbd & \tbd & \tbd \\
+  Substructure            & 37.18\pmm{5.60} & 64.25\pmm{6.23} & 72.79\pmm{5.74} & \best{0.650}\pmm{0.026} \\
+  \bottomrule
+\end{tabular}
+\endgroup

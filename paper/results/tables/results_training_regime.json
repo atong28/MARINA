@@ -1,0 +1,145 @@
+{
+  "split": "val",
+  "rows": {
+    "NMR\\\\$+$MW | NMR": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MW | ME-HSQC": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MW | $^{13}$C": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MW | $^{1}$H": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MS/MS\\\\$+$MW | NMR": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MS/MS\\\\$+$MW | ME-HSQC": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MS/MS\\\\$+$MW | $^{13}$C": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "NMR\\\\$+$MS/MS\\\\$+$MW | $^{1}$H": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "All\\\\inputs | NMR": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "All\\\\inputs | ME-HSQC": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "All\\\\inputs | $^{13}$C": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    },
+    "All\\\\inputs | $^{1}$H": {
+      "exp_r@1": null,
+      "exp_r@5": null,
+      "exp_r@10": null,
+      "exp_tani": null,
+      "sim_r@1": null,
+      "sim_r@5": null,
+      "sim_r@10": null,
+      "sim_tani": null
+    }
+  },
+  "missing": [
+    "results/raw/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-formula-s0_sim_results.json",
+    "results/raw/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-formula-s1_sim_results.json",
+    "results/raw/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-formula-s2_sim_results.json",
+    "results/raw/full/marina-db-uncapped-nmr-s0_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-nmr-s0_sim_results.json",
+    "results/raw/full/marina-db-uncapped-nmr-s1_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-nmr-s1_sim_results.json",
+    "results/raw/full/marina-db-uncapped-nmr-s2_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-nmr-s2_sim_results.json",
+    "results/raw/full/marina-db-uncapped-noform-s0_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-noform-s0_sim_results.json",
+    "results/raw/full/marina-db-uncapped-noform-s1_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-noform-s1_sim_results.json",
+    "results/raw/full/marina-db-uncapped-noform-s2_benchmark_journal_results.pkl",
+    "results/raw/full/marina-db-uncapped-noform-s2_sim_results.json"
+  ]
+}
