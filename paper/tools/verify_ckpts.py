@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check a staged work dir's checkpoints against paper/checkpoints/*.json (size + sha256).
+"""Check a staged work dir's checkpoints against paper/checkpoints/*.json (size + sha256); exit 1 if any is
+absent or mismatched (pass experiment names to check a subset).
 
 Usage: python paper/tools/verify_ckpts.py <W>/ckpt [experiment ...]
 """
@@ -31,6 +32,7 @@ def main():
         found = glob.glob(os.path.join(root, exp, "**", man["checkpoint"]["file"]), recursive=True)
         if not found:
             print(f"absent   {exp}")
+            bad += 1
             continue
         ok = (os.path.getsize(found[0]) == man["checkpoint"]["bytes"]
               and sha256(found[0]) == man["checkpoint"]["sha256"])
