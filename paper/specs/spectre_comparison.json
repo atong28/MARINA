@@ -1,0 +1,93 @@
+{
+  "table": "spectre_comparison",
+  "ranking": {
+    "metric": "jaccard",
+    "definition": "binary Tanimoto |P∩B|/|P∪B| between the predicted on-bits P (sigmoid(logit) >= 0.5) and each retrieval row's on-bits B",
+    "rank": "strict: retrieval rows with Jaccard >= Jaccard(P, gold) count against the gold, minus the gold's own row (ties count against)",
+    "eval_flag": "--rank_metric jaccard"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
+  "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
+  "label": "tab:spectre_comparison",
+  "section": "3.1 Comparison Between SPECTRE and MARINA",
+  "eval_group": "A+B",
+  "description": "Flagship MARINA vs the deployed SPECTRE model on the SPECTRE-clean journal subset",
+  "models": {
+    "MARINA": {
+      "experiments": [
+        "marina-db-open-solvjit-uniqmult-formula-s0",
+        "marina-db-open-solvjit-uniqmult-formula-s1",
+        "marina-db-open-solvjit-uniqmult-formula-s2"
+      ],
+      "standin_experiments": [
+        "marina-db-open-chnmr-uniqmult-formula-s0",
+        "marina-db-open-chnmr-uniqmult-formula-s1",
+        "marina-db-open-chnmr-uniqmult-formula-s2"
+      ],
+      "fingerprint": "RankingEntropyUniqueMultiplicity",
+      "retrieval_set": {
+        "name": "MARINA-DB",
+        "size": 531927,
+        "work_dir": "data/MARINA-DB"
+      }
+    },
+    "SPECTRE": {
+      "checkpoint": "spectre-deployed (SPECTRE website model, Deployments/SPECTRE-web/checkpoints/spectre_flexible)",
+      "fingerprint": "RankingEntropy (Sherlock, 16,384 bits)",
+      "flags": "--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre",
+      "retrieval_set": {
+        "name": "SPECTRE-DB retrieval (526,163) + the clean-subset query structures appended (augment_rankingset.py)",
+        "work_dir": {
+          "test": "data/SPECTRE-clean-test",
+          "val": "data/SPECTRE-clean-val"
+        }
+      },
+      "seeds": "single released model (no std)"
+    }
+  },
+  "benchmark": {
+    "name": "SPECTRE-clean journal subset (journal compounds absent from SPECTRE's train and val)",
+    "bench": {
+      "test": "clean_test",
+      "val": "clean_val"
+    },
+    "paper_split": "test",
+    "n": {
+      "test": 205,
+      "val": 207
+    }
+  },
+  "rows": [
+    [
+      "NMR$+$MS/MS$+$Formula*",
+      "nmr_msms_formula",
+      "MARINA only"
+    ],
+    [
+      "NMR$+$MS/MS*",
+      "nmr_msms",
+      "MARINA only"
+    ],
+    [
+      "NMR",
+      "nmr"
+    ],
+    [
+      "ME-HSQC",
+      "hsqc"
+    ],
+    [
+      "$^{13}$C",
+      "c_nmr"
+    ],
+    [
+      "$^{1}$H",
+      "h_nmr"
+    ]
+  ],
+  "metrics": {
+    "exp-rank@1/5/10": "strict, %"
+  },
+  "bold": "the larger of MARINA and SPECTRE",
+  "eval_flags": "--deltas"
+}

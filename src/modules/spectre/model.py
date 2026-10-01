@@ -287,4 +287,4 @@ class SPECTRE(pl.LightningModule):
 
     def setup_ranker(self):
         store = self.fp_loader.load_rankingset(self.args.fp_type)
-        self.ranker = RankingSet(store=store, metric="cosine")
+        self.ranker = RankingSet(store=store, metric=self.args.rank_metric)

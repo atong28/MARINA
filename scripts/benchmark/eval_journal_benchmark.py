@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Run the journal benchmark (exp-rank@k strict + exp-mean-cos) for MARINA or SPECTRE.
+"""Run the journal benchmark (exp-rank@k strict + exp-mean-cos/-tani) for MARINA or SPECTRE.
+--rank_metric jaccard ranks by binary Tanimoto (the paper metric); default = the run's params (cosine).
 
 For each run it rebuilds the args from the run's params.json (so the architecture matches
 the checkpoint) and calls benchmark_marina, which loops val+test x {all,nmr,msms} and writes
@@ -79,7 +80,8 @@ def find_run(results_root: str, experiment: str) -> tuple[str, str]:
     return os.path.join(os.path.dirname(ckpts[0]), "params.json"), ckpts[0]
 
 
-def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=False, sim=False, deltas=False):
+def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=False, sim=False, deltas=False,
+               rank_metric=None):
     valid = {f.name for f in dc_fields(argcls)}
     kw = {k: v for k, v in params.items() if k in valid}
     if sim:
@@ -93,13 +95,15 @@ def build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre=
                   load_from_checkpoint=ckpt, experiment_name=name, num_workers=num_workers)
     if fp_type:
         kw["fp_type"] = fp_type
+    if rank_metric:
+        kw["rank_metric"] = rank_metric
     if legacy_spectre and "legacy_type_embedding" in valid:
         kw["legacy_type_embedding"] = True
     return argcls(**kw)
 
 
 def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False,
-             split='test'):
+             split='test', rank_metric=None, sim_only=None):
     """Simulated test: trainer.test() over the MARINA-DB test split → per-combo
     test/mean_rank_{1,5,10} + test/mean_cos, dumped to <name>_sim_results.json. With --deltas
     the combo set is the 24 Table-S1 {spectra,+F,+MW} combos and a batched annotation pass
@@ -113,10 +117,12 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
-    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, sim=True, deltas=deltas)
+    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, sim=True, deltas=deltas,
+                      rank_metric=rank_metric)
     if split != 'test' and not deltas:
         raise ValueError("--sim_splits other than test need --deltas (sim_eval path)")
-    print(f"[{name}] SIM {split} fp_type={args.fp_type} ckpt={ckpt} deltas={deltas}", flush=True)
+    print(f"[{name}] SIM {split} fp_type={args.fp_type} rank_metric={args.rank_metric} ckpt={ckpt} "
+          f"deltas={deltas}", flush=True)
     fp_loader = make_fp_loader(
         args.fp_type, entropy_out_dim=args.out_dim,
         retrieval_path=os.path.join(DATASET_ROOT, "retrieval.pkl"),
@@ -134,6 +140,8 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
         # checkpointing the json after every combo so a pod loss is resumable.
         # only combos the model was trained on (e.g. no formula / MS/MS for the regime arms)
         combos = [c for c in sim_combos(True) if set(c) <= set(args.input_types)]
+        if sim_only:  # restrict to the named combos (e.g. the 4 NMR inputs of the training-regime table)
+            combos = [c for c in combos if '_'.join(c) in set(sim_only)]
         stypes = ['_'.join(c) for c in combos]
         bank, _ = build_bank_ecfp(
             fp_loader, model.ranker,
@@ -168,12 +176,14 @@ def sim_test(project, ckpt, params_path, name, fp_type, num_workers, legacy_spec
     return out
 
 
-def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False):
+def eval_one(project, ckpt, params_path, name, fp_type, num_workers, legacy_spectre=False, deltas=False,
+             rank_metric=None):
     argcls, modelcls, dmcls = CLASSES[project]
     with open(params_path) as f:
         params = json.load(f)
-    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre)
-    print(f"[{name}] project={project} fp_type={args.fp_type} ckpt={ckpt}", flush=True)
+    args = build_args(argcls, params, ckpt, name, fp_type, num_workers, legacy_spectre, rank_metric=rank_metric)
+    print(f"[{name}] project={project} fp_type={args.fp_type} rank_metric={args.rank_metric} ckpt={ckpt}",
+          flush=True)
 
     fp_loader = make_fp_loader(
         args.fp_type, entropy_out_dim=args.out_dim,
@@ -203,6 +213,10 @@ def main():
                     help="also compute per-combo +Formula/+MW subsets (flagship Tables 1 & S1)")
     ap.add_argument("--sim_splits", nargs="+", default=["test"], choices=["test", "val"],
                     help="MARINA-DB splits for --sim (val needs --deltas)")
+    ap.add_argument("--rank_metric", default=None, choices=["cosine", "jaccard"],
+                    help="retrieval ranking metric (default: the run's params.json, i.e. cosine)")
+    ap.add_argument("--sim_only", nargs="+", default=None,
+                    help="--sim --deltas: only these combos (names like hsqc_c_nmr_h_nmr hsqc)")
     ap.add_argument("--num_workers", type=int, default=2)
     # mode A
     ap.add_argument("--results_root")
@@ -216,12 +230,12 @@ def main():
     def run(name, ckpt, params_path):
         if not a.no_journal:
             out = eval_one(a.project_name, ckpt, params_path, name, a.fp_type,
-                           a.num_workers, a.legacy_spectre, a.deltas)
+                           a.num_workers, a.legacy_spectre, a.deltas, a.rank_metric)
             print(f"[{name}] wrote {out}", flush=True)
         if a.sim:
             for split in a.sim_splits:
                 out = sim_test(a.project_name, ckpt, params_path, name, a.fp_type,
-                               a.num_workers, a.legacy_spectre, a.deltas, split)
+                               a.num_workers, a.legacy_spectre, a.deltas, split, a.rank_metric, a.sim_only)
                 print(f"[{name}] wrote {out}", flush=True)
 
     if a.ckpt:

@@ -18,6 +18,7 @@ from .spectre import SPECTREArgs, SPECTREDataModule, SPECTRE
 from .log import get_logger
 from .core.const import BENCHMARK_ROOT, INPUT_TYPES
 from .data.fp_loader import EntropyFPLoader
+from .core.ranker import query_bits
 from .data.fp_utils import load_smiles_index
 from .data.formula import formula_to_vector
 
@@ -37,6 +38,14 @@ def formula_vec_from_smiles(smiles: str) -> torch.Tensor:
 
 def cos_sim(pred, target):
     return torch.dot(pred, target) / (torch.norm(pred) * torch.norm(target))
+
+def bit_tanimoto(pred: torch.Tensor, gold: torch.Tensor) -> torch.Tensor:
+    """Binary Tanimoto of predicted on-bits (probability >= 0.5) vs gold on-bits (> 0).
+    pred/gold: (D,) or (B, D); returns a scalar or (B,) tensor. Reported as mean_tani."""
+    pb = query_bits(pred)
+    gb = (gold > 0).to(torch.float32)
+    inter = (pb * gb).sum(dim=-1)
+    return inter / (pb.sum(dim=-1) + gb.sum(dim=-1) - inter).clamp_min(1.0)
 
 def tanimoto_sim(pred, target):
     pred_bin = (pred > 0).int()
@@ -67,9 +76,9 @@ def _to_device(obj, device):
 
 def load_model(args: MARINAArgs | SPECTREArgs, model: MARINA | SPECTRE) -> None:
     if args.project_name == 'MARINA':
-        model.load_state_dict(torch.load(args.load_from_checkpoint)['state_dict'])
+        model.load_state_dict(torch.load(args.load_from_checkpoint, map_location='cpu')['state_dict'])
     elif args.project_name == 'SPECTRE':
-        state_dict = torch.load(args.load_from_checkpoint)['state_dict']
+        state_dict = torch.load(args.load_from_checkpoint, map_location='cpu')['state_dict']
         encoders = []
         for k, v in model.state_dict().items():
             if 'sin_term' in k or 'cos_term' in k:
@@ -90,7 +99,7 @@ def filter_data(data: dict[int, Any], restrictions: List[INPUT_TYPES]) -> dict[i
 def _rank_conventions(pred: torch.Tensor, sfp: torch.Tensor, ranker) -> tuple[int, int]:
     """0-based rank of the gold structure against the full bank, both tie conventions.
 
-    strict : bank rows with sim >= cos(pred, gold) count against the gold (ties count),
+    strict : bank rows with sim >= sim(pred, gold) count against the gold (ties count),
              minus the self-row -- the training test-loop convention.
     tie    : only rows STRICTLY better than the gold count; fingerprint-identical twins
              tied with the gold (and the self-row, which sits at the threshold) are
@@ -98,9 +107,8 @@ def _rank_conventions(pred: torch.Tensor, sfp: torch.Tensor, ranker) -> tuple[in
     """
     q = pred.reshape(1, -1)
     sims = ranker._sims(q).squeeze(1).float()                      # (N,)
-    qn = torch.nn.functional.normalize(q, dim=1, p=2.0)[0]
-    gn = torch.nn.functional.normalize(sfp.reshape(1, -1).to(qn.device), dim=1, p=2.0)[0]
-    thr = torch.dot(qn, gn).float()
+    # the gold row's similarity under the ranker's metric (cosine or binary Jaccard)
+    thr = ranker.pair_sim(q.to(ranker.device), sfp.reshape(1, -1).to(ranker.device))[0].float()
     close = torch.isclose(sims, thr.expand_as(sims))
     rank_strict = int((((sims >= thr) | close).sum() - 1).item())
     rank_tie = int(((sims > thr) & ~close).sum().item())
@@ -209,6 +217,8 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
       test/mean_rank_{1,5,10}/{combo} : rank_res = batched_rank(sigmoid(logits), gold_fp);
                                         fraction with rank < k  (strict, self-discounted)
       test/mean_cos/{combo}           : cosine(gold_fp, (logits>=0))  [binarized preds, cm]
+      test/mean_tani/{combo}          : binary Tanimoto(gold_fp, (logits>=0))
+    Ranks use the model ranker's metric (args.rank_metric: cosine or binary Jaccard).
     and, when `bank_ecfp` is given, annotation success (same definition as the exp side):
       test/mean_ann_{1,5,10}/{combo}  : a top-ANN_TOPK retrieval has ECFP4 cos >= ANN_THRESH
                                         to the gold (the test molecule's own library row).
@@ -235,7 +245,7 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
         return gold_cache[smi]
     for combo in combos:
         name = '_'.join(combo)
-        need = [f'{split}/mean_rank_1/{name}', f'{split}/mean_cos/{name}']
+        need = [f'{split}/mean_rank_1/{name}', f'{split}/mean_cos/{name}', f'{split}/mean_tani/{name}']
         if bank_ecfp is not None:
             need.append(f'{split}/mean_ann_1/{name}')
         if all(kk in metrics for kk in need) and (items is None or name in items):
@@ -243,11 +253,12 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
             continue
         ds = MARINADataset(model.args, data_module.fp_loader, split=split,
                            override_input_types=list(combo))
-        rec = {'idx': [d[0] for d in ds.data], 'rank': [], 'cos': []}
+        rec = {'idx': [d[0] for d in ds.data], 'rank': [], 'cos': [], 'tani': []}
         gold_smiles = [d[1].get('smiles') for d in ds.data]  # gold structure per item, ds order
         n = len(ds)
         rk = {1: 0, 5: 0, 10: 0}
         cos_sum = 0.0
+        tani_sum = 0.0
         ann = {1: 0, 5: 0, 10: 0}
         for start in tqdm(range(0, n, batch_size), desc=f'sim-eval/{split}/{name}'):
             sl = list(range(start, min(start + batch_size, n)))
@@ -259,6 +270,9 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
             fp_pred = (logits >= 0.0).float()
             cos_b = do_cos(mfps, fp_pred)
             cos_sum += float(cos_b.sum().item())
+            tani_b = bit_tanimoto(torch.sigmoid(logits), mfps)
+            tani_sum += float(tani_b.sum().item())
+            rec['tani'] += tani_b.tolist()
             rank_res = model.ranker.batched_rank(torch.sigmoid(logits), mfps)  # (B,) strict
             for k in (1, 5, 10):
                 rk[k] += int((rank_res < k).sum().item())
@@ -283,8 +297,10 @@ def sim_eval(model, data_module, combos: list, batch_size: int, bank_ecfp=None,
         for k in (1, 5, 10):
             metrics[f'{split}/mean_rank_{k}/{name}'] = rk[k] / n
         metrics[f'{split}/mean_cos/{name}'] = cos_sum / n
+        metrics[f'{split}/mean_tani/{name}'] = tani_sum / n
         msg = (f"[sim-eval/{split}/{name}] n={n} rank@1/5/10="
-               f"{100*rk[1]/n:.2f}/{100*rk[5]/n:.2f}/{100*rk[10]/n:.2f} cos={cos_sum/n:.4f}")
+               f"{100*rk[1]/n:.2f}/{100*rk[5]/n:.2f}/{100*rk[10]/n:.2f} cos={cos_sum/n:.4f} "
+               f"tani={tani_sum/n:.4f}")
         if bank_ecfp is not None:
             for k in (1, 5, 10):
                 metrics[f'{split}/mean_ann_{k}/{name}'] = ann[k] / n
@@ -339,7 +355,8 @@ def _run_benchmark_loop(
         sfp = mfp_cache[smi]
         sfp = (sfp / torch.norm(sfp)).to(pred.device)
         rs, rt = _rank_conventions(pred, sfp, model.ranker)
-        rec = {'cos': cos_sim(pred, sfp).item(), 'rank_strict': rs, 'rank_tie': rt}
+        rec = {'cos': cos_sim(pred, sfp).item(), 'tani': bit_tanimoto(pred, sfp).item(),
+               'rank_strict': rs, 'rank_tie': rt}
         if ann_smiles is not None:
             rec['ann_rank'] = _annotation_rank(
                 smi, pred, model.ranker, ann_smiles, ecfp_bank, ecfp_gold)
@@ -356,6 +373,8 @@ def _summarise(recs: list[dict], prefix: str, wandb_metrics: dict) -> None:
         return
     mean_cos = sum(r['cos'] for r in recs) / n
     m = {f"{prefix}/mean_cos": mean_cos, f"{prefix}/n": n}
+    if all('tani' in r for r in recs):
+        m[f"{prefix}/mean_tani"] = sum(r['tani'] for r in recs) / n
     for k in (1, 5, 10):
         m[f"{prefix}/rank_strict_top{k}_pct"] = 100.0 * sum(r['rank_strict'] < k for r in recs) / n
         m[f"{prefix}/rank_tie_top{k}_pct"] = 100.0 * sum(r['rank_tie'] < k for r in recs) / n

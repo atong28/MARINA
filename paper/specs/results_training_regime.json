@@ -1,0 +1,78 @@
+{
+  "table": "results_training_regime",
+  "ranking": {
+    "metric": "jaccard",
+    "definition": "binary Tanimoto |P∩B|/|P∪B| between the predicted on-bits P (sigmoid(logit) >= 0.5) and each retrieval row's on-bits B",
+    "rank": "strict: retrieval rows with Jaccard >= Jaccard(P, gold) count against the gold, minus the gold's own row (ties count against)",
+    "eval_flag": "--rank_metric jaccard"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
+  "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
+  "label": "tab:results_training_regime",
+  "section": "3.3 The Effect of Data Type Dropout",
+  "eval_group": "D",
+  "description": "Uncapped-multiplicity MARINA trained on three input regimes, compared on the same NMR inputs",
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "fingerprint": "RankingEntropyMultiplicityUncapped",
+  "arms": {
+    "NMR\\\\$+$MW": [
+      "marina-db-uncapped-nmr-s0",
+      "marina-db-uncapped-nmr-s1",
+      "marina-db-uncapped-nmr-s2"
+    ],
+    "NMR\\\\$+$MS/MS\\\\$+$MW": [
+      "marina-db-uncapped-noform-s0",
+      "marina-db-uncapped-noform-s1",
+      "marina-db-uncapped-noform-s2"
+    ],
+    "All\\\\inputs": [
+      "marina-db-uncapped-formula-s0",
+      "marina-db-uncapped-formula-s1",
+      "marina-db-uncapped-formula-s2"
+    ]
+  },
+  "retrieval_set": {
+    "name": "MARINA-DB-PRIVATE (531,087), uncapped rankingset",
+    "size": 531087,
+    "work_dir": "data/MARINA-DB-PRIVATE"
+  },
+  "eval_inputs": [
+    [
+      "NMR",
+      "nmr",
+      "hsqc_c_nmr_h_nmr"
+    ],
+    [
+      "ME-HSQC",
+      "hsqc",
+      "hsqc"
+    ],
+    [
+      "$^{13}$C",
+      "c_nmr",
+      "c_nmr"
+    ],
+    [
+      "$^{1}$H",
+      "h_nmr",
+      "h_nmr"
+    ]
+  ],
+  "experimental": {
+    "benchmark": "MARINA-Bench (journal)",
+    "bench": "full",
+    "paper_split": "val",
+    "n": 232
+  },
+  "simulated": {
+    "benchmark": "MARINA-DB-PRIVATE test split (simulated spectra)",
+    "split": "test",
+    "n": 24329,
+    "eval_flags": "--no-journal --sim --deltas --sim_splits test --sim_only hsqc_c_nmr_h_nmr hsqc c_nmr h_nmr"
+  },
+  "metrics": {
+    "r@1/5/10": "strict, %",
+    "Tani": "mean binary Tanimoto (predicted on-bits vs gold)"
+  },
+  "bold": "a regime's value is bold when its mean ± std interval lies above every other regime's interval"
+}

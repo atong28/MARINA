@@ -1,0 +1,99 @@
+#!/bin/bash
+# Write the Nautilus eval Jobs for the MARINA-DB-PRIVATE checkpoints that live on the atong-spectre PVC
+# (fp_comparison + results_training_regime). Each Job clones MARINA at $COMMIT, stages the PRIVATE dataset from
+# the smart-datasets zip onto node-local disk, links the PVC checkpoints into a work dir and runs paper/run_eval.sh.
+# Results go to the PVC under /root/gurusmart/paper-eval/results/ (small pkl/json; fetch with kubectl cp) and each
+# finished file's metrics are echoed into the log.
+#
+# Usage: COMMIT=<sha> STAMP=<yyyymmdd-hhmm> bash paper/nautilus/make_jobs.sh   -> paper/nautilus/jobs/*.yaml
+set -euo pipefail
+: "${COMMIT:?set COMMIT=<MARINA sha>}" "${STAMP:?set STAMP=<yyyymmdd-hhmm>}"
+OUT=$(dirname "$0")/jobs
+mkdir -p "$OUT"
+
+job() {  # job <short name> <run_eval group> <experiment...>
+    local name=$1 group=$2; shift 2
+    local exps="$*"
+    cat > "$OUT/paper-$name.yaml" <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-paper-$name-$STAMP
+  namespace: guru-research
+  labels: { owner: atong }
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-RTX-A6000, NVIDIA-L40, NVIDIA-A40, NVIDIA-L40S, NVIDIA-A10, NVIDIA-RTX-A5000, NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-4090]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [nautilus-ext-gpu01.fullerton.edu, hcc-chase-shor-c4705.unl.edu, hcc-chase-shor-c4715.unl.edu, k8s-3090-01.usd.edu, hcc-nrp-shor-c6017.unl.edu, patternlab.calit2.optiputer.net]
+      containers:
+        - name: pod-container
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+          env:
+            - { name: PIXI_CACHE_DIR, value: /code/.pixi-cache }
+            - { name: COMMIT, value: "$COMMIT" }
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -eo pipefail
+              echo "[bootstrap] node=\$(hostname) gpu=\$(nvidia-smi --query-gpu=name --format=csv,noheader) start=\$(date -u)"
+              mkdir -p ~/.ssh && cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+              git clone -q git@github.com:atong28/MARINA.git /code/MARINA && cd /code/MARINA && git checkout -q "\$COMMIT"
+              git log -1 --format='[bootstrap] code @ %h %s'
+              W=/workspace/W
+              mkdir -p \$W/data/MARINA-DB-PRIVATE \$W/bench/full \$W/ckpt /root/gurusmart/paper-eval/results
+              echo "[bootstrap] dataset zip sha256 \$(sha256sum /root/datasets/MARINA-DB.zip | cut -c1-64) (expect 5f6190be2b2456f1...)"
+              unzip -q -o /root/datasets/MARINA-DB.zip index.pkl retrieval.pkl 'RankingEntropy*' 'arrow/test/*' -d \$W/data/MARINA-DB-PRIVATE
+              cp /root/gurusmart/marina-db/dataset/ecfp_bank_2048.pt \$W/data/MARINA-DB-PRIVATE/
+              cp /root/gurusmart/bench_sim/benchmark-journal.pkl \$W/bench/full/
+              echo "[bootstrap] journal sha256 \$(sha256sum \$W/bench/full/benchmark-journal.pkl | cut -c1-64) (expect c56a5b5d93f8f5b2...)"
+              ln -sfn /root/gurusmart/paper-eval/results \$W/results
+              for e in $exps; do ln -sfn /root/gurusmart/Moonshot/results/\$e \$W/ckpt/\$e; ls -la \$W/ckpt/\$e/*/; done
+              pixi install
+              W=\$W bash paper/run_eval.sh $group $exps
+              for e in $exps; do
+                echo "[result] \$e"
+                ls -la \$W/results/full/benchmarks/\${e}_* || true
+                cat \$W/results/full/benchmarks/\${e}_sim_results.json 2>/dev/null || true
+              done
+              echo "ALL DONE \$(date -u)"
+          resources:
+            requests: { cpu: "6", memory: 40Gi, nvidia.com/gpu: "1", ephemeral-storage: 30Gi }
+            limits:   { cpu: "7", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { mountPath: /root/gurusmart, name: atong-spectre }
+            - { mountPath: /root/datasets, name: smart-datasets }
+            - { mountPath: /dev/shm, name: dshm }
+            - { mountPath: /code, name: code-workdir }
+            - { mountPath: /workspace, name: data-local }
+      volumes:
+        - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: code-workdir, emptyDir: {} }
+        - { name: data-local, emptyDir: {} }
+EOF
+    echo "wrote $OUT/paper-$name.yaml"
+}
+
+seeds() { echo "$1-s0 $1-s1 $1-s2"; }
+job fp-uniqmult    fpsweep $(seeds marina-db-uniqmult-formula)
+job fp-sherlock    fpsweep $(seeds marina-db-sherlock-formula)
+job fp-cap5        fpsweep $(seeds marina-db-cap5-formula)
+job regime-formula regime  $(seeds marina-db-uncapped-formula)
+job regime-nmr     regime  $(seeds marina-db-uncapped-nmr)
+job regime-noform  regime  $(seeds marina-db-uncapped-noform)

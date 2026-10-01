@@ -1,0 +1,89 @@
+{
+  "table": "fp_comparison",
+  "ranking": {
+    "metric": "jaccard",
+    "definition": "binary Tanimoto |P∩B|/|P∪B| between the predicted on-bits P (sigmoid(logit) >= 0.5) and each retrieval row's on-bits B",
+    "rank": "strict: retrieval rows with Jaccard >= Jaccard(P, gold) count against the gold, minus the gold's own row (ties count against)",
+    "eval_flag": "--rank_metric jaccard"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
+  "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
+  "label": "tab:fp_comparison",
+  "section": "3.2 Comparison between Sherlock and Multiplicity Fingerprints",
+  "eval_group": "C",
+  "description": "MARINA trained on MARINA-DB-PRIVATE with different fingerprint targets; main table = Unique multiplicity vs Sherlock, the other three kept for the appendix",
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "arms": {
+    "Unique mult.\\ (ours)": {
+      "experiments": [
+        "marina-db-uniqmult-formula-s0",
+        "marina-db-uniqmult-formula-s1",
+        "marina-db-uniqmult-formula-s2"
+      ],
+      "fingerprint": "RankingEntropyUniqueMultiplicity",
+      "main": true
+    },
+    "Sherlock": {
+      "experiments": [
+        "marina-db-sherlock-formula-s0",
+        "marina-db-sherlock-formula-s1",
+        "marina-db-sherlock-formula-s2"
+      ],
+      "fingerprint": "RankingEntropy",
+      "main": true
+    },
+    "Uncapped mult.": {
+      "experiments": [
+        "marina-db-uncapped-formula-s0",
+        "marina-db-uncapped-formula-s1",
+        "marina-db-uncapped-formula-s2"
+      ],
+      "fingerprint": "RankingEntropyMultiplicityUncapped",
+      "main": false
+    },
+    "Capped mult.\\ ($k{=}5$)": {
+      "experiments": [
+        "marina-db-cap5-formula-s0",
+        "marina-db-cap5-formula-s1",
+        "marina-db-cap5-formula-s2"
+      ],
+      "fingerprint": "RankingEntropyMultiplicity",
+      "main": false
+    },
+    "Substructure": {
+      "experiments": [
+        "marina-deltaai-substructure-s0",
+        "marina-deltaai-substructure-s1",
+        "marina-deltaai-substructure-s2"
+      ],
+      "fingerprint": "RankingEntropySubstructure",
+      "main": false,
+      "note": "s2 early-stopped at epoch 144 (poor training), a finished run"
+    }
+  },
+  "retrieval_set": {
+    "name": "MARINA-DB-PRIVATE (531,087), each fingerprint's own rankingset",
+    "size": 531087,
+    "work_dir": "data/MARINA-DB-PRIVATE"
+  },
+  "benchmark": {
+    "name": "MARINA-Bench (journal)",
+    "bench": "full",
+    "file": "Benchmark/benchmark-sim.pkl",
+    "paper_split": "val",
+    "n": {
+      "val": 232,
+      "test": 234
+    }
+  },
+  "input": {
+    "label": "full NMR + molecular formula (MW and MS/MS withheld)",
+    "subset": "nmr_formula"
+  },
+  "metrics": {
+    "exp-rank@1/5/10": "strict, %",
+    "exp-mean-Tanimoto": "binary Tanimoto between predicted on-bits and the gold fingerprint, in that fingerprint's own space"
+  },
+  "bold": "best per column",
+  "eval_flags": "--deltas"
+}

@@ -48,6 +48,8 @@ class SMARTArgs:
     scheduler: Literal['cosine', 'none'] = 'cosine'
     freeze_weights: bool = False
     use_jaccard: bool = False
+    # retrieval ranking metric: 'cosine' (training default) or 'jaccard' (binary Tanimoto, paper eval)
+    rank_metric: Literal['cosine', 'jaccard'] = 'cosine'
     warmup: bool = False
     accumulate_grad_batches_num: int = 4
     precision: Literal['bf16-mixed', '16-mixed', '32-true'] = 'bf16-mixed'

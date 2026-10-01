@@ -1,0 +1,17 @@
+{
+  "table": "db_comparison",
+  "label": "tab:db_comparison",
+  "section": "2 Methods",
+  "eval_group": null,
+  "description": "MARINA-DB vs SPECTRE-DB spectral/molecule counts (main) + MARINA-DB-PRIVATE vs MARINA-DB (supplement)",
+  "inputs": {
+    "MARINA-DB": "Datasets/MARINA-DB-OPEN (zip sha256 2780459f70eb732d7c374939bf607035a490eedcaacd2dc17cbfcc015fed9eee)",
+    "MARINA-DB-PRIVATE": "Datasets/MARINA-DB",
+    "SPECTRE-DB": "constants from the SPECTRE paper (no local artifact)"
+  },
+  "how": "python paper/db_comparison/gen_db_comparison.py (counts = molecules with each has_* flag; experimental = nmr_sources.parquet source 'chnmr')",
+  "outputs": [
+    "paper/db_comparison/db_comparison.tex",
+    "paper/db_comparison/db_comparison_private.tex"
+  ]
+}

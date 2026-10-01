@@ -8,6 +8,14 @@ from ..log import get_logger
 
 logger = get_logger(__file__)
 
+# A predicted bit is on when sigmoid(logit) >= 0.5 (logit >= 0), as in core.metrics.cm.
+JACCARD_QUERY_THRESH = 0.5
+
+
+def query_bits(q: torch.Tensor) -> torch.Tensor:
+    """Binarize predicted probabilities (sigmoid outputs) into on-bits."""
+    return (q >= JACCARD_QUERY_THRESH).to(torch.float32)
+
 
 @set_float32_highest_precision
 class RankingSet(torch.nn.Module):
@@ -33,7 +41,10 @@ class RankingSet(torch.nn.Module):
             store : (N, D) float32 tensor (dense or CSR). For cosine, rows should
                     already be L2-normalized if you want true cosine w.r.t. queries.
                     For tanimoto, store should be raw nonnegative weights (e.g., log1p(counts)).
-            metric: "cosine" (default, backward-compatible) or "tanimoto".
+                    For jaccard, any nonnegative store; nonzero entries are the on-bits.
+            metric: "cosine" (default, backward-compatible), "tanimoto", or "jaccard"
+                    (binary Tanimoto: queries are sigmoid probabilities, binarized at
+                    JACCARD_QUERY_THRESH; truths are binarized at > 0).
             eps   : numerical floor to stabilize divisions.
             debug : extra logs.
         """
@@ -45,6 +56,17 @@ class RankingSet(torch.nn.Module):
 
         if store.dtype != torch.float32:
             store = store.to(torch.float32)
+
+        if self.metric == "jaccard":
+            # binary Tanimoto: bank rows are on-bit sets (stored values, e.g. 1/sqrt(nnz), -> 1)
+            if store.layout == torch.sparse_csr:
+                store = torch.sparse_csr_tensor(store.crow_indices(), store.col_indices(),
+                                                torch.ones_like(store.values()), size=store.size())
+                row_nnz = store.crow_indices().diff().to(torch.float32)
+            else:
+                store = (store > 0).to(torch.float32)
+                row_nnz = store.sum(dim=1)
+            self.register_buffer("row_nnz", row_nnz, persistent=False)
 
         # Keep as buffer so it moves with .to(device) but isn't a parameter
         self.register_buffer("data", store, persistent=False)
@@ -77,6 +99,20 @@ class RankingSet(torch.nn.Module):
         nonzero = torch.nonzero(torch.isclose(fp, hi), as_tuple=False)
         return tuple(nonzero[:, 0].tolist())
 
+    def pair_sim(self, queries: torch.Tensor, truths: torch.Tensor) -> torch.Tensor:
+        """(Q,) similarity of each query to its own truth under the ranking metric, i.e. the
+        threshold its gold row sits at in the bank. Truths may be binary or L2-normalized."""
+        if queries.dim() == 1:
+            queries, truths = queries.unsqueeze(0), truths.unsqueeze(0)
+        if self.metric == "cosine":
+            return torch.sum(F.normalize(queries, dim=1, p=2.0) * F.normalize(truths, dim=1, p=2.0), dim=1)
+        if self.metric == "jaccard":
+            qb, tb = query_bits(queries), (truths > 0).to(torch.float32)
+            inter = torch.sum(qb * tb, dim=1)
+            union = qb.sum(dim=1) + tb.sum(dim=1) - inter
+            return inter / union.clamp_min(1.0)
+        raise ValueError(f"pair_sim not implemented for metric {self.metric}")
+
     # -------- Internal helpers --------
     def _sims(self, queries: torch.Tensor) -> torch.Tensor:
         q = queries.to(self.device)
@@ -84,6 +120,12 @@ class RankingSet(torch.nn.Module):
         if self.metric == "cosine":
             qn = F.normalize(q, dim=1, p=2.0)
             return self.data @ qn.T
+
+        elif self.metric == "jaccard":
+            qb = query_bits(q)                                       # (Q, D) 0/1
+            inter = self.data @ qb.T                                 # (N, Q) |row & q|
+            union = self.row_nnz.unsqueeze(1) + qb.sum(dim=1).unsqueeze(0) - inter
+            return inter / union.clamp_min(1.0)
 
         elif self.metric == "tanimoto":
             q = torch.clamp(q, min=0)              # <- ensure nonnegative
@@ -198,6 +240,9 @@ class RankingSet(torch.nn.Module):
             - Threshold = cosine(query_i, truth_i) per query (after L2-normalization).
         Else if metric == "tanimoto":
             - Threshold = Tanimoto(query_i, truth_i) per query (no normalization).
+        Else if metric == "jaccard":
+            - Threshold = binary Tanimoto(query_i >= 0.5, truth_i > 0); same strict / tie-aware
+              conventions as the cosine path.
         """
         with torch.no_grad():
             if use_jaccard:
@@ -210,5 +255,15 @@ class RankingSet(torch.nn.Module):
                 tn = F.normalize(truths, dim=1, p=2.0)
                 thresh = torch.sum((qn * tn), dim=1, keepdim=True).T  # (1, Q)
                 return self.dot_prod_rank(self.data, qn, tn, thresh, tie_aware=tie_aware)
+            if self.metric == "jaccard":
+                sims = self._sims(queries)                                    # (N, Q)
+                thresh = self.pair_sim(queries.to(self.device), truths.to(self.device)).unsqueeze(0)
+                close = torch.isclose(sims, thresh)
+                if tie_aware:
+                    ct = torch.sum(torch.logical_and(sims > thresh, torch.logical_not(close)),
+                                   dim=0, dtype=torch.int32)
+                else:
+                    ct = torch.sum(torch.logical_or(sims >= thresh, close), dim=0, dtype=torch.int32) - 1
+                return ct
             else:
                 raise ValueError(f"Unknown metric: {self.metric}")

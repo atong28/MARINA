@@ -1,0 +1,78 @@
+{
+  "table": "results_main",
+  "ranking": {
+    "metric": "jaccard",
+    "definition": "binary Tanimoto |P∩B|/|P∪B| between the predicted on-bits P (sigmoid(logit) >= 0.5) and each retrieval row's on-bits B",
+    "rank": "strict: retrieval rows with Jaccard >= Jaccard(P, gold) count against the gold, minus the gold's own row (ties count against)",
+    "eval_flag": "--rank_metric jaccard"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
+  "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
+  "label": "tab:results_main",
+  "section": "3 Results",
+  "eval_group": "A",
+  "description": "Flagship MARINA on the dereplication (a) and annotation (b) tasks; Base and +Formula delta",
+  "model": "MARINA",
+  "fingerprint": "RankingEntropyUniqueMultiplicity (16,384 bits)",
+  "experiments": [
+    "marina-db-open-solvjit-uniqmult-formula-s0",
+    "marina-db-open-solvjit-uniqmult-formula-s1",
+    "marina-db-open-solvjit-uniqmult-formula-s2"
+  ],
+  "standin_experiments": [
+    "marina-db-open-chnmr-uniqmult-formula-s0",
+    "marina-db-open-chnmr-uniqmult-formula-s1",
+    "marina-db-open-chnmr-uniqmult-formula-s2"
+  ],
+  "standin_note": "plain CH-NMR-NP arm is evaluated as the flagship until the solvent-jitter arm finishes",
+  "training_dataset": "MARINA-DB (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN)",
+  "retrieval_set": {
+    "name": "MARINA-DB",
+    "size": 531927,
+    "work_dir": "data/MARINA-DB"
+  },
+  "benchmark": {
+    "name": "MARINA-Bench (journal; experimental NMR + ICEBERG-simulated MS/MS)",
+    "bench": "full",
+    "file": "Benchmark/benchmark-sim.pkl",
+    "paper_split": "test",
+    "n": {
+      "test": 234,
+      "val": 232
+    },
+    "also_built": [
+      "val"
+    ]
+  },
+  "rows": [
+    [
+      "NMR$+$MS/MS*",
+      "nmr_msms"
+    ],
+    [
+      "NMR",
+      "nmr"
+    ],
+    [
+      "ME-HSQC",
+      "hsqc"
+    ],
+    [
+      "$^{13}$C",
+      "c_nmr"
+    ],
+    [
+      "$^{1}$H",
+      "h_nmr"
+    ]
+  ],
+  "columns": {
+    "Base": "<subset>",
+    "+F": "<subset>_formula minus <subset>, per seed, then mean ± std"
+  },
+  "metrics": {
+    "(a) dereplication": "exp-rank@1/5/10 (strict, %)",
+    "(b) annotation": "exp-ann@1/5/10 (%) — ECFP4 (Morgan r=2, 2,048 bits) cosine >= 0.8 between the true structure and any of the top-k structures retrieved by Jaccard (SPECTRE-paper definition; the only cosine left in the paper)"
+  },
+  "eval_flags": "--deltas"
+}
