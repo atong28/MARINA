@@ -43,7 +43,7 @@ RDLogger.DisableLog("rdApp.*")  # radius-0 aromatic single-atom frags trip sanit
 
 from src.modules import MARINA, MARINAArgs, MARINADataModule
 from src.modules.data.fp_loader import make_fp_loader
-from src.modules.benchmark import filter_data, formula_vec_from_smiles
+from src.modules.benchmark import filter_data, formula_vec_from_smiles, _to_device
 from src.modules.core.const import DATASET_ROOT, BENCHMARK_ROOT
 
 NMR = ["hsqc", "c_nmr", "h_nmr"]
@@ -89,7 +89,7 @@ def predict_bits(model, data_module, entry, combo_mods, dev):
     if not any(k not in ("mw", "formula") for k in clean):
         return None
     inputs = data_module.format_inference_data(clean)
-    inputs = {k: (v.to(dev) if torch.is_tensor(v) else v) for k, v in inputs.items()}
+    inputs = _to_device(inputs, dev)
     output = model(**inputs)
     return (output[0] >= 0.0).float().cpu()  # logits>=0 == sigmoid>=0.5
 
