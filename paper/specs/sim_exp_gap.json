@@ -3,13 +3,12 @@
   "label": "tab:sim_exp_gap",
   "section": "Appendix S6 (other discussion)",
   "eval_group": "simgap",
-  "description": "How much of the experimental-benchmark gap is domain shift (simulated vs experimental spectra) and how much is benchmark difficulty, for the flagship",
+  "description": "Simulated-to-experimental gap for the flagship: general simulated performance (MARINA-DB test set), the same benchmark compounds with Mnova-simulated NMR (difficulty), and with experimental NMR (domain shift)",
   "ranking": {
     "metric": "cosine",
     "eval_flag": "--rank_metric cosine"
   },
   "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt — see paper/checkpoints/<experiment>.json",
-  "aggregation": "mean over seeds 0/1/2 (1 decimal, as in Draft 2); std and n kept in the json",
   "model": "MARINA",
   "fingerprint": "RankingEntropyUniqueMultiplicity",
   "experiments": [
@@ -47,17 +46,12 @@
   "rows": [
     {
       "label": "Test set (sim)",
-      "source": "MARINA-DB test split, molecules whose spectra for this input are all Mnova-simulated",
-      "from": "<exp>_sim_test_items.pkl + results/marina_db_test_nmr_sources.json"
-    },
-    {
-      "label": "Test set (exp)",
-      "source": "MARINA-DB test split, molecules whose spectra for this input are all CH-NMR-NP experimental",
-      "from": "<exp>_sim_test_items.pkl + results/marina_db_test_nmr_sources.json"
+      "source": "MARINA-DB test split (24,500; ~24,490 scored per input), the general simulated-test numbers",
+      "from": "<exp>_sim_results.json"
     },
     {
       "label": "Benchmark (sim)",
-      "source": "MARINA-Bench test (n=234) with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl)",
+      "source": "MARINA-Bench test (n=234), the same compounds with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl)",
       "bench": "simnmr"
     },
     {
@@ -68,7 +62,8 @@
   ],
   "metrics": {
     "Top-1/5/10": "strict rank@k, %",
-    "Mean cos": "test-set rows: binarised prediction vs gold (training test-loop convention); benchmark rows: probabilities vs gold"
+    "Mean cos": "test-set row: binarised prediction vs gold (training test-loop convention); benchmark rows: probabilities vs gold"
   },
-  "run": "run_eval.sh simgap <3 experiments>"
+  "run": "run_eval.sh simgap <3 experiments>",
+  "aggregation": "mean over seeds 0/1/2 (1 decimal, as in Draft 2); std kept in the json"
 }

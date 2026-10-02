@@ -1,4 +1,4 @@
-% sim_exp_gap — flagship: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2; test set = MARINA-DB test split by NMR source (Mnova-simulated vs CH-NMR-NP experimental); benchmark = MARINA-Bench test; ranking = cosine.
+% sim_exp_gap — flagship: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2; test set = MARINA-DB test split; benchmark = MARINA-Bench test with Mnova-simulated / experimental NMR; ranking = cosine.
 \begingroup
 \color{cInk}
 \providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
@@ -11,24 +11,20 @@
   \cmidrule(lr){3-5}
   \hd{Spectra} & \hd{Input} & {\hd{Top-1}} & {\hd{Top-5}} & {\hd{Top-10}} & {\hd{Mean cos}} \\
   \midrule
-  \multirow{4}{*}{NMR (all)}   & Test set (sim)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Test set (exp)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Benchmark (sim)   & \tbd & \tbd & \tbd & \tbd \\
+  \multirow{3}{*}{NMR (all)}   & Test set (sim)    & 77.9 & 93.6 & 95.5 & 0.948 \\
+                               & Benchmark (sim)   & 71.9 & 92.5 & 94.9 & 0.926 \\
                                & Benchmark (exp)   & 53.1 & 76.9 & 81.8 & 0.872 \\
   \midrule
-  \multirow{4}{*}{HSQC}        & Test set (sim)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Test set (exp)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Benchmark (sim)   & \tbd & \tbd & \tbd & \tbd \\
+  \multirow{3}{*}{HSQC}        & Test set (sim)    & 70.1 & 88.6 & 91.5 & 0.918 \\
+                               & Benchmark (sim)   & 62.4 & 84.8 & 90.5 & 0.895 \\
                                & Benchmark (exp)   & 43.2 & 67.4 & 72.2 & 0.827 \\
   \midrule
-  \multirow{4}{*}{$^{13}$C}    & Test set (sim)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Test set (exp)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Benchmark (sim)   & \tbd & \tbd & \tbd & \tbd \\
+  \multirow{3}{*}{$^{13}$C}    & Test set (sim)    & 46.9 & 71.7 & 77.6 & 0.862 \\
+                               & Benchmark (sim)   & 32.5 & 56.0 & 66.2 & 0.832 \\
                                & Benchmark (exp)   & 16.2 & 40.3 & 48.9 & 0.782 \\
   \midrule
-  \multirow{4}{*}{$^{1}$H}     & Test set (sim)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Test set (exp)    & \tbd & \tbd & \tbd & \tbd \\
-                               & Benchmark (sim)   & \tbd & \tbd & \tbd & \tbd \\
+  \multirow{3}{*}{$^{1}$H}     & Test set (sim)    & 19.0 & 37.8 & 45.4 & 0.762 \\
+                               & Benchmark (sim)   & 6.8 & 21.1 & 27.9 & 0.733 \\
                                & Benchmark (exp)   & 0.6 & 3.3 & 5.0 & 0.635 \\
   \bottomrule
 \end{tabular}

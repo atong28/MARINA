@@ -22,8 +22,11 @@
 #   spectre            Table spectre_comparison (SPECTRE side): clean_test + clean_val
 #   fpsweep  <exp...>  Table fp_comparison: full journal on MARINA-DB-PRIVATE
 #   regime   <exp...>  Table results_training_regime: full journal + simulated MARINA-DB-PRIVATE test (4 NMR combos)
-#   simgap   <exp...>  Table sim_exp_gap (appendix): simulated MARINA-DB test with per-molecule records (4 NMR combos)
+#   simgap   <exp...>  Table sim_exp_gap (appendix): simulated MARINA-DB test (4 NMR combos)
 #                      + the benchmark compounds with Mnova-simulated NMR (bench simnmr)
+#   simfull  <exp...>  Tables S1/S1b (appendix): simulated MARINA-DB test over all 24 {spectra,+F,+MW} combos
+#                      (resumes a simgap run: combos already scored are kept)
+#   singleatom <exp...> single_atom_formula tables (appendix): single-atom multiplicity bits, journal val+test
 #   collect            copy W/results-<metric>/*/benchmarks/* into paper/results/raw-<metric>/<bench>/ (then commit)
 # Each step is skipped when its output exists, so reruns after an interruption are safe.
 # Results of the two metrics never mix: W/results-cosine <-> paper/results/raw-cosine,
@@ -102,7 +105,7 @@ simgap)
     for e in "${EXPS[@]}"; do
         journal simnmr MARINA-DB "$e" --results_root "$W/ckpt" --experiments "$e"
         root=$(bench_root full)
-        if [ -s "$root/benchmarks/${e}_sim_test_items.pkl" ] && [ -s "$root/benchmarks/${e}_sim_results.json" ]; then
+        if [ -s "$root/benchmarks/${e}_sim_results.json" ]; then
             echo "[run-eval] have sim $e" | tee -a "$LOG"
         else
             DATASET_ROOT=$W/data/MARINA-DB BENCHMARK_ROOT=$root run "$e sim test" \
@@ -110,18 +113,34 @@ simgap)
                 --results_root "$W/ckpt" --experiments "$e"
         fi
     done ;;
+simfull)
+    ALL="hsqc_c_nmr_h_nmr_mass_spec_mass_spec_neg hsqc_c_nmr_h_nmr hsqc c_nmr h_nmr hsqc_c_nmr hsqc_h_nmr c_nmr_h_nmr"
+    for e in "${EXPS[@]}"; do
+        root=$(bench_root full); out="$root/benchmarks/${e}_sim_results.json"
+        if [ -s "$out" ] && python3 -c "import json,sys; m=json.load(open(sys.argv[1]))['metrics']; sys.exit(0 if all(f'test/mean_ann_1/{c}{s}' in m for c in sys.argv[2].split() for s in ('','_formula','_mw')) else 1)" "$out" "$ALL"; then
+            echo "[run-eval] have full sim $e" | tee -a "$LOG"
+        else
+            DATASET_ROOT=$W/data/MARINA-DB BENCHMARK_ROOT=$root run "$e sim test (24 combos)" \
+                $EVAL --no-journal --sim --sim_splits test --results_root "$W/ckpt" --experiments "$e"
+        fi
+    done ;;
+singleatom)
+    mkdir -p "$W/$RES/singleatom"
+    for e in "${EXPS[@]}"; do
+        out="$W/$RES/singleatom/${e}.json"
+        [ -s "$out" ] && { echo "[run-eval] have $out" | tee -a "$LOG"; continue; }
+        ck=$(ls "$W"/ckpt/"$e"/*/epoch_*.ckpt)
+        DATASET_ROOT=$W/data/MARINA-DB BENCHMARK_ROOT=$W/bench/full run "$e single-atom bits" \
+            pixi run python scripts/benchmark/single_atom_bit_eval.py --ckpt "$ck" --splits val test --out "$out"
+    done ;;
 collect)
+    if [ -d "$W/$RES/singleatom" ]; then
+        mkdir -p "paper/results/$RAW/singleatom" && cp -v "$W/$RES"/singleatom/*.json "paper/results/$RAW/singleatom/" | tee -a "$LOG"
+    fi
     for r in "$W/$RES"/*/; do
-        b=$(basename "$r")
+        b=$(basename "$r"); [ "$b" = singleatom ] && continue
         mkdir -p "paper/results/$RAW/$b"
         cp -v "$r"benchmarks/*_benchmark_journal_results.pkl "$r"benchmarks/*_sim_results.json "paper/results/$RAW/$b/" 2>/dev/null \
-            | tee -a "$LOG"
-        # per-molecule sim records only for the simgap runs (they have a simnmr journal result)
-        for f in "$r"benchmarks/*_sim_test_items.pkl; do
-            [ -e "$f" ] || continue
-            e=$(basename "$f" _sim_test_items.pkl)
-            [ -s "$W/$RES/simnmr/benchmarks/${e}_benchmark_journal_results.pkl" ] && cp -v "$f" "paper/results/$RAW/$b/"
-        done 2>/dev/null \
             | tee -a "$LOG"
     done ;;
 *)
