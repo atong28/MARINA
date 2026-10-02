@@ -92,16 +92,21 @@ def main():
                 locs["anthony3"] = p
         write(exp, rel, nbytes, sha, json.loads(params), locs, reg)
 
-    # local-only checkpoints (DeltaAI runs copied to anthony3)
-    for exp in [f"marina-db-open-chnmr-uniqmult-formula-s{s}" for s in range(3)] + \
-               [f"marina-deltaai-substructure-s{s}" for s in range(3)]:
+    # local copies of cluster runs (DeltaAI / Anvil) on anthony3
+    remote = {"marina-db-open-chnmr-uniqmult-formula": ("deltaai", "/projects/bibx/atong1/runs/results"),
+              "marina-deltaai-substructure": ("deltaai", "/projects/bibx/atong1/runs/results"),
+              "marina-db-open-solvjit-uniqmult-formula": ("anvil", "/anvil/projects/x-bio260190/atong1/runs/results")}
+    for exp in [f"{fam}-s{s}" for fam in remote for s in range(3)]:
+        if not glob.glob(os.path.join(a.results, exp, "*", "epoch_*.ckpt")):
+            print(f"{exp:<45} (no local copy yet; skipped)")
+            continue
         ck = glob.glob(os.path.join(a.results, exp, "*", "epoch_*.ckpt"))
         assert len(ck) == 1, (exp, ck)
         ck = os.path.realpath(ck[0])
         nbytes, sha = local[ck]
         params = json.load(open(os.path.join(os.path.dirname(ck), "params.json")))
-        cluster_dir = "/projects/bibx/atong1/runs/results"
-        locs = {"anthony3": ck, "deltaai": f"{cluster_dir}/{exp}/{os.path.basename(os.path.dirname(ck))}/{os.path.basename(ck)}"}
+        site, cluster_dir = remote[family(exp)]
+        locs = {"anthony3": ck, site: f"{cluster_dir}/{exp}/{os.path.basename(os.path.dirname(ck))}/{os.path.basename(ck)}"}
         extra = {"note": "early-stopped at epoch 144 after poor training; a finished run"} if exp.endswith("substructure-s2") else None
         write(exp, ck, nbytes, sha, params, locs, reg, extra)
 
