@@ -41,21 +41,43 @@
       }
     },
     "Sherlock": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 40.51724137931034,
+        "std": 1.4931472479042036,
+        "seeds": [
+          39.6551724137931,
+          39.6551724137931,
+          42.241379310344826
+        ]
+      },
+      "rank@5": {
+        "mean": 66.66666666666667,
+        "std": 4.767431041102601,
+        "seeds": [
+          67.24137931034483,
+          61.63793103448276,
+          71.12068965517241
+        ]
+      },
+      "rank@10": {
+        "mean": 75.86206896551724,
+        "std": 4.111806902659251,
+        "seeds": [
+          78.01724137931035,
+          71.12068965517241,
+          78.44827586206897
+        ]
+      },
+      "sim": {
+        "mean": 0.7564664917687576,
+        "std": 0.014121492737835004,
+        "seeds": [
+          0.758088277331714,
+          0.7416041251914255,
+          0.7697070727831331
+        ]
+      }
     }
   },
-  "missing": [
-    "results/raw-cosine/full/marina-db-cap5-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-cap5-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-cap5-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl"
-  ]
+  "missing": []
 }

@@ -41,22 +41,118 @@
       }
     },
     "Sherlock": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 40.51724137931034,
+        "std": 1.4931472479042036,
+        "seeds": [
+          39.6551724137931,
+          39.6551724137931,
+          42.241379310344826
+        ]
+      },
+      "rank@5": {
+        "mean": 66.66666666666667,
+        "std": 4.767431041102601,
+        "seeds": [
+          67.24137931034483,
+          61.63793103448276,
+          71.12068965517241
+        ]
+      },
+      "rank@10": {
+        "mean": 75.86206896551724,
+        "std": 4.111806902659251,
+        "seeds": [
+          78.01724137931035,
+          71.12068965517241,
+          78.44827586206897
+        ]
+      },
+      "sim": {
+        "mean": 0.7564664917687576,
+        "std": 0.014121492737835004,
+        "seeds": [
+          0.758088277331714,
+          0.7416041251914255,
+          0.7697070727831331
+        ]
+      }
     },
     "Uncapped mult.": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 58.47701149425288,
+        "std": 2.525631584949273,
+        "seeds": [
+          59.48275862068966,
+          55.60344827586207,
+          60.3448275862069
+        ]
+      },
+      "rank@5": {
+        "mean": 81.4655172413793,
+        "std": 2.280820095745337,
+        "seeds": [
+          84.05172413793103,
+          80.60344827586206,
+          79.74137931034483
+        ]
+      },
+      "rank@10": {
+        "mean": 85.3448275862069,
+        "std": 1.8788357515261542,
+        "seeds": [
+          86.63793103448276,
+          86.20689655172414,
+          83.1896551724138
+        ]
+      },
+      "sim": {
+        "mean": 0.8563907415788065,
+        "std": 0.0010327733752189408,
+        "seeds": [
+          0.8572090535328306,
+          0.8567328478755623,
+          0.8552303233280264
+        ]
+      }
     },
     "Capped mult.\\ ($k{=}5$)": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 53.304597701149426,
+        "std": 0.49771574930140394,
+        "seeds": [
+          53.87931034482759,
+          53.01724137931034,
+          53.01724137931034
+        ]
+      },
+      "rank@5": {
+        "mean": 76.00574712643679,
+        "std": 2.598152488509355,
+        "seeds": [
+          73.27586206896552,
+          76.29310344827586,
+          78.44827586206897
+        ]
+      },
+      "rank@10": {
+        "mean": 82.04022988505747,
+        "std": 2.036989494074401,
+        "seeds": [
+          79.74137931034483,
+          83.62068965517241,
+          82.75862068965517
+        ]
+      },
+      "sim": {
+        "mean": 0.832624174269109,
+        "std": 0.008269891745273506,
+        "seeds": [
+          0.8365252280029757,
+          0.8382219879020905,
+          0.8231253069022606
+        ]
+      }
     },
     "Substructure": {
       "rank@1": {
@@ -97,15 +193,5 @@
       }
     }
   },
-  "missing": [
-    "results/raw-cosine/full/marina-db-cap5-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-cap5-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-cap5-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-sherlock-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl"
-  ]
+  "missing": []
 }
