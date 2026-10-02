@@ -1,0 +1,77 @@
+{
+  "fingerprints": {
+    "AtomPair_16384": {
+      "N": 531927,
+      "all_zero": 143,
+      "distinct": 523993,
+      "tie_groups": 6928,
+      "n_in_tie": 14862,
+      "collision_pct": 2.793992408732777,
+      "ceiling_pct": 97.20600759126722,
+      "largest_group": 143,
+      "bad_collision_pct": 0.03365123409791193,
+      "median_group_span_Da": 1.007276452090025,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        2735,
+        11882,
+        36,
+        19,
+        11,
+        158,
+        2,
+        19
+      ],
+      "D": 16384,
+      "onbits_mean": 455.3152312253373
+    }
+  },
+  "prefix_check": {
+    "prefix_rows": 531087,
+    "fingerprints": {
+      "AtomPair_16384": {
+        "N": 531087,
+        "all_zero": 143,
+        "distinct": 523170,
+        "tie_groups": 6911,
+        "n_in_tie": 14828,
+        "collision_pct": 2.792009595414687,
+        "ceiling_pct": 97.20799040458532,
+        "largest_group": 143,
+        "bad_collision_pct": 0.03370445896811634,
+        "median_group_span_Da": 1.007276452090025,
+        "mass_bin_labels": [
+          "0-1",
+          "1-10",
+          "10-50",
+          "50-100",
+          "100-200",
+          "200-300",
+          "300-400",
+          ">400"
+        ],
+        "mass_bin_molecule_counts": [
+          2727,
+          11866,
+          30,
+          17,
+          9,
+          158,
+          2,
+          19
+        ],
+        "D": 16384,
+        "onbits_mean": 455.6013402700499
+      }
+    }
+  }
+}

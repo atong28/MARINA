@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-private-simval-flagship-20261001-1015
+  namespace: guru-research
+  labels: { owner: atong }
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 259200
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-RTX-A6000, NVIDIA-L40, NVIDIA-A40, NVIDIA-L40S, NVIDIA-A10, NVIDIA-RTX-A5000, NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-4090]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [nautilus-ext-gpu01.fullerton.edu, hcc-chase-shor-c4705.unl.edu, hcc-chase-shor-c4715.unl.edu, k8s-3090-01.usd.edu, hcc-nrp-shor-c6017.unl.edu]
+      containers:
+        - name: pod-container
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+          env:
+            - { name: PIXI_CACHE_DIR, value: /code/.pixi-cache }
+            - { name: COMMIT, value: "88cf6ba" }
+          command: ["bash", "-c"]
+          args:
+            # MARINA-DB-PRIVATE sim eval on the VAL split (paper rewrite: every table in a test and a val
+            # version). PRIVATE dataset from the smart-datasets zip; checkpoints already on the PVC.
+            # Writes <exp>_sim_val_results.json (+ items) to /root/gurusmart/bench_sim/benchmarks and
+            # echoes each json into the log (PVC exec streams are unreliable for copying files out).
+            - >-
+              set -eo pipefail;
+              echo "[bootstrap] node=$(hostname) gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader) start=$(date -u)";
+              mkdir -p ~/.ssh; cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa; chmod 600 ~/.ssh/id_rsa;
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no";
+              git clone -q git@github.com:atong28/MARINA.git /code/MARINA; cd /code/MARINA; git checkout -q "$COMMIT";
+              git log -1 --format='[bootstrap] code @ %h %s';
+              mkdir -p /workspace; unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropyUniqueMultiplicity/*' 'arrow/val/*' index.pkl retrieval.pkl -d /workspace;
+              cp /root/gurusmart/marina-db/dataset/ecfp_bank_2048.pt /workspace/; ls -la /workspace /workspace/arrow/val;
+              pixi install;
+              for s in 0 1 2; do
+                DATASET_ROOT=/workspace BENCHMARK_ROOT=/root/gurusmart/bench_sim PYTHONPATH=/code/MARINA
+                pixi run python -u scripts/benchmark/eval_journal_benchmark.py --no-journal --sim --deltas --sim_splits val
+                --results_root /root/gurusmart/Moonshot/results --experiments marina-db-uniqmult-formula-s$s 2>&1
+                | grep --line-buffered -vE 'it/s\]|s/it\]|UserWarning|warnings.warn' || echo "[FAILED] seed $s";
+                echo "[result] marina-db-uniqmult-formula-s$s"; cat /root/gurusmart/bench_sim/benchmarks/marina-db-uniqmult-formula-s${s}_sim_val_results.json || true;
+              done;
+              echo "ALL DONE $(date -u)"
+          resources:
+            requests: { cpu: "6", memory: 40Gi, nvidia.com/gpu: "1", ephemeral-storage: 30Gi }
+            limits:   { cpu: "7", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { mountPath: /root/gurusmart, name: atong-spectre }
+            - { mountPath: /root/datasets, name: smart-datasets }
+            - { mountPath: /dev/shm, name: dshm }
+            - { mountPath: /code, name: code-workdir }
+            - { mountPath: /workspace, name: data-local }
+      volumes:
+        - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: code-workdir, emptyDir: {} }
+        - { name: data-local, emptyDir: {} }

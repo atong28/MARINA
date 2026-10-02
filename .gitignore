@@ -256,6 +256,7 @@ analysis/*/raw/
 analysis/**/*.parquet
 analysis/**/*.pkl
 analysis/**/*.npz
+analysis/**/*.npy
 analysis/**/*.pt
 analysis/**/*.mdb
 analysis/**/*.tsv
@@ -273,3 +274,8 @@ analysis/spectre-ds-compare/sample*/
 # ignores above (lines 11, 17). Keep these two specific paths tracked.
 !/scripts/marina_db/build/
 !/scripts/marina_db/lib/
+
+# FP error study model dumps (~200 MB each) — regenerable via src/fp_error_dump.py;
+# the summary error_model_*.json is tracked
+scripts/fp_error_study/dump_*/*.npy
+scripts/fp_error_study/dump_*/*.pkl

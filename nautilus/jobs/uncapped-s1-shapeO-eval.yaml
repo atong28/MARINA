@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-uncapped-s1-shapeoeval-20260910
+  labels: { owner: atong }
+spec:
+  backoffLimit: 8            # reschedule (resume) if a node evicts the pod
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-A40, NVIDIA-RTX-A6000, NVIDIA-RTX-A5000, NVIDIA-A10,
+                             NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-4090,
+                             NVIDIA-TITAN-RTX, NVIDIA-L40, NVIDIA-L40S]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ry-gpu-03.sdsc.optiputer.net, hcc-nrp-shor-c5909.unl.edu, hcc-chase-shor-c4705.unl.edu]
+      containers:
+        - name: shapeoeval
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8
+          command: ["/bin/bash", "-c"]
+          args:
+            # Shape-O uncapped eval. Bootstrap = startup.sh's clone+pixi ONLY (no dataset unzip):
+            # /workspace must hold MARINA-DB uncapped bits alone — MARINA1's arrow/retrieval.pkl
+            # would mismatch the uncapped bank. Selective unzip matches run_uncapped_evals.sh
+            # (the exact staging that produced the s0/s2 uncapped pkls the tables already use).
+            - >-
+              set -euo pipefail &&
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" &&
+              mkdir -p ~/.ssh &&
+              cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa &&
+              cp /root/gurusmart/.ssh/id_rsa.pub ~/.ssh/id_rsa.pub &&
+              chmod 600 ~/.ssh/id_rsa &&
+              git clone --branch main git@github.com:atong28/MARINA.git /code &&
+              echo "[job] code @ $(git -C /code rev-parse --short HEAD)" &&
+              pixi install --manifest-path /code/pixi.toml &&
+              mkdir -p /workspace &&
+              unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropyMultiplicityUncapped/*' 'arrow/test/*' 'index.pkl' -d /workspace &&
+              echo "[job] staged:" &&
+              ls /workspace/RankingEntropyMultiplicityUncapped &&
+              ls /workspace/arrow/test | head &&
+              cd /code &&
+              DATASET_ROOT=/workspace BENCHMARK_ROOT=/root/gurusmart/bench_sim PYTHONPATH=/code
+              pixi run python scripts/benchmark/eval_journal_benchmark.py --sim
+              --results_root /root/gurusmart/Moonshot/results --experiments marina-db-uncapped-formula-s1
+          resources:
+            requests: { cpu: "6", memory: 40Gi, ephemeral-storage: 40Gi, nvidia.com/gpu: "1" }
+            limits:   { cpu: "8", memory: 48Gi, ephemeral-storage: 50Gi, nvidia.com/gpu: "1" }
+          volumeMounts:
+            - { name: atong-spectre,  mountPath: /root/gurusmart }
+            - { name: smart-datasets, mountPath: /root/datasets }
+            - { name: dshm,           mountPath: /dev/shm }
+            - { name: data-unzip,     mountPath: /workspace }
+            - { name: code-workdir,   mountPath: /code }
+      volumes:
+        - { name: atong-spectre,  persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: smart-datasets, persistentVolumeClaim: { claimName: smart-datasets } }
+        - { name: dshm,           emptyDir: { medium: Memory } }
+        - { name: data-unzip,     emptyDir: {} }
+        - { name: code-workdir,   emptyDir: {} }

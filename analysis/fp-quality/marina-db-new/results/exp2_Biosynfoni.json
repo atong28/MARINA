@@ -1,0 +1,77 @@
+{
+  "fingerprints": {
+    "Biosynfoni": {
+      "N": 531927,
+      "all_zero": 231,
+      "distinct": 18656,
+      "tie_groups": 12461,
+      "n_in_tie": 525732,
+      "collision_pct": 98.8353665070583,
+      "ceiling_pct": 1.1646334929417006,
+      "largest_group": 18621,
+      "bad_collision_pct": 91.15141739374012,
+      "median_group_span_Da": 144.03236274800003,
+      "mass_bin_labels": [
+        "0-1",
+        "1-10",
+        "10-50",
+        "50-100",
+        "100-200",
+        "200-300",
+        "300-400",
+        ">400"
+      ],
+      "mass_bin_molecule_counts": [
+        1565,
+        973,
+        6788,
+        8997,
+        22550,
+        32430,
+        41050,
+        411379
+      ],
+      "D": 39,
+      "onbits_mean": 8.593051302152363
+    }
+  },
+  "prefix_check": {
+    "prefix_rows": 531087,
+    "fingerprints": {
+      "Biosynfoni": {
+        "N": 531087,
+        "all_zero": 230,
+        "distinct": 18642,
+        "tie_groups": 12443,
+        "n_in_tie": 524888,
+        "collision_pct": 98.83277127852875,
+        "ceiling_pct": 1.1672287214712467,
+        "largest_group": 18606,
+        "bad_collision_pct": 91.14909609913254,
+        "median_group_span_Da": 144.03236274800003,
+        "mass_bin_labels": [
+          "0-1",
+          "1-10",
+          "10-50",
+          "50-100",
+          "100-200",
+          "200-300",
+          "300-400",
+          ">400"
+        ],
+        "mass_bin_molecule_counts": [
+          1563,
+          987,
+          6759,
+          8973,
+          22525,
+          32516,
+          40861,
+          410704
+        ],
+        "D": 39,
+        "onbits_mean": 8.594985379043358
+      }
+    }
+  }
+}

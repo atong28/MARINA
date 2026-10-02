@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: atong-uncapped-s1-shuttle-20260910
+  labels: { owner: atong }
+spec:
+  restartPolicy: Never
+  containers:
+    - name: shuttle
+      image: busybox:stable
+      command: ["/bin/sh", "-c", "sleep 3600"]
+      resources:
+        requests: { cpu: "1", memory: 2Gi, ephemeral-storage: 2Gi }
+        limits:   { cpu: "1", memory: 2Gi, ephemeral-storage: 2Gi }
+      volumeMounts:
+        - { name: atong-spectre, mountPath: /gurusmart }
+  volumes:
+    - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }

@@ -1,0 +1,6 @@
+{
+  "ckpt": "results/marina-db-uniqmult-formula-s0/2026-09-07_03-29-23/epoch_epoch=620.ckpt",
+  "fp_type": "RankingEntropyUniqueMultiplicity",
+  "out_dim": 16384,
+  "n": 6000
+}
