@@ -87,8 +87,8 @@ services:
       MARINA_ROOT: /marina
       # The model data directory is mounted at /data.
       DATA_DIR: /data
-      MODEL_ROOT: /data/marina_uniqmult_s1
-      DEFAULT_MODEL_ID: marina_uniqmult_s1
+      MODEL_ROOT: /data/marina_db_s1
+      DEFAULT_MODEL_ID: marina_db_s1
       MODELS_JSON_PATH: /data/models.json
 
       # ── Compute pool ─────────────────────────────────────────────────────────

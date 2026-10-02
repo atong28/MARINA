@@ -103,6 +103,10 @@ def _primary(entry: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
         db_id = next((rec[k] for k in id_keys if rec.get(k)), None)
         if db_id:
             return rec.get("name"), url_template.format(db_id)
+    # CH-NMR-NP-only structures (MARINA-DB): a name, but no public per-compound link.
+    for rec in entry.get("ch_nmr_np") or []:
+        if rec.get("name"):
+            return rec["name"], None
     return None, None
 
 

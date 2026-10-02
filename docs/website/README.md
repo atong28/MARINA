@@ -78,18 +78,18 @@ bash scripts/website/download_model.sh          # skips a model already on disk
 bash scripts/website/download_model.sh --force  # re-download
 ```
 
-The Google Drive file id sits at the top of the script (`UNIQMULT_S1_ID`, also
+The Google Drive file id sits at the top of the script (`MARINA_DB_S1_ID`, also
 overridable from the environment). It points at a self-contained zip, shared
 as "Anyone with the link", whose entries sit at the model-directory root, so it
-unpacks straight into `checkpoints/marina_uniqmult_s1/`. The script then writes
+unpacks straight into `checkpoints/marina_db_s1/`. The script then writes
 `checkpoints/models.json`:
 
 ```json
 {
     "models": [
         {
-            "id": "marina_uniqmult_s1",
-            "root": "marina_uniqmult_s1",
+            "id": "marina_db_s1",
+            "root": "marina_db_s1",
             "type": "marina",
             "default": true,
             "display_name": "MARINA-DB (unique-multiplicity, formula-capable)"
@@ -98,8 +98,10 @@ unpacks straight into `checkpoints/marina_uniqmult_s1/`. The script then writes
 }
 ```
 
-`marina_uniqmult_s1` is the flagship `marina-db-uniqmult-formula-s1` checkpoint
-(`RankingEntropyUniqueMultiplicity`, radius 10). Its `calibration.json`, count
+`marina_db_s1` is the flagship `marina-db-open-chnmr-uniqmult-formula-s1` checkpoint
+(epoch 738; trained on MARINA-DB, the CH-NMR-NP-first build; `RankingEntropyUniqueMultiplicity`,
+radius 10), ranking against the 531,927-structure MARINA-DB retrieval set. It replaced
+`marina_uniqmult_s1` (MARINA-DB-PRIVATE) in October 2026. Its `calibration.json`, count
 table and vocabulary are only valid for this checkpoint: copying them across
 models would silently serve wrong confidences or rank in the wrong space.
 
@@ -108,7 +110,7 @@ Expected layout afterwards:
 ```
 checkpoints/
 ├── models.json
-└── marina_uniqmult_s1/
+└── marina_db_s1/
     ├── params.json
     ├── best.ckpt
     ├── calibration.json
@@ -139,7 +141,7 @@ at roughly 2k structures/s — minutes for a full database — and happens on th
 first MW-filtered request unless it is precomputed:
 
 ```bash
-python scripts/website/build_mw_index.py checkpoints/marina_uniqmult_s1
+python scripts/website/build_mw_index.py checkpoints/marina_db_s1
 ```
 
 Precompute it whenever a model directory is first deployed. The download bundles

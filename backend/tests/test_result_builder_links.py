@@ -31,3 +31,16 @@ def test_coconut_still_takes_precedence_but_npmrd_link_present():
     assert name == "Some Name"                       # coconut is primary
     assert "coconut" in link
     assert _database_links(entry)["npmrd"].endswith("NP0332333")   # npmrd link still surfaced
+
+
+def test_ch_nmr_np_name_fallback():
+    entry = {"npmrd": None, "coconut": None, "lotus": None,
+             "ch_nmr_np": [{"id": 1, "no": "31896", "name": ""},
+                           {"id": 2, "no": "33080", "name": "Some CH-NMR-NP Name"}]}
+    assert _primary(entry) == ("Some CH-NMR-NP Name", None)
+
+
+def test_ch_nmr_np_does_not_override_a_database_record():
+    entry = {"coconut": {"coconut_id": "CNP0561556.2", "name": "Some Name"},
+             "ch_nmr_np": [{"id": 1, "name": "Other"}]}
+    assert _primary(entry)[0] == "Some Name"

@@ -11,9 +11,10 @@
 # Needs only curl + unzip; gdown is used instead when it is installed.
 set -euo pipefail
 
-# marina_uniqmult_s1 = marina-db-uniqmult-formula-s1 (RankingEntropyUniqueMultiplicity,
-# radius 10, formula-capable), the served default. Override with the env var.
-UNIQMULT_S1_ID="${UNIQMULT_S1_ID:-1GCLeZqs38ZEjEN74Gt41cb2Lg8a4wmSg}"
+# marina_db_s1 = marina-db-open-chnmr-uniqmult-formula-s1 ep738 (MARINA-DB, CH-NMR-NP-first;
+# RankingEntropyUniqueMultiplicity, radius 10, formula-capable), the served default.
+# Override with the env var.
+MARINA_DB_S1_ID="${MARINA_DB_S1_ID:-__DRIVE_ID__}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../.."
@@ -61,7 +62,12 @@ fetch() {
     info "$root -> $dest"
 }
 
-fetch marina_uniqmult_s1 "$UNIQMULT_S1_ID"
+fetch marina_db_s1 "$MARINA_DB_S1_ID"
+
+# The previous default model is no longer served; it is left on disk for rollback.
+if [[ -d "$MODEL_DATA_DIR/marina_uniqmult_s1" ]]; then
+    info "marina_uniqmult_s1 (previous model) is unused; remove it to free ~2.3 GB: rm -rf $MODEL_DATA_DIR/marina_uniqmult_s1"
+fi
 
 # The backend container runs as an unprivileged user, so the weights must be
 # world-readable (checkpoints copied in by hand are often owner-only).
@@ -72,8 +78,8 @@ cat << EOF > "$MODEL_DATA_DIR/models.json"
 {
     "models": [
         {
-            "id": "marina_uniqmult_s1",
-            "root": "marina_uniqmult_s1",
+            "id": "marina_db_s1",
+            "root": "marina_db_s1",
             "type": "marina",
             "default": true,
             "display_name": "MARINA-DB (unique-multiplicity, formula-capable)"
