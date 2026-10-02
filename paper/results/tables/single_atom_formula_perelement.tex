@@ -1,0 +1,16 @@
+% single_atom_formula_perelement — per-element exact-count accuracy (%), NMR vs NMR+Formula; flagship: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2;
+% MARINA-Bench val+test pooled, mean of 3 seeds; n(mol) = benchmark molecules containing the element.
+\begingroup
+\color{cInk}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}l *{8}{S[table-format=3.0]}@{}}
+  \toprule
+  \hd{Input} & {\hd{C}} & {\hd{N}} & {\hd{O}} & {\hd{Cl}} & {\hd{Br}} & {\hd{S}} & {\hd{Si}} & {\hd{I}} \\
+  {\itshape n\ (mol)} & 466 & 201 & 460 & 30 & 15 & 9 & 4 & 1 \\
+  \midrule
+  NMR             & 35 & 48 & 44 & 31 & 31 & 48 & 100 & 67 \\
+  NMR $+$ Formula & \best{59} & \best{70} & \best{85} & \best{96} & \best{100} & \best{78} & 100 & \best{100} \\
+  \bottomrule
+\end{tabular}
+\endgroup
