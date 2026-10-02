@@ -101,6 +101,10 @@ OUT_DIR = os.path.join(HERE, "results", "tables")  # tables-jaccard for --metric
 
 
 def out(name, tex, data):
+    tbd = sum(line.count(r"\tbd") for line in tex.split("\n") if "providecommand" not in line)
+    if tbd:  # placeholder cells: inputs missing inside files that exist (e.g. sim combos not run yet)
+        data.setdefault("missing", [])
+        data["tbd_cells"] = tbd
     d = OUT_DIR
     os.makedirs(d, exist_ok=True)
     open(os.path.join(d, f"{name}.tex"), "w").write(tex)
@@ -288,6 +292,125 @@ def sim_exp_gap(raw, spec, split="test"):
             f"{split} with Mnova-simulated / experimental NMR; ranking = {LABEL[METRIC][2]}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, data
 
+S1_ROWS = [("NMR$+$MS/MS*", "nmr_msms", "hsqc_c_nmr_h_nmr_mass_spec_mass_spec_neg"), ("NMR", "nmr", "hsqc_c_nmr_h_nmr"),
+           ("ME-HSQC", "hsqc", "hsqc"), ("$^{13}$C", "c_nmr", "c_nmr"), ("$^{1}$H", "h_nmr", "h_nmr"),
+           ("ME-HSQC $+$ $^{13}$C", "hsqc_c_nmr", "hsqc_c_nmr"), ("ME-HSQC $+$ $^{1}$H", "hsqc_h_nmr", "hsqc_h_nmr"),
+           ("$^{13}$C $+$ $^{1}$H", "c_nmr_h_nmr", "c_nmr_h_nmr")]
+S1_TAGS = [("spectra", ""), ("$+$Formula", "_formula"), ("$+$MW", "_mw")]
+
+
+def results_full(raw, spec, kind):
+    """Appendix S1 (kind='derep': rank@k + cos) / S1b (kind='ann': ann@k), exp = journal val, sim = MARINA-DB test."""
+    exps, split = spec["experiments"], spec["experimental"]["split"]
+    js = [raw.journal("full", e) for e in exps]
+    ss = [raw.sim("full", e) for e in exps]
+    cols = ([f"rank@{k}" for k in KS] + ["cos"]) if kind == "derep" else [f"ann@{k}" for k in KS]
+    skey = {**{f"rank@{k}": f"mean_rank_{k}" for k in KS}, **{f"ann@{k}": f"mean_ann_{k}" for k in KS}, "cos": "mean_cos"}
+    lines, data = [], {"experiments": exps, "rows": {}}
+    for i, (lab, sub, scombo) in enumerate(S1_ROWS):
+        for j, (tag, suf) in enumerate(S1_TAGS):
+            per = [jmetrics(x, f"{split}/{sub}{suf}") for x in js]
+            exp = {c: seed_stat(per, c) for c in cols}
+            sim = {c: agg([None if m is None or f"test/{skey[c]}/{scombo}{suf}" not in m
+                           else (1.0 if c == "cos" else 100.0) * m[f"test/{skey[c]}/{scombo}{suf}"] for m in ss])
+                   for c in cols}
+            data["rows"][f"{lab} | {tag}"] = {"exp": exp, "sim": sim}
+            cells = [cell(d[c], pct=False, digits=3 if c == "cos" else 2) for d in (exp, sim) for c in cols]
+            first = f"  \\multirow{{3}}{{*}}{{{lab}}} & {tag}" if j == 0 else f"      & {tag:<10}"
+            lines.append(first + " & " + " & ".join(cells) + " \\\\")
+        if i != len(S1_ROWS) - 1:
+            lines.append("  \\cmidrule(l){2-10}" if kind == "derep" else "  \\cmidrule(l){2-8}")
+    n = len(cols)
+    sub_hd = " & ".join(f"\\hd{{{'r@' + c.split('@')[1] if c.startswith('rank') else c}}}" for c in cols)
+    head = (PRE % ("\\small\n", "5pt" if kind == "derep" else "6pt", "1.15") +
+            f"\\begin{{tabular}}{{@{{}}l l {'c' * n} {'c' * n}@{{}}}}\n  \\toprule\n"
+            "  \\multirow{2}{*}{\\hd{Input}} & \\multirow{2}{*}{\\hd{}}\n"
+            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (journal {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
+            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Simulated (MARINA-DB test)}}}} \\\\\n"
+            f"  \\cmidrule(lr){{3-{2 + n}}}\\cmidrule(lr){{{3 + n}-{2 + 2 * n}}}\n"
+            f"      & & {sub_hd}\n        & {sub_hd} \\\\\n  \\midrule\n")
+    what = "dereplication" if kind == "derep" else "annotation (a top-k retrieval has ECFP4 cos >= 0.8 to the true structure)"
+    note = (f"% Table S1{'' if kind == 'derep' else 'b'} — full flagship {what}; flagship: {', '.join(exps)}; "
+            f"exp = journal {split}, sim = MARINA-DB test; ranking = {LABEL[METRIC][2]}.\n")
+    return note + head + "\n".join(lines) + "\n" + POST, data
+
+
+def single_atom(raw, spec):
+    """Appendix single-atom-bit tables (overall + per element), val+test pooled per seed, mean of seeds."""
+    exps = spec["experiments"]
+    paths = [os.path.join(raw.root, "singleatom", f"{e}.json") for e in exps]
+    missing = [os.path.relpath(p, HERE) for p in paths if not os.path.exists(p)]
+    raw.missing += missing
+    if missing:
+        return None, None, {"missing": missing}
+    pooled = []
+    for p in paths:
+        res = json.load(open(p))["results"]
+        out = {}
+        for combo in ("nmr", "nmr_formula"):
+            sp = [res[s][combo] for s in res]
+            N = sum(c["n"] for c in sp)
+            wrong = sum(c["bit"]["mean_wrong_per_mol"] * c["n"] for c in sp) / N
+            ncols = sp[0]["bit"]["n_single_cols"]
+            s_cor = sum(c["element_total_strict"]["correct"] for c in sp)
+            s_tot = sum(c["element_total_strict"]["total"] for c in sp)
+            s_mol = sum(c["element_total_strict"]["mol_all"] for c in sp)
+            el = {}
+            for c in sp:
+                for k, v in c["element_total"]["per_key"].items():
+                    a = el.setdefault(k, [0.0, 0]); a[0] += v["acc_pct"] / 100 * v["n"]; a[1] += v["n"]
+            out[combo] = {"n": N, "wrong": wrong, "bit_acc": 100 * (1 - wrong / ncols), "el_acc": 100 * s_cor / s_tot,
+                          "mol_all": 100 * s_mol / N, "per_el": {k: (100 * c / n, n) for k, (c, n) in el.items()}}
+        pooled.append(out)
+    m = {}
+    for combo in ("nmr", "nmr_formula"):
+        cs = [p[combo] for p in pooled]
+        m[combo] = {k: sum(c[k] for c in cs) / len(cs) for k in ("wrong", "bit_acc", "el_acc", "mol_all")}
+        m[combo]["n"] = cs[0]["n"]
+        m[combo]["per_el"] = {k: (sum(c["per_el"][k][0] for c in cs) / len(cs), cs[0]["per_el"][k][1])
+                              for k in cs[0]["per_el"]}
+    nmr, frm = m["nmr"], m["nmr_formula"]
+
+    def b(val, other, fmt, lower=False):
+        txt = format(val, fmt)
+        better = (round(val, 2) < round(other, 2)) if lower else (round(val, 2) > round(other, 2))
+        return r"\best{" + txt + "}" if better else txt
+
+    def sgn(v, fmt):
+        return ("+" if v >= 0 else "") + format(v, fmt)
+
+    note = (f"% single_atom_formula_overall — single-atom multiplicity bits, NMR vs NMR+Formula; flagship: {', '.join(exps)};\n"
+            f"% MARINA-Bench val+test pooled (n={nmr['n']}), mean of {len(exps)} seeds. Element-count acc. and All counts\n"
+            "% correct are phantom-penalising (a predicted element absent from the molecule counts as an error).\n")
+    rows = [("NMR", nmr, frm), ("NMR $+$ Formula", frm, nmr)]
+    body = []
+    for lab, x, y in rows:
+        body.append(f"  {lab:<18} & {b(x['wrong'], y['wrong'], '.2f', lower=True)} & {b(x['bit_acc'], y['bit_acc'], '.2f')} & "
+                    f"{b(x['el_acc'], y['el_acc'], '.1f')} & {b(x['mol_all'], y['mol_all'], '.1f')} \\\\")
+    d = {k: frm[k] - nmr[k] for k in ("wrong", "bit_acc", "el_acc", "mol_all")}
+    overall = (note + "\\begingroup\n\\color{cInk}\n\\sisetup{retain-explicit-plus=true}\n\\setlength{\\tabcolsep}{6pt}\n"
+               "\\renewcommand{\\arraystretch}{1.18}\n"
+               "\\begin{tabular}{@{}l S[table-format=+1.2] S[table-format=+2.2] S[table-format=+2.1] S[table-format=+2.1]@{}}\n"
+               "  \\toprule\n  \\hd{Input} & {\\hd{Wrong bits/mol $\\downarrow$}} & {\\hd{Bit acc.\\ \\%}}\n"
+               "    & {\\hd{Element-count acc.\\ \\%}} & {\\hd{All counts correct \\%}} \\\\\n  \\midrule\n"
+               + "\n".join(body) + "\n  \\addlinespace[2pt]\n"
+               f"  $\\Delta$ (Formula) & {sgn(d['wrong'], '.2f')} & {sgn(d['bit_acc'], '.2f')} & {sgn(d['el_acc'], '.1f')} & "
+               f"{sgn(d['mol_all'], '.1f')} \\\\\n" + POST)
+    order = ["C", "N", "O", "Cl", "Br", "S", "Si", "I", "P", "F"]
+    els = [e for e in order if e in nmr["per_el"]] + [e for e in nmr["per_el"] if e not in order]
+    na = [round(nmr["per_el"][e][0]) for e in els]; fa = [round(frm["per_el"][e][0]) for e in els]
+    rowc = lambda xs, ys: " & ".join(r"\best{" + str(x) + "}" if x > y else str(x) for x, y in zip(xs, ys))
+    per = (f"% single_atom_formula_perelement — per-element exact-count accuracy (%), NMR vs NMR+Formula; flagship: "
+           f"{', '.join(exps)};\n% MARINA-Bench val+test pooled, mean of {len(exps)} seeds; n(mol) = benchmark molecules "
+           "containing the element.\n\\begingroup\n\\color{cInk}\n\\setlength{\\tabcolsep}{5pt}\n"
+           "\\renewcommand{\\arraystretch}{1.18}\n"
+           f"\\begin{{tabular}}{{@{{}}l *{{{len(els)}}}{{S[table-format=3.0]}}@{{}}}}\n  \\toprule\n"
+           "  \\hd{Input} & " + " & ".join(f"{{\\hd{{{e}}}}}" for e in els) + " \\\\\n"
+           "  {\\itshape n\\ (mol)} & " + " & ".join(str(nmr["per_el"][e][1]) for e in els) + " \\\\\n  \\midrule\n"
+           f"  NMR             & {rowc(na, fa)} \\\\\n  NMR $+$ Formula & {rowc(fa, na)} \\\\\n" + POST)
+    return overall, per, {"experiments": exps, "nmr": nmr, "nmr_formula": frm}
+
+
 def main():
     global OUT_DIR, METRIC
     ap = argparse.ArgumentParser()
@@ -321,6 +444,20 @@ def main():
             data["missing"] = sorted(set(raw.missing))
             out(f"{table}{suffix}", tex, data)
             summary[f"{table}{suffix}"] = "complete" if not data["missing"] else f"{len(data['missing'])} inputs missing"
+    sp = json.load(open(os.path.join(HERE, "specs", "results_full.json")))
+    for kind, name in (("derep", "results_full_derep"), ("ann", "results_full_ann")):
+        raw = Raw(a.raw)
+        tex, data = results_full(raw, sp, kind)
+        data["missing"] = sorted(set(raw.missing))
+        out(name, tex, data)
+        summary[name] = ("complete" if not data["missing"] and not data.get("tbd_cells")
+                         else f"{len(data['missing'])} files missing, {data.get('tbd_cells', 0)} cells pending")
+    raw = Raw(a.raw)
+    ov, pe, data = single_atom(raw, json.load(open(os.path.join(HERE, "specs", "single_atom_formula.json"))))
+    if ov:
+        out("single_atom_formula_overall", ov, data)
+        out("single_atom_formula_perelement", pe, data)
+    summary["single_atom_formula"] = "complete" if ov else f"{len(data['missing'])} inputs missing"
     for table, spec in specs_extra.items():   # appendix tables (one version)
         raw = Raw(a.raw)
         tex, data = sim_exp_gap(raw, spec)

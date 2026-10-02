@@ -1,0 +1,42 @@
+{
+  "table": "results_full",
+  "label": [
+    "tab:results_full_derep",
+    "tab:results_full_ann"
+  ],
+  "section": "Appendix S1 (full results)",
+  "eval_group": [
+    "flagship (journal)",
+    "simfull"
+  ],
+  "description": "Full flagship results over 8 spectral combos x {spectra, +Formula, +MW}: S1 = dereplication rank@k + mean cos, S1b = annotation ann@k",
+  "model": "MARINA",
+  "fingerprint": "RankingEntropyUniqueMultiplicity",
+  "experiments": [
+    "marina-db-open-chnmr-uniqmult-formula-s0",
+    "marina-db-open-chnmr-uniqmult-formula-s1",
+    "marina-db-open-chnmr-uniqmult-formula-s2"
+  ],
+  "ranking": {
+    "metric": "cosine"
+  },
+  "retrieval_set": {
+    "name": "MARINA-DB",
+    "size": 531927
+  },
+  "experimental": {
+    "benchmark": "MARINA-Bench (journal)",
+    "bench": "full",
+    "split": "val",
+    "n": 232
+  },
+  "simulated": {
+    "benchmark": "MARINA-DB test split (24,500)",
+    "from": "<exp>_sim_results.json (24 combos, run_eval.sh simfull)"
+  },
+  "aggregation": "mean ± sample std over seeds 0/1/2",
+  "outputs": [
+    "results_full_derep.tex",
+    "results_full_ann.tex"
+  ]
+}

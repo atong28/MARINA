@@ -1,0 +1,51 @@
+% Table S1 — full flagship dereplication; flagship: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2; exp = journal val, sim = MARINA-DB test; ranking = cosine.
+\begingroup
+\color{cInk}
+\small
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}l l cccc cccc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}} & \multirow{2}{*}{\hd{}}
+      & \multicolumn{4}{c}{\hd{Experimental (journal val, $n{=}232$)}}
+      & \multicolumn{4}{c}{\hd{Simulated (MARINA-DB test)}} \\
+  \cmidrule(lr){3-6}\cmidrule(lr){7-10}
+      & & \hd{r@1} & \hd{r@5} & \hd{r@10} & \hd{cos}
+        & \hd{r@1} & \hd{r@5} & \hd{r@10} & \hd{cos} \\
+  \midrule
+  \multirow{3}{*}{NMR$+$MS/MS*} & spectra & 65.52\pmm{3.73} & 85.63\pmm{3.67} & 89.94\pmm{2.53} & 0.894\pmm{0.006} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$Formula & 67.96\pmm{2.37} & 87.93\pmm{1.72} & 92.24\pmm{1.29} & 0.900\pmm{0.006} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 65.23\pmm{4.61} & 85.34\pmm{4.16} & 90.23\pmm{1.74} & 0.892\pmm{0.011} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{NMR} & spectra & 54.02\pmm{2.80} & 72.41\pmm{1.29} & 78.16\pmm{1.24} & 0.855\pmm{0.005} & 77.95\pmm{0.92} & 93.60\pmm{0.33} & 95.54\pmm{0.15} & 0.948\pmm{0.003} \\
+      & $+$Formula & 64.80\pmm{0.90} & 84.34\pmm{1.24} & 89.37\pmm{0.25} & 0.882\pmm{0.004} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 53.59\pmm{3.46} & 72.13\pmm{1.32} & 78.59\pmm{0.50} & 0.853\pmm{0.007} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{ME-HSQC} & spectra & 41.67\pmm{3.26} & 59.48\pmm{0.75} & 66.09\pmm{1.32} & 0.801\pmm{0.001} & 70.09\pmm{1.04} & 88.63\pmm{0.34} & 91.52\pmm{0.13} & 0.918\pmm{0.004} \\
+      & $+$Formula & 54.60\pmm{2.53} & 75.29\pmm{3.51} & 81.47\pmm{2.24} & 0.848\pmm{0.004} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 41.09\pmm{2.74} & 59.77\pmm{0.90} & 66.67\pmm{1.94} & 0.800\pmm{0.003} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{$^{13}$C} & spectra & 18.82\pmm{2.13} & 38.94\pmm{3.18} & 47.27\pmm{1.39} & 0.774\pmm{0.003} & 46.94\pmm{2.20} & 71.68\pmm{1.47} & 77.59\pmm{1.17} & 0.862\pmm{0.003} \\
+      & $+$Formula & 32.76\pmm{1.88} & 55.60\pmm{3.25} & 66.52\pmm{2.63} & 0.815\pmm{0.002} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 17.82\pmm{2.13} & 39.22\pmm{2.69} & 47.84\pmm{0.75} & 0.774\pmm{0.003} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{$^{1}$H} & spectra & 0.57\pmm{0.25} & 3.02\pmm{0.86} & 5.32\pmm{0.66} & 0.614\pmm{0.004} & 19.03\pmm{1.75} & 37.79\pmm{2.01} & 45.39\pmm{1.83} & 0.762\pmm{0.005} \\
+      & $+$Formula & 6.03\pmm{0.00} & 15.66\pmm{2.04} & 19.54\pmm{1.51} & 0.702\pmm{0.003} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 0.43\pmm{0.43} & 3.30\pmm{0.50} & 5.46\pmm{1.00} & 0.616\pmm{0.005} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{ME-HSQC $+$ $^{13}$C} & spectra & 54.31\pmm{3.11} & 73.71\pmm{2.69} & 79.89\pmm{1.32} & 0.855\pmm{0.005} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$Formula & 65.37\pmm{1.32} & 84.77\pmm{1.51} & 89.94\pmm{1.00} & 0.882\pmm{0.005} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 54.02\pmm{3.61} & 73.71\pmm{1.88} & 79.45\pmm{1.24} & 0.854\pmm{0.007} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{ME-HSQC $+$ $^{1}$H} & spectra & 40.23\pmm{2.04} & 58.62\pmm{1.49} & 64.51\pmm{0.90} & 0.802\pmm{0.002} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$Formula & 55.75\pmm{2.77} & 75.86\pmm{3.02} & 80.89\pmm{2.17} & 0.850\pmm{0.002} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 40.23\pmm{2.04} & 59.34\pmm{1.74} & 65.80\pmm{1.94} & 0.802\pmm{0.002} & \tbd & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-10}
+  \multirow{3}{*}{$^{13}$C $+$ $^{1}$H} & spectra & 24.43\pmm{3.03} & 46.26\pmm{2.53} & 56.47\pmm{3.02} & 0.801\pmm{0.002} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$Formula & 41.24\pmm{1.63} & 66.24\pmm{2.21} & 75.00\pmm{2.69} & 0.838\pmm{0.001} & \tbd & \tbd & \tbd & \tbd \\
+      & $+$MW      & 24.71\pmm{2.63} & 45.98\pmm{3.12} & 56.47\pmm{1.98} & 0.798\pmm{0.003} & \tbd & \tbd & \tbd & \tbd \\
+  \bottomrule
+\end{tabular}
+\endgroup

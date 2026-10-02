@@ -1,0 +1,51 @@
+% Table S1b — full flagship annotation (a top-k retrieval has ECFP4 cos >= 0.8 to the true structure); flagship: marina-db-open-chnmr-uniqmult-formula-s0, marina-db-open-chnmr-uniqmult-formula-s1, marina-db-open-chnmr-uniqmult-formula-s2; exp = journal val, sim = MARINA-DB test; ranking = cosine.
+\begingroup
+\color{cInk}
+\small
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}l l ccc ccc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}} & \multirow{2}{*}{\hd{}}
+      & \multicolumn{3}{c}{\hd{Experimental (journal val, $n{=}232$)}}
+      & \multicolumn{3}{c}{\hd{Simulated (MARINA-DB test)}} \\
+  \cmidrule(lr){3-5}\cmidrule(lr){6-8}
+      & & \hd{ann@1} & \hd{ann@5} & \hd{ann@10}
+        & \hd{ann@1} & \hd{ann@5} & \hd{ann@10} \\
+  \midrule
+  \multirow{3}{*}{NMR$+$MS/MS*} & spectra & 79.89\pmm{4.53} & 90.80\pmm{2.87} & 93.10\pmm{1.88} & \tbd & \tbd & \tbd \\
+      & $+$Formula & 81.47\pmm{3.73} & 91.52\pmm{1.63} & 94.11\pmm{1.32} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 80.03\pmm{4.32} & 90.37\pmm{3.61} & 92.96\pmm{1.79} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{NMR} & spectra & 67.67\pmm{2.83} & 80.75\pmm{1.51} & 83.48\pmm{1.32} & 90.51\pmm{0.34} & 96.24\pmm{0.20} & 97.21\pmm{0.08} \\
+      & $+$Formula & 78.45\pmm{1.14} & 88.22\pmm{1.32} & 90.95\pmm{0.43} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 67.10\pmm{3.77} & 79.89\pmm{2.45} & 83.62\pmm{1.14} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{ME-HSQC} & spectra & 52.87\pmm{1.94} & 66.67\pmm{0.50} & 71.98\pmm{0.86} & 84.34\pmm{0.53} & 92.09\pmm{0.25} & 93.73\pmm{0.08} \\
+      & $+$Formula & 65.52\pmm{2.62} & 79.31\pmm{2.99} & 83.19\pmm{1.88} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 52.87\pmm{1.94} & 66.95\pmm{0.50} & 72.56\pmm{1.24} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{$^{13}$C} & spectra & 30.32\pmm{1.94} & 47.56\pmm{2.60} & 53.45\pmm{2.40} & 67.16\pmm{1.38} & 79.14\pmm{0.86} & 82.55\pmm{0.79} \\
+      & $+$Formula & 45.83\pmm{2.45} & 61.64\pmm{2.62} & 69.97\pmm{1.39} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 30.17\pmm{1.98} & 48.28\pmm{1.55} & 54.17\pmm{1.51} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{$^{1}$H} & spectra & 2.30\pmm{0.25} & 4.89\pmm{1.51} & 6.90\pmm{0.86} & 38.05\pmm{1.84} & 50.29\pmm{1.62} & 55.20\pmm{1.52} \\
+      & $+$Formula & 10.34\pmm{0.43} & 19.40\pmm{1.29} & 22.70\pmm{1.32} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 2.30\pmm{0.25} & 5.60\pmm{0.75} & 7.18\pmm{1.00} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{ME-HSQC $+$ $^{13}$C} & spectra & 67.82\pmm{2.60} & 80.89\pmm{2.37} & 84.20\pmm{1.51} & \tbd & \tbd & \tbd \\
+      & $+$Formula & 78.16\pmm{1.63} & 88.36\pmm{1.88} & 90.80\pmm{1.08} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 67.96\pmm{2.80} & 80.75\pmm{1.74} & 83.62\pmm{1.98} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{ME-HSQC $+$ $^{1}$H} & spectra & 52.01\pmm{2.04} & 65.09\pmm{0.43} & 69.83\pmm{2.28} & \tbd & \tbd & \tbd \\
+      & $+$Formula & 66.52\pmm{2.45} & 79.60\pmm{1.63} & 82.90\pmm{1.79} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 52.16\pmm{1.98} & 65.80\pmm{1.00} & 71.12\pmm{2.62} & \tbd & \tbd & \tbd \\
+  \cmidrule(l){2-8}
+  \multirow{3}{*}{$^{13}$C $+$ $^{1}$H} & spectra & 37.64\pmm{0.66} & 55.32\pmm{2.80} & 63.22\pmm{2.17} & \tbd & \tbd & \tbd \\
+      & $+$Formula & 55.89\pmm{1.74} & 71.12\pmm{2.40} & 78.02\pmm{2.28} & \tbd & \tbd & \tbd \\
+      & $+$MW      & 38.22\pmm{0.66} & 55.60\pmm{3.68} & 64.22\pmm{1.29} & \tbd & \tbd & \tbd \\
+  \bottomrule
+\end{tabular}
+\endgroup

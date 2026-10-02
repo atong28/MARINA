@@ -1,0 +1,29 @@
+{
+  "table": "single_atom_formula",
+  "label": [
+    "single_atom_formula_overall",
+    "single_atom_formula_perelement"
+  ],
+  "section": "Appendix S6",
+  "description": "Single-atom multiplicity bits (the fingerprint's radius-0 heavy-atom count features): NMR vs NMR+Formula",
+  "model": "MARINA",
+  "experiments": [
+    "marina-db-open-chnmr-uniqmult-formula-s0",
+    "marina-db-open-chnmr-uniqmult-formula-s1",
+    "marina-db-open-chnmr-uniqmult-formula-s2"
+  ],
+  "benchmark": "MARINA-Bench val+test pooled (n=466)",
+  "from": "raw-cosine/singleatom/<exp>.json (scripts/benchmark/single_atom_bit_eval.py, run_eval.sh singleatom)",
+  "aggregation": "val+test pooled per seed (n-weighted), then the mean of 3 seeds",
+  "metrics": {
+    "Wrong bits/mol": "mean wrong single-atom bits per molecule",
+    "Bit acc.": "1 - wrong/single-atom columns",
+    "Element-count acc.": "exact predicted element count, over present-or-predicted elements (phantom-penalising)",
+    "All counts correct": "molecules with every element count right",
+    "per element": "present-only exact-count accuracy"
+  },
+  "outputs": [
+    "single_atom_formula_overall.tex",
+    "single_atom_formula_perelement.tex"
+  ]
+}
