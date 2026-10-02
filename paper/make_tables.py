@@ -245,7 +245,7 @@ def results_training_regime(raw, spec, split):
             data["rows"][f"{regime} | {label}"] = stats[(regime, label)]
     head = (PRE % ("\\small\n", "5pt", "1.15") + "\\begin{tabular}{@{}l l cccc cccc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Training}} & \\multirow{2}{*}{\\hd{Eval input}}\n"
-            f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (journal {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
+            f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
             "      & \\multicolumn{4}{c}{\\hd{Simulated (MARINA-DB-PRIVATE test)}} \\\\\n"
             "  \\cmidrule(lr){3-6}\\cmidrule(lr){7-10}\n"
             "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "}\n"
@@ -325,7 +325,7 @@ def results_full(raw, spec, kind):
     head = (PRE % ("\\small\n", "5pt" if kind == "derep" else "6pt", "1.15") +
             f"\\begin{{tabular}}{{@{{}}l l {'c' * n} {'c' * n}@{{}}}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Input}} & \\multirow{2}{*}{\\hd{}}\n"
-            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (journal {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
+            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
             f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Simulated (MARINA-DB test)}}}} \\\\\n"
             f"  \\cmidrule(lr){{3-{2 + n}}}\\cmidrule(lr){{{3 + n}-{2 + 2 * n}}}\n"
             f"      & & {sub_hd}\n        & {sub_hd} \\\\\n  \\midrule\n")
