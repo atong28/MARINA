@@ -1,0 +1,257 @@
+{
+  "experiments": [
+    "marina-db-open-chnmr-uniqmult-formula-s0",
+    "marina-db-open-chnmr-uniqmult-formula-s1",
+    "marina-db-open-chnmr-uniqmult-formula-s2"
+  ],
+  "rows": {
+    "NMR (all) | Test set (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "NMR (all) | Test set (exp)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "NMR (all) | Benchmark (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "NMR (all) | Benchmark (exp)": {
+      "rank@1": {
+        "mean": 53.13390313390313,
+        "std": 3.877680224733961,
+        "seeds": [
+          52.56410256410256,
+          57.26495726495727,
+          49.572649572649574
+        ]
+      },
+      "rank@5": {
+        "mean": 76.92307692307692,
+        "std": 1.1306629534464077,
+        "seeds": [
+          77.35042735042735,
+          77.77777777777777,
+          75.64102564102564
+        ]
+      },
+      "rank@10": {
+        "mean": 81.76638176638177,
+        "std": 0.4934617685381481,
+        "seeds": [
+          81.19658119658119,
+          82.05128205128206,
+          82.05128205128206
+        ]
+      },
+      "cos": {
+        "mean": 0.8720275707479216,
+        "std": 0.0033567815762654183,
+        "seeds": [
+          0.8706144095740767,
+          0.8758598855163298,
+          0.8696084171533585
+        ]
+      },
+      "n": 234
+    },
+    "HSQC | Test set (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "HSQC | Test set (exp)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "HSQC | Benchmark (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "HSQC | Benchmark (exp)": {
+      "rank@1": {
+        "mean": 43.162393162393165,
+        "std": 3.7255546525988676,
+        "seeds": [
+          40.598290598290596,
+          47.43589743589744,
+          41.452991452991455
+        ]
+      },
+      "rank@5": {
+        "mean": 67.37891737891738,
+        "std": 2.019579327458382,
+        "seeds": [
+          65.8119658119658,
+          69.65811965811966,
+          66.66666666666667
+        ]
+      },
+      "rank@10": {
+        "mean": 72.22222222222223,
+        "std": 0.42735042735042583,
+        "seeds": [
+          71.7948717948718,
+          72.64957264957265,
+          72.22222222222223
+        ]
+      },
+      "cos": {
+        "mean": 0.8270631477321655,
+        "std": 0.002425640993921393,
+        "seeds": [
+          0.8262767638278823,
+          0.8297844149618068,
+          0.8251282644068074
+        ]
+      },
+      "n": 234
+    },
+    "$^{13}$C | Test set (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{13}$C | Test set (exp)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{13}$C | Benchmark (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{13}$C | Benchmark (exp)": {
+      "rank@1": {
+        "mean": 16.23931623931624,
+        "std": 1.8627773262994323,
+        "seeds": [
+          15.384615384615385,
+          18.376068376068375,
+          14.957264957264957
+        ]
+      },
+      "rank@5": {
+        "mean": 40.313390313390315,
+        "std": 1.3737394246428702,
+        "seeds": [
+          39.743589743589745,
+          41.88034188034188,
+          39.31623931623932
+        ]
+      },
+      "rank@10": {
+        "mean": 48.86039886039886,
+        "std": 2.150949981558618,
+        "seeds": [
+          46.58119658119658,
+          50.85470085470085,
+          49.14529914529915
+        ]
+      },
+      "cos": {
+        "mean": 0.7816178623342785,
+        "std": 0.0021330411461440847,
+        "seeds": [
+          0.7798362379400139,
+          0.7810358454783758,
+          0.7839815035844461
+        ]
+      },
+      "n": 234
+    },
+    "$^{1}$H | Test set (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{1}$H | Test set (exp)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{1}$H | Benchmark (sim)": {
+      "rank@1": null,
+      "rank@5": null,
+      "rank@10": null,
+      "cos": null,
+      "n": null
+    },
+    "$^{1}$H | Benchmark (exp)": {
+      "rank@1": {
+        "mean": 0.5698005698005698,
+        "std": 0.49346176853814167,
+        "seeds": [
+          0.8547008547008547,
+          0.8547008547008547,
+          0.0
+        ]
+      },
+      "rank@5": {
+        "mean": 3.2763532763532766,
+        "std": 0.6527885605350199,
+        "seeds": [
+          2.5641025641025643,
+          3.4188034188034186,
+          3.8461538461538463
+        ]
+      },
+      "rank@10": {
+        "mean": 4.985754985754986,
+        "std": 1.2336544213453544,
+        "seeds": [
+          4.273504273504273,
+          4.273504273504273,
+          6.410256410256411
+        ]
+      },
+      "cos": {
+        "mean": 0.6345096101448408,
+        "std": 0.00554854648735367,
+        "seeds": [
+          0.6343990015423197,
+          0.629017194876304,
+          0.6401126340158985
+        ]
+      },
+      "n": 234
+    }
+  },
+  "missing": [
+    "results/raw-cosine/full/marina-db-open-chnmr-uniqmult-formula-s0_sim_test_items.pkl",
+    "results/raw-cosine/full/marina-db-open-chnmr-uniqmult-formula-s1_sim_test_items.pkl",
+    "results/raw-cosine/full/marina-db-open-chnmr-uniqmult-formula-s2_sim_test_items.pkl",
+    "results/raw-cosine/simnmr/marina-db-open-chnmr-uniqmult-formula-s0_benchmark_journal_results.pkl",
+    "results/raw-cosine/simnmr/marina-db-open-chnmr-uniqmult-formula-s1_benchmark_journal_results.pkl",
+    "results/raw-cosine/simnmr/marina-db-open-chnmr-uniqmult-formula-s2_benchmark_journal_results.pkl"
+  ]
+}

@@ -251,6 +251,58 @@ def results_training_regime(raw, spec, split):
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
+def sim_exp_gap(raw, spec, split="test"):
+    """Simulated-vs-experimental gap for the flagship: MARINA-DB test (Mnova / CH-NMR-NP subsets, from per-molecule sim
+    records) and the benchmark with simulated vs experimental NMR. Cells are 3-seed means, 1 decimal."""
+    exps = spec["experiments"]
+    srcs_path = os.path.join(HERE, "results", "marina_db_test_nmr_sources.json")
+    srcs = json.load(open(srcs_path))
+    items = []
+    for e in exps:
+        p = os.path.join(raw.root, "full", f"{e}_sim_test_items.pkl")
+        if os.path.exists(p):
+            items.append(pickle.load(open(p, "rb")))
+        else:
+            raw.missing.append(os.path.relpath(p, HERE))
+            items.append(None)
+    jsim = [raw.journal("simnmr", e) for e in exps]
+    jexp = [raw.journal("full", e) for e in exps]
+
+    def from_items(rec, mods, want):
+        keep = [i for i, idx in enumerate(rec["idx"]) if all(srcs.get(str(idx), {}).get(m) == want for m in mods)]
+        n = len(keep)
+        out = {"n": n, "cos": sum(rec["cos"][i] for i in keep) / n}
+        for k in KS:
+            out[f"rank@{k}"] = 100.0 * sum(rec["rank"][i] < k for i in keep) / n
+        return out
+
+    lines, data = [], {"experiments": exps, "rows": {}}
+    for ii, (label, combo, sub) in enumerate(spec["inputs"]):
+        mods = ["hsqc", "c_nmr", "h_nmr"] if combo == "hsqc_c_nmr_h_nmr" else [combo]
+        per_row = [
+            [None if it is None or combo not in it else from_items(it[combo], mods, "mnova") for it in items],
+            [None if it is None or combo not in it else from_items(it[combo], mods, "chnmr") for it in items],
+            [jmetrics(j, f"{split}/{sub}") for j in jsim],
+            [jmetrics(j, f"{split}/{sub}") for j in jexp]]
+        if ii:
+            lines.append("  \\midrule")
+        for ri, (row, per) in enumerate(zip(spec["rows"], per_row)):
+            st_ = {c: seed_stat(per, c) for c in ["rank@1", "rank@5", "rank@10", "cos"]}
+            st_["n"] = None if any(p is None for p in per) else per[0]["n"]
+            data["rows"][f"{label} | {row['label']}"] = st_
+            cells = [r"\tbd" if st_[c] is None else (f"{st_[c]['mean']:.3f}" if c == "cos" else f"{st_[c]['mean']:.1f}")
+                     for c in ["rank@1", "rank@5", "rank@10", "cos"]]
+            first = f"\\multirow{{4}}{{*}}{{{label}}}" if ri == 0 else ""
+            lines.append(f"  {first:<28} & {row['label']:<17} & " + " & ".join(cells) + " \\\\")
+    head = (PRE % ("", "6pt", "1.18") +
+            "\\begin{tabular}{@{}l l S[table-format=2.1] S[table-format=2.1] S[table-format=2.1] S[table-format=1.3]@{}}\n"
+            "  \\toprule\n  & & \\multicolumn{3}{c}{\\hd{Retrieval accuracy (\\%)}} & \\\\\n  \\cmidrule(lr){3-5}\n"
+            "  \\hd{Spectra} & \\hd{Input} & {\\hd{Top-1}} & {\\hd{Top-5}} & {\\hd{Top-10}} & {\\hd{Mean cos}} \\\\\n  \\midrule\n")
+    note = (f"% {spec['table']} — flagship: {', '.join(exps)}; test set = MARINA-DB test split by NMR source "
+            f"(Mnova-simulated vs CH-NMR-NP experimental); benchmark = MARINA-Bench {split}; ranking = {LABEL[METRIC][2]}.\n")
+    return note + head + "\n".join(lines) + "\n" + POST, data
+
+
 def main():
     global OUT_DIR, METRIC
     ap = argparse.ArgumentParser()
@@ -263,6 +315,7 @@ def main():
     OUT_DIR = a.out or os.path.join(HERE, "results", "tables" if METRIC == "cosine" else "tables-jaccard")
     specs = {k: json.load(open(os.path.join(HERE, "specs", f"{k}.json")))
              for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")}
+    specs_extra = {"sim_exp_gap": json.load(open(os.path.join(HERE, "specs", "sim_exp_gap.json")))}
     summary = {}
     for table, spec in specs.items():
         paper_split = (spec.get("benchmark") or spec["experimental"])["paper_split"]
@@ -283,6 +336,12 @@ def main():
             data["missing"] = sorted(set(raw.missing))
             out(f"{table}{suffix}", tex, data)
             summary[f"{table}{suffix}"] = "complete" if not data["missing"] else f"{len(data['missing'])} inputs missing"
+    for table, spec in specs_extra.items():   # appendix tables (one version)
+        raw = Raw(a.raw)
+        tex, data = sim_exp_gap(raw, spec)
+        data["missing"] = sorted(set(raw.missing))
+        out(table, tex, data)
+        summary[table] = "complete" if not data["missing"] else f"{len(data['missing'])} inputs missing"
     for k, v in summary.items():
         print(f"{k:<34} {v}")
 

@@ -1,0 +1,74 @@
+{
+  "table": "sim_exp_gap",
+  "label": "tab:sim_exp_gap",
+  "section": "Appendix S6 (other discussion)",
+  "eval_group": "simgap",
+  "description": "How much of the experimental-benchmark gap is domain shift (simulated vs experimental spectra) and how much is benchmark difficulty, for the flagship",
+  "ranking": {
+    "metric": "cosine",
+    "eval_flag": "--rank_metric cosine"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt — see paper/checkpoints/<experiment>.json",
+  "aggregation": "mean over seeds 0/1/2 (1 decimal, as in Draft 2); std and n kept in the json",
+  "model": "MARINA",
+  "fingerprint": "RankingEntropyUniqueMultiplicity",
+  "experiments": [
+    "marina-db-open-chnmr-uniqmult-formula-s0",
+    "marina-db-open-chnmr-uniqmult-formula-s1",
+    "marina-db-open-chnmr-uniqmult-formula-s2"
+  ],
+  "retrieval_set": {
+    "name": "MARINA-DB",
+    "size": 531927,
+    "work_dir": "data/MARINA-DB"
+  },
+  "inputs": [
+    [
+      "NMR (all)",
+      "hsqc_c_nmr_h_nmr",
+      "nmr"
+    ],
+    [
+      "HSQC",
+      "hsqc",
+      "hsqc"
+    ],
+    [
+      "$^{13}$C",
+      "c_nmr",
+      "c_nmr"
+    ],
+    [
+      "$^{1}$H",
+      "h_nmr",
+      "h_nmr"
+    ]
+  ],
+  "rows": [
+    {
+      "label": "Test set (sim)",
+      "source": "MARINA-DB test split, molecules whose spectra for this input are all Mnova-simulated",
+      "from": "<exp>_sim_test_items.pkl + results/marina_db_test_nmr_sources.json"
+    },
+    {
+      "label": "Test set (exp)",
+      "source": "MARINA-DB test split, molecules whose spectra for this input are all CH-NMR-NP experimental",
+      "from": "<exp>_sim_test_items.pkl + results/marina_db_test_nmr_sources.json"
+    },
+    {
+      "label": "Benchmark (sim)",
+      "source": "MARINA-Bench test (n=234) with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl)",
+      "bench": "simnmr"
+    },
+    {
+      "label": "Benchmark (exp)",
+      "source": "MARINA-Bench test (n=234), experimental NMR",
+      "bench": "full"
+    }
+  ],
+  "metrics": {
+    "Top-1/5/10": "strict rank@k, %",
+    "Mean cos": "test-set rows: binarised prediction vs gold (training test-loop convention); benchmark rows: probabilities vs gold"
+  },
+  "run": "run_eval.sh simgap <3 experiments>"
+}
