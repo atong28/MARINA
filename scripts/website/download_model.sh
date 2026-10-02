@@ -14,7 +14,7 @@ set -euo pipefail
 # marina_db_s1 = marina-db-open-chnmr-uniqmult-formula-s1 ep738 (MARINA-DB, CH-NMR-NP-first;
 # RankingEntropyUniqueMultiplicity, radius 10, formula-capable), the served default.
 # Override with the env var.
-MARINA_DB_S1_ID="${MARINA_DB_S1_ID:-__DRIVE_ID__}"
+MARINA_DB_S1_ID="${MARINA_DB_S1_ID:-1PtxGL84MJppAtn8Sqn-sQia3nA5Kdn7S}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../.."
