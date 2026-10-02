@@ -24,7 +24,7 @@ LABEL = {"cosine": ("exp-mean-cos", "cos", "cosine"), "jaccard": ("exp-mean-Tani
 PRE = r"""\begingroup
 \color{cInk}
 %s\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
-\providecommand{\tbd}{{\color{cInk!35}\textrm{--}}}
+\providecommand{\tbd}{--}
 \setlength{\tabcolsep}{%s}
 \renewcommand{\arraystretch}{%s}
 """
@@ -123,7 +123,7 @@ def results_main(raw, spec, split):
                                                    ("(b) Structure annotation", "exp-ann@$k$", "ann")]):
         if part:
             lines.append("  \\midrule")
-        lines.append(f"  \\multicolumn{{7}}{{@{{}}l}}{{\\hd{{{title}}}~\\textcolor{{cInk!55}}{{({unit})}}}} \\\\")
+        lines.append(f"  \\multicolumn{{7}}{{@{{}}l}}{{\\hd{{{title}}}~({unit})}} \\\\")
         lines.append("  \\addlinespace[2pt]")
         for label, sub in spec["rows"]:
             base = [jmetrics(s, f"{split}/{sub}") if s else None for s in seeds]
