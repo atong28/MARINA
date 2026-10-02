@@ -43,7 +43,9 @@ Every table is built for the split the paper reports and for the other split (`<
 ### Table 1 — `db_comparison` (Methods)
 No model. `DATASETS_ROOT=~/Workspace/Datasets pixi run python paper/db_comparison/gen_db_comparison.py` →
 `db_comparison.tex` (MARINA-DB vs SPECTRE-DB, with experimental CH-NMR-NP rows) and `db_comparison_private.tex`
-(supplement: MARINA-DB-PRIVATE vs MARINA-DB). SPECTRE-DB counts are constants from the SPECTRE paper.
+(supplement: MARINA-DB-PRIVATE vs MARINA-DB), plus `db_comparison_dev.tex` comparing the development datasets
+MARINA-DB-PARTIAL (disk `Datasets/MARINA1`; no negative-mode MS/MS) / MARINA-DB-PRIVATE / MARINA-DB (counts only, no
+experimental rows). SPECTRE-DB counts are constants from the SPECTRE paper.
 
 ### Table 2 — `results_main` (dereplication + annotation)
 | Condition | Value |

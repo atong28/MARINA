@@ -1,8 +1,10 @@
-"""Generate tab:db_comparison (MARINA-DB vs SPECTRE-DB, main) and the supplementary
-MARINA-DB-PRIVATE vs MARINA-DB table from the shipped dataset indexes.
+"""Generate tab:db_comparison (MARINA-DB vs SPECTRE-DB, main), the supplementary MARINA-DB-PRIVATE vs MARINA-DB
+table, and the development-dataset table (MARINA-DB-PARTIAL vs MARINA-DB-PRIVATE vs MARINA-DB) from the shipped
+dataset indexes.
 
 MARINA-DB         = $DATASETS_ROOT/MARINA-DB-OPEN (CH-NMR-NP-first build, zip sha256 2780459f...)
 MARINA-DB-PRIVATE = $DATASETS_ROOT/MARINA-DB
+MARINA-DB-PARTIAL = $DATASETS_ROOT/MARINA1 (no negative-mode MS/MS: that count is 0)
 Counts = molecules with the has_* flag; experimental = NMR source 'chnmr' in nmr_sources.parquet.
 SPECTRE-DB column is carried over from the previous table (external dataset, no local artifact).
 
@@ -28,8 +30,8 @@ def stats(root, sources=False):
     idx = pickle.load(open(os.path.join(root, "index.pkl"), "rb"))
     df = pd.DataFrame(list(idx.values()))
     s = df.split.value_counts().to_dict()
-    s.update({k: int(df[k].sum()) for k in ["has_hsqc", "has_c_nmr", "has_h_nmr", "has_mass_spec",
-                                            "has_mass_spec_neg"]})
+    s.update({k: int(df[k].sum()) if k in df else 0
+              for k in ["has_hsqc", "has_c_nmr", "has_h_nmr", "has_mass_spec", "has_mass_spec_neg"]})
     s["total"] = len(df)
     s["retrieval"] = len(pickle.load(open(os.path.join(root, "retrieval.pkl"), "rb")))
     if sources:
@@ -66,6 +68,7 @@ def table(cols, rows, header):
 def main():
     new = stats(os.path.join(DATASETS, "MARINA-DB-OPEN"), sources=True)
     priv = stats(os.path.join(DATASETS, "MARINA-DB"))
+    partial = stats(os.path.join(DATASETS, "MARINA1"))
     main_rows = []
     for r in COUNT_ROWS:
         main_rows.append(r)
@@ -75,6 +78,9 @@ def main():
         f.write(table([new, SPECTRE_DB], main_rows, ["MARINA-DB", "SPECTRE-DB"]))
     with open(os.path.join(HERE, "db_comparison_private.tex"), "w") as f:
         f.write(table([priv, new], COUNT_ROWS, ["MARINA-DB-PRIVATE", "MARINA-DB"]))
+    with open(os.path.join(HERE, "db_comparison_dev.tex"), "w") as f:
+        f.write(table([partial, priv, new], COUNT_ROWS, ["MARINA-DB-PARTIAL", "MARINA-DB-PRIVATE", "MARINA-DB"]))
+    print("MARINA-DB-PARTIAL", partial)
     print("MARINA-DB", new)
     print("MARINA-DB-PRIVATE", priv)
 
