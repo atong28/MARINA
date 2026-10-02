@@ -4,7 +4,7 @@
     "marina-db-open-chnmr-uniqmult-formula-s1",
     "marina-db-open-chnmr-uniqmult-formula-s2"
   ],
-  "flagship": "stand-in",
+  "flagship": "flagship",
   "split": "val",
   "rows": {
     "NMR$+$MS/MS$+$Formula*": {

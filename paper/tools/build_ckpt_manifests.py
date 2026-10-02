@@ -17,8 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "checkpoints")
 
 TABLES = {
-    "marina-db-open-chnmr-uniqmult-formula": ["results_main (stand-in flagship)", "spectre_comparison (stand-in flagship)"],
-    "marina-db-open-solvjit-uniqmult-formula": ["results_main (flagship)", "spectre_comparison (flagship)"],
+    "marina-db-open-chnmr-uniqmult-formula": ["results_main (flagship)", "spectre_comparison (flagship)", "sim_exp_gap"],
     "marina-db-uniqmult-formula": ["fp_comparison"],
     "marina-db-sherlock-formula": ["fp_comparison"],
     "marina-db-uncapped-formula": ["fp_comparison (appendix row)", "results_training_regime (All inputs)"],
@@ -94,8 +93,7 @@ def main():
 
     # local copies of cluster runs (DeltaAI / Anvil) on anthony3
     remote = {"marina-db-open-chnmr-uniqmult-formula": ("deltaai", "/projects/bibx/atong1/runs/results"),
-              "marina-deltaai-substructure": ("deltaai", "/projects/bibx/atong1/runs/results"),
-              "marina-db-open-solvjit-uniqmult-formula": ("anvil", "/anvil/projects/x-bio260190/atong1/runs/results")}
+              "marina-deltaai-substructure": ("deltaai", "/projects/bibx/atong1/runs/results")}
     for exp in [f"{fam}-s{s}" for fam in remote for s in range(3)]:
         if not glob.glob(os.path.join(a.results, exp, "*", "epoch_*.ckpt")):
             print(f"{exp:<45} (no local copy yet; skipped)")

@@ -16,11 +16,6 @@
   "models": {
     "MARINA": {
       "experiments": [
-        "marina-db-open-solvjit-uniqmult-formula-s0",
-        "marina-db-open-solvjit-uniqmult-formula-s1",
-        "marina-db-open-solvjit-uniqmult-formula-s2"
-      ],
-      "standin_experiments": [
         "marina-db-open-chnmr-uniqmult-formula-s0",
         "marina-db-open-chnmr-uniqmult-formula-s1",
         "marina-db-open-chnmr-uniqmult-formula-s2"

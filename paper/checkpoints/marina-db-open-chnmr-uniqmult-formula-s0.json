@@ -3,8 +3,9 @@
   "seed": 0,
   "model": "MARINA",
   "used_in": [
-    "results_main (stand-in flagship)",
-    "spectre_comparison (stand-in flagship)"
+    "results_main (flagship)",
+    "spectre_comparison (flagship)",
+    "sim_exp_gap"
   ],
   "training_dataset": "MARINA-DB (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN, zip sha256 2780459f...)",
   "fp_type": "RankingEntropyUniqueMultiplicity",

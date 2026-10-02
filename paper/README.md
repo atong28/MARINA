@@ -6,7 +6,7 @@ Appendix tables are out of scope for now.
 
 **Ranking metric: cosine** (decided 2026-10-01 after a full comparison). Binary-Tanimoto ranking was evaluated too and
 is kept for reference (`results/raw-jaccard/`, `results/tables-jaccard/`): on identical checkpoints it is ~1.5–4 pp
-lower at rank@1 than cosine (PRIVATE flagship journal test NMR+MS/MS 71.08 → 68.52; MARINA-DB stand-in 70.23 → 66.24).
+lower at rank@1 than cosine (PRIVATE flagship journal test NMR+MS/MS 71.08 → 68.52; MARINA-DB flagship 70.23 → 66.24).
 
 ```
 paper/
@@ -50,7 +50,7 @@ experimental rows). SPECTRE-DB counts are constants from the SPECTRE paper.
 ### Table 2 — `results_main` (dereplication + annotation)
 | Condition | Value |
 |---|---|
-| Model | MARINA flagship `marina-db-open-solvjit-uniqmult-formula-s{0,1,2}`; until it finishes, stand-in `marina-db-open-chnmr-uniqmult-formula-s{0,1,2}` (the builder picks the final arm once all three of its results exist and records which one was used) |
+| Model | MARINA flagship `marina-db-open-chnmr-uniqmult-formula-s{0,1,2}` (CH-NMR-NP-first MARINA-DB, no solvent-offset augmentation) |
 | Fingerprint | `RankingEntropyUniqueMultiplicity`, 16,384 bits |
 | Retrieval set | MARINA-DB, 531,927 |
 | Benchmark | MARINA-Bench **test** (n = 234); val (n = 232) also built |
@@ -111,8 +111,7 @@ of the two models (MARINA wherever SPECTRE has no value). Run: `run_eval.sh flag
 
 **2. Evaluate** (MARINA repo at the committed SHA, `pixi install` done):
 ```bash
-W=$W bash paper/run_eval.sh flagship marina-db-open-chnmr-uniqmult-formula-s{0,1,2}      # stand-in now
-W=$W bash paper/run_eval.sh flagship marina-db-open-solvjit-uniqmult-formula-s{0,1,2}    # when the arm finishes
+W=$W bash paper/run_eval.sh flagship marina-db-open-chnmr-uniqmult-formula-s{0,1,2}
 W=$W bash paper/run_eval.sh spectre
 W=$W bash paper/run_eval.sh fpsweep marina-deltaai-substructure-s{0,1,2}                 # local-only checkpoints
 # PRIVATE checkpoints on the Nautilus PVC (uniqmult, sherlock, cap5, uncapped formula/nmr/noform):
@@ -144,5 +143,6 @@ The Jobs write to `atong-spectre:/root/gurusmart/paper-eval/results/full/benchma
   recorded in `augment_summary.json`.
 - **SPECTRE-DB size.** The deployed bundle's retrieval has 526,316 rows; the SPECTRE paper's SPECTRE-DB count is
   526,163 (Table 1 quotes the paper).
-- **Stand-in flagship.** Until the solvent-jitter seeds are evaluated, Tables 2/3 come from the plain CH-NMR-NP arm;
-  each table's `.tex` header comment and `.json` say which.
+- **Solvent-offset augmentation was dropped** (2026-10-02): the solvent-jitter arm
+  (`marina-db-open-solvjit-uniqmult-formula`) did not help on the headline inputs (journal test NMR+MS/MS 68.38 vs
+  70.23), so the plain CH-NMR-NP arm is the flagship. Its raw results stay in `results/raw-cosine/` for reference.

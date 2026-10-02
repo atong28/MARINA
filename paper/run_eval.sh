@@ -9,9 +9,10 @@
 #   W/data/MARINA-DB-PRIVATE/    original dataset (disk name MARINA-DB): index, retrieval, arrow/test, the five
 #                                RankingEntropy*/ dirs (fp sweep + training regimes)
 #   W/data/SPECTRE-clean-{test,val}/  SPECTRE retrieval + RankingEntropy/ bank with the clean-subset structures appended
-#   W/bench/{full,clean_test,clean_val}/benchmark-journal.pkl
+#   W/bench/{full,clean_test,clean_val,simnmr}/benchmark-journal.pkl
 #        full = MARINA-Bench 466 (232 val / 234 test; experimental NMR + simulated MS/MS = Benchmark/benchmark-sim.pkl)
 #        clean_test = SPECTRE-clean test 205, clean_val = SPECTRE-clean val 207
+#        simnmr = the same 466 benchmark compounds with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl)
 #   W/ckpt/<experiment>/<ts>/{epoch_*.ckpt,params.json}   (exactly one ckpt per experiment)
 #   W/ckpt/spectre-deployed/{best.ckpt,params.json}
 # Outputs: W/results-<metric>/<bench>/benchmarks/<name>_benchmark_journal_results.pkl and <name>_sim_results.json.
@@ -21,6 +22,8 @@
 #   spectre            Table spectre_comparison (SPECTRE side): clean_test + clean_val
 #   fpsweep  <exp...>  Table fp_comparison: full journal on MARINA-DB-PRIVATE
 #   regime   <exp...>  Table results_training_regime: full journal + simulated MARINA-DB-PRIVATE test (4 NMR combos)
+#   simgap   <exp...>  Table sim_exp_gap (appendix): simulated MARINA-DB test with per-molecule records (4 NMR combos)
+#                      + the benchmark compounds with Mnova-simulated NMR (bench simnmr)
 #   collect            copy W/results-<metric>/*/benchmarks/* into paper/results/raw-<metric>/<bench>/ (then commit)
 # Each step is skipped when its output exists, so reruns after an interruption are safe.
 # Results of the two metrics never mix: W/results-cosine <-> paper/results/raw-cosine,
@@ -95,11 +98,30 @@ regime)
                 --results_root "$W/ckpt" --experiments "$e"
         fi
     done ;;
+simgap)
+    for e in "${EXPS[@]}"; do
+        journal simnmr MARINA-DB "$e" --results_root "$W/ckpt" --experiments "$e"
+        root=$(bench_root full)
+        if [ -s "$root/benchmarks/${e}_sim_test_items.pkl" ] && [ -s "$root/benchmarks/${e}_sim_results.json" ]; then
+            echo "[run-eval] have sim $e" | tee -a "$LOG"
+        else
+            DATASET_ROOT=$W/data/MARINA-DB BENCHMARK_ROOT=$root run "$e sim test" \
+                $EVAL --no-journal --sim --sim_splits test --sim_only hsqc_c_nmr_h_nmr hsqc c_nmr h_nmr \
+                --results_root "$W/ckpt" --experiments "$e"
+        fi
+    done ;;
 collect)
     for r in "$W/$RES"/*/; do
         b=$(basename "$r")
         mkdir -p "paper/results/$RAW/$b"
         cp -v "$r"benchmarks/*_benchmark_journal_results.pkl "$r"benchmarks/*_sim_results.json "paper/results/$RAW/$b/" 2>/dev/null \
+            | tee -a "$LOG"
+        # per-molecule sim records only for the simgap runs (they have a simnmr journal result)
+        for f in "$r"benchmarks/*_sim_test_items.pkl; do
+            [ -e "$f" ] || continue
+            e=$(basename "$f" _sim_test_items.pkl)
+            [ -s "$W/$RES/simnmr/benchmarks/${e}_benchmark_journal_results.pkl" ] && cp -v "$f" "paper/results/$RAW/$b/"
+        done 2>/dev/null \
             | tee -a "$LOG"
     done ;;
 *)

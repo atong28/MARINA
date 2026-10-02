@@ -83,13 +83,8 @@ def seed_stat(per_seed, metric):
 
 
 def pick_flagship(raw, spec_models, bench):
-    """Final flagship experiments if all their results exist for `bench`, else the stand-in ones."""
-    final, standin = spec_models["experiments"], spec_models["standin_experiments"]
-    exists = lambda exps: all(os.path.exists(os.path.join(raw.root, bench, f"{e}_benchmark_journal_results.pkl"))
-                              for e in exps)
-    if exists(final):
-        return final, "final"
-    return standin, "stand-in"
+    """The flagship experiments named in the spec."""
+    return spec_models["experiments"], "flagship"
 
 
 def cell(s, pct=True, digits=2, sign=False):
@@ -144,7 +139,7 @@ def results_main(raw, spec, split):
             "      & \\multicolumn{2}{c}{\\hd{@10}} \\\\\n"
             "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
             "      & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} \\\\\n  \\midrule\n")
-    note = f"% {spec['table']} — journal {split}, flagship={which}: {', '.join(exps)}; ranking = {LABEL[METRIC][2]}.\n"
+    note = f"% {spec['table']} — journal {split}, flagship: {', '.join(exps)}; ranking = {LABEL[METRIC][2]}.\n"
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 

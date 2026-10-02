@@ -16,16 +16,10 @@
   "model": "MARINA",
   "fingerprint": "RankingEntropyUniqueMultiplicity (16,384 bits)",
   "experiments": [
-    "marina-db-open-solvjit-uniqmult-formula-s0",
-    "marina-db-open-solvjit-uniqmult-formula-s1",
-    "marina-db-open-solvjit-uniqmult-formula-s2"
-  ],
-  "standin_experiments": [
     "marina-db-open-chnmr-uniqmult-formula-s0",
     "marina-db-open-chnmr-uniqmult-formula-s1",
     "marina-db-open-chnmr-uniqmult-formula-s2"
   ],
-  "standin_note": "plain CH-NMR-NP arm is evaluated as the flagship until the solvent-jitter arm finishes",
   "training_dataset": "MARINA-DB (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN)",
   "retrieval_set": {
     "name": "MARINA-DB",
