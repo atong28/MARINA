@@ -174,7 +174,7 @@ def spectre_comparison(raw, spec, split):
             "      & \\hd{MARINA} & \\hd{SPECTRE}\n      & \\hd{MARINA} & \\hd{SPECTRE}\n"
             "      & \\hd{MARINA} & \\hd{SPECTRE} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — SPECTRE-clean journal {split} (n={spec['benchmark']['n'][split]}), "
-            f"flagship={which}: {', '.join(exps)}; ranking = {LABEL[METRIC][2]} for both models.\n")
+            f"flagship: {', '.join(exps)}; ranking = {LABEL[METRIC][2]} for both models.\n")
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
