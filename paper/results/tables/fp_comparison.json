@@ -3,10 +3,42 @@
   "subset": "nmr_formula",
   "rows": {
     "Unique mult.\\ (ours)": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 64.08045977011494,
+        "std": 3.0274867105898675,
+        "seeds": [
+          63.793103448275865,
+          67.24137931034483,
+          61.206896551724135
+        ]
+      },
+      "rank@5": {
+        "mean": 83.33333333333333,
+        "std": 2.804485818382639,
+        "seeds": [
+          83.1896551724138,
+          86.20689655172414,
+          80.60344827586206
+        ]
+      },
+      "rank@10": {
+        "mean": 88.79310344827586,
+        "std": 1.2931034482758648,
+        "seeds": [
+          87.5,
+          90.08620689655173,
+          88.79310344827586
+        ]
+      },
+      "sim": {
+        "mean": 0.8774286603619312,
+        "std": 0.0016006046405658498,
+        "seeds": [
+          0.8783217748177463,
+          0.878383422206188,
+          0.8755807840618594
+        ]
+      }
     },
     "Sherlock": {
       "rank@1": null,
@@ -24,12 +56,6 @@
     "results/raw-cosine/full/marina-db-sherlock-formula-s2_benchmark_journal_results.pkl",
     "results/raw-cosine/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
     "results/raw-cosine/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s2_benchmark_journal_results.pkl"
+    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl"
   ]
 }

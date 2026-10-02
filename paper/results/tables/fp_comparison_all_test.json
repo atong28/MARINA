@@ -3,10 +3,42 @@
   "subset": "nmr_formula",
   "rows": {
     "Unique mult.\\ (ours)": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 66.23931623931624,
+        "std": 1.5408338784034128,
+        "seeds": [
+          66.66666666666667,
+          67.52136752136752,
+          64.52991452991454
+        ]
+      },
+      "rank@5": {
+        "mean": 85.75498575498575,
+        "std": 2.0195793274583766,
+        "seeds": [
+          84.1880341880342,
+          88.03418803418803,
+          85.04273504273505
+        ]
+      },
+      "rank@10": {
+        "mean": 89.17378917378917,
+        "std": 0.24673088426907405,
+        "seeds": [
+          89.31623931623932,
+          89.31623931623932,
+          88.88888888888889
+        ]
+      },
+      "sim": {
+        "mean": 0.8885194523382051,
+        "std": 0.003371625177678369,
+        "seeds": [
+          0.8884845973334761,
+          0.8919083698947206,
+          0.8851653897864187
+        ]
+      }
     },
     "Sherlock": {
       "rank@1": null,
@@ -27,10 +59,42 @@
       "sim": null
     },
     "Substructure": {
-      "rank@1": null,
-      "rank@5": null,
-      "rank@10": null,
-      "sim": null
+      "rank@1": {
+        "mean": 43.01994301994302,
+        "std": 4.216139198560895,
+        "seeds": [
+          47.863247863247864,
+          41.02564102564103,
+          40.17094017094017
+        ]
+      },
+      "rank@5": {
+        "mean": 67.80626780626781,
+        "std": 5.151892113967271,
+        "seeds": [
+          72.64957264957265,
+          68.37606837606837,
+          62.39316239316239
+        ]
+      },
+      "rank@10": {
+        "mean": 75.92592592592592,
+        "std": 4.707325254090685,
+        "seeds": [
+          79.05982905982906,
+          78.2051282051282,
+          70.51282051282051
+        ]
+      },
+      "sim": {
+        "mean": 0.8058144788541686,
+        "std": 0.012423938227854113,
+        "seeds": [
+          0.8189739502138562,
+          0.8041820127485145,
+          0.7942874736001349
+        ]
+      }
     }
   },
   "missing": [
@@ -42,12 +106,6 @@
     "results/raw-cosine/full/marina-db-sherlock-formula-s2_benchmark_journal_results.pkl",
     "results/raw-cosine/full/marina-db-uncapped-formula-s0_benchmark_journal_results.pkl",
     "results/raw-cosine/full/marina-db-uncapped-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-db-uniqmult-formula-s2_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s0_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s1_benchmark_journal_results.pkl",
-    "results/raw-cosine/full/marina-deltaai-substructure-s2_benchmark_journal_results.pkl"
+    "results/raw-cosine/full/marina-db-uncapped-formula-s2_benchmark_journal_results.pkl"
   ]
 }
