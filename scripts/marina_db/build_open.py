@@ -86,6 +86,7 @@ assemble = importlib.import_module("8_assemble_arrow")
 splits = importlib.import_module("7_splits")
 collapse = importlib.import_module("11_collapse_peaks")
 from pack_arrow import pack_root
+from drop_mnova_sentinels import drop_sentinels
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -421,6 +422,7 @@ def main():
               f"{time.time()-t0:.0f}s", flush=True)
     summary["fp_types"] = fp_types
 
+    summary["mnova_sentinels_dropped"] = drop_sentinels(out)   # F/P atoms Mnova lists as -100000
     collapse.collapse_dataset(out)      # stage 11 (dataset only; journal untouched)
     pack_root(str(out), force=True)     # stage 13
     shutil.rmtree(work)
