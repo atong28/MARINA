@@ -112,6 +112,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             ("/api/smiles-search", "smiles", smiles_limit),
             ("/api/custom-smiles-card", "smiles", smiles_limit),
             ("/api/fingerprints/", "smiles", smiles_limit),
+            ("/api/refine/", "smiles", smiles_limit),
         ]
         self._window = _FixedWindow()
 

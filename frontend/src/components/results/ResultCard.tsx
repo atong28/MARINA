@@ -1,6 +1,5 @@
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback } from 'react'
 import { ResultCard as ResultCardType } from '../../services/api'
-import CompoundDetail from './CompoundDetail'
 import { useAppStore } from '../../store/store'
 import MoleculeViewer from './MoleculeViewer'
 import './ResultCard.css'
@@ -42,11 +41,10 @@ interface ResultCardProps {
   onRemove?: () => void
   /** Reference fingerprint for this session; enables the expanded view. */
   predFp?: number[] | null
-  modelId?: string
 }
 
 function ResultCard({
-  result, position, isCustom = false, onRemove, predFp, modelId,
+  result, position, isCustom = false, onRemove, predFp,
 }: ResultCardProps) {
   const { database_links } = result
   const highlightEnabled = useAppStore((s) => s.highlightEnabled)
@@ -54,11 +52,13 @@ function ResultCard({
   const cosine = result.cosine_similarity ?? result.similarity
   const tanimoto = result.tanimoto_similarity
 
-  const [expanded, setExpanded] = useState(false)
+  const openDetail = useAppStore((s) => s.openDetail)
 
   const canExplain = Boolean(predFp && predFp.length > 0)
-  const open = useCallback(() => setExpanded(true), [])
-  const close = useCallback(() => setExpanded(false), [])
+  const open = useCallback(
+    () => openDetail({ card: result, label: isCustom ? 'Custom' : `#${position}`, isCustom }),
+    [openDetail, result, isCustom, position],
+  )
 
   const layers = pickDepiction(result, highlightEnabled)
 
@@ -129,17 +129,6 @@ function ResultCard({
         </button>
       ) : (
         <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles} />
-      )}
-
-      {expanded && canExplain && (
-        <CompoundDetail
-          result={result}
-          position={position}
-          isCustom={isCustom}
-          predFp={predFp as number[]}
-          modelId={modelId}
-          onClose={close}
-        />
       )}
 
       <div className="result-card__footer">

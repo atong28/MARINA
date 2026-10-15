@@ -3,7 +3,7 @@ Pydantic request and response models for all API endpoints.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import (
@@ -291,3 +291,85 @@ class CustomSmilesCardRequest(_SmilesInput):
 
 class CustomSmilesCardResponse(BaseModel):
     result: ResultCard
+
+
+# ── Fragment deletion / hold-fixed retrieval (hybrid compounds) ──────────────
+
+class RefineOperation(_SmilesInput):
+    """A region of one retrieved compound to delete from, or hold fixed in, the query."""
+    smiles: str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
+                              description="The compound the region was selected on")
+    atoms:  List[int] = Field(..., min_length=1, max_length=MAX_HEAVY_ATOMS,
+                              description="Selected atom indices, in the depiction's atom order")
+    mode:   Literal["delete", "hold"]
+
+
+class RefineRequest(BaseModel):
+    pred_fp:    List[float] = Field(..., min_length=1, max_length=MAX_FP_LENGTH,
+                                    description="Fingerprint from /predict or /smiles-search")
+    operations: List[RefineOperation] = Field(..., min_length=1, max_length=20)
+    metric:     Literal["cosine", "containment"] = "cosine"
+    k:          int = Field(DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
+    model_id:   Optional[str] = Field(None, max_length=MAX_MODEL_ID_LENGTH)
+
+
+class UnexplainedBit(BaseModel):
+    """A confident bit of the edited query: something the rest of the structure must still explain."""
+    index:            int
+    fragment_smiles:  str
+    multiplicity:     int   = Field(..., description="The fragment is still expected at least this many times")
+    raw_confidence:   float = Field(..., ge=0.0, le=1.0)
+    confidence:       float = Field(..., ge=0.0, le=1.0)
+
+
+class RefineOperationSummary(BaseModel):
+    mode:                 str
+    selection_smiles:     str = Field(..., description="The selected atoms as a SMILES fragment")
+    removed_occurrences:  int = Field(..., description="Fragment occurrences the selection accounts for")
+
+
+class RefineResponse(BaseModel):
+    results:           List[ResultCard]
+    unexplained:       List[UnexplainedBit]
+    operations:        List[RefineOperationSummary]
+    confident_before:  int = Field(..., description="Bits at p ≥ 0.5 in the original query")
+    confident_after:   int = Field(..., description="Bits at p ≥ 0.5 after the edit")
+    calibrated:        bool
+    metric:            str
+    model_id:          Optional[str] = None
+
+
+class SharedCoreRequest(BaseModel):
+    smiles:   List[str] = Field(..., min_length=2, max_length=MAX_TOP_K,
+                                description="Retrieved compounds to find a shared core in, best first")
+    target:   str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
+                                description="Compound to map each core onto")
+
+    @field_validator("smiles")
+    @classmethod
+    def _each_smiles(cls, v: List[str]) -> List[str]:
+        for s in v:
+            if len(s) > MAX_SMILES_LENGTH:
+                raise ValueError(f"SMILES longer than {MAX_SMILES_LENGTH} characters")
+            check_heavy_atoms(s)
+        return v
+
+    @field_validator("target")
+    @classmethod
+    def _target_size(cls, v: str) -> str:
+        return check_heavy_atoms(v)
+
+
+class SharedCore(BaseModel):
+    coverage:            float = Field(..., description="Share of the compounds required to contain it")
+    smarts:              str
+    num_atoms:           int
+    molecules_with_core: int
+    partial:             bool = Field(..., description="Search hit its time limit; the core may not be the largest")
+    atoms:               Optional[List[int]] = Field(
+        None, description="Where the core sits on the target, or null if the target lacks it")
+
+
+class SharedCoreResponse(BaseModel):
+    molecules: int
+    cores:     List[SharedCore]

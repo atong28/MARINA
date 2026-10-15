@@ -184,3 +184,31 @@ def test_model_id_is_length_capped_and_not_echoed(client):
     r = client.post("/api/smiles-search", json={"smiles": "CCO", "model_id": "x" * 65})
     assert r.status_code == 422
     assert "x" * 65 not in r.text
+
+
+# ── /api/refine ───────────────────────────────────────────────────────────────
+
+def test_refine_needs_an_operation(client):
+    r = client.post("/api/refine/search", json={"pred_fp": [0.1] * 8, "operations": []})
+    assert r.status_code == 422
+
+
+def test_refine_rejects_unknown_mode(client):
+    r = client.post("/api/refine/search", json={
+        "pred_fp": [0.1] * 8,
+        "operations": [{"smiles": "CCO", "atoms": [0], "mode": "erase"}],
+    })
+    assert r.status_code == 422
+
+
+def test_refine_rejects_unknown_metric(client):
+    r = client.post("/api/refine/search", json={
+        "pred_fp": [0.1] * 8, "metric": "dice",
+        "operations": [{"smiles": "CCO", "atoms": [0], "mode": "delete"}],
+    })
+    assert r.status_code == 422
+
+
+def test_shared_core_needs_two_compounds(client):
+    r = client.post("/api/refine/shared-core", json={"smiles": ["CCO"], "target": "CCO"})
+    assert r.status_code == 422

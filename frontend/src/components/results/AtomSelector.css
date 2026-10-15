@@ -1,0 +1,20 @@
+.atom-selector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  /* The page must not scroll or zoom while a lasso is being drawn on touch screens. */
+  touch-action: none;
+}
+
+.atom-selector__region {
+  fill: #2563eb;
+  stroke: #2563eb;
+  opacity: 0.28;
+}
+
+.atom-selector__lasso {
+  fill: rgba(37, 99, 235, 0.08);
+  stroke: #2563eb;
+}

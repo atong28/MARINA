@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BitExplanation, DepictionGeometry, ResultCard as ResultCardType } from '../../services/api'
 import { useAppStore } from '../../store/store'
+import AtomSelector from './AtomSelector'
 import BitPanel from './BitPanel'
 import FragmentOverlay from './FragmentOverlay'
 import MoleculeViewer from './MoleculeViewer'
+import RefinePanel from './RefinePanel'
 import { pickDepiction } from './ResultCard'
 import './CompoundDetail.css'
 
@@ -22,22 +24,41 @@ const TANIMOTO_HINT =
   'probabilities rather than 0/1 bits, so this is not the usual binary Tanimoto ' +
   'coefficient and is not comparable to one.'
 
+type Tab = 'bits' | 'refine'
+
 interface CompoundDetailProps {
   result: ResultCardType
-  position: number
+  /** Header label, e.g. "#3" or "R2 · #1". */
+  label: string
   isCustom?: boolean
+  /** What the card's score means when it is not the plain query cosine. */
+  scoreLabel?: string
+  /** Open on the Refine tab with this refined search shown. */
+  focusRunId?: string
   predFp: number[]
   modelId?: string
   onClose: () => void
 }
 
 function CompoundDetail({
-  result, position, isCustom = false, predFp, modelId, onClose,
+  result, label, isCustom = false, scoreLabel, focusRunId, predFp, modelId, onClose,
 }: CompoundDetailProps) {
   const [selected, setSelected] = useState<BitExplanation | null>(null)
   const [geometry, setGeometry] = useState<DepictionGeometry | null>(null)
+  const [tab, setTab] = useState<Tab>(focusRunId ? 'refine' : 'bits')
+  const [region, setRegion] = useState<Set<number>>(() => new Set())
   const closeRef = useRef<HTMLButtonElement>(null)
   const highlightEnabled = useAppStore((s) => s.highlightEnabled)
+
+  // One dialog serves every compound (a refined-search result opens in place),
+  // so per-compound state resets when the compound changes.
+  const compoundKey = `${result.index}|${result.smiles}`
+  useEffect(() => {
+    setSelected(null)
+    setGeometry(null)
+    setRegion(new Set())
+    setTab(focusRunId ? 'refine' : 'bits')
+  }, [compoundKey, focusRunId])
 
   const { database_links } = result
   const cosine = result.cosine_similarity ?? result.similarity
@@ -99,7 +120,7 @@ function CompoundDetail({
       >
         <header className="compound-detail__header">
           <div className="compound-detail__title-block">
-            <span className="compound-detail__rank">{isCustom ? 'Custom' : `#${position}`}</span>
+            <span className="compound-detail__rank">{label}</span>
             <h2 className="compound-detail__name">{result.name || result.smiles}</h2>
           </div>
           <button
@@ -117,13 +138,20 @@ function CompoundDetail({
           <div className="compound-detail__left">
             <div className="compound-detail__figure">
               <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles}>
-                {geometry && occurrences.length > 0 && (
+                {tab === 'bits' && geometry && occurrences.length > 0 && (
                   <FragmentOverlay geometry={geometry} occurrences={occurrences} />
+                )}
+                {tab === 'refine' && geometry && (
+                  <AtomSelector geometry={geometry} selected={region} onChange={setRegion} />
                 )}
               </MoleculeViewer>
             </div>
 
-            {selected ? (
+            {tab === 'refine' ? (
+              <div className="compound-detail__caption compound-detail__caption--muted">
+                Click atoms or drag a lasso to select a region; Alt-drag removes.
+              </div>
+            ) : selected ? (
               <div className="compound-detail__caption">
                 Showing <code>{selected.fragment_smiles || `${selected.atom_symbol} atom`}</code>
                 {' '}(bit #{selected.index}) — {occurrences.length} occurrence
@@ -140,7 +168,7 @@ function CompoundDetail({
             )}
 
             <dl className="compound-detail__facts">
-              <div><dt title={COSINE_HINT}>Cosine</dt><dd>{cosine.toFixed(3)}</dd></div>
+              <div><dt title={COSINE_HINT}>{scoreLabel ?? 'Cosine'}</dt><dd>{cosine.toFixed(3)}</dd></div>
               {typeof tanimoto === 'number' && (
                 <div><dt title={TANIMOTO_HINT}>Tanimoto</dt><dd>{tanimoto.toFixed(3)}</dd></div>
               )}
@@ -195,15 +223,48 @@ function CompoundDetail({
           </div>
 
           <div className="compound-detail__right">
-            <h3 className="compound-detail__section-title">Substructures</h3>
-            <BitPanel
-              smiles={result.smiles}
-              predFp={predFp}
-              modelId={modelId}
-              onSelect={setSelected}
-              onGeometry={setGeometry}
-              selectedIndex={selected?.index ?? null}
-            />
+            <div className="compound-detail__tabs" role="tablist">
+              <button
+                type="button" role="tab" aria-selected={tab === 'bits'}
+                className={`compound-detail__tab${tab === 'bits' ? ' is-active' : ''}`}
+                onClick={() => setTab('bits')}
+              >
+                Substructures
+              </button>
+              <button
+                type="button" role="tab" aria-selected={tab === 'refine'}
+                className={`compound-detail__tab${tab === 'refine' ? ' is-active' : ''}`}
+                onClick={() => setTab('refine')}
+                title="Delete or hold fixed a region of this compound and search again (hybrid compounds)"
+              >
+                Delete / hold region
+              </button>
+            </div>
+            {/* Kept mounted on the other tab: it loads the depiction geometry both tabs draw on. */}
+            <div className="compound-detail__tabpanel" hidden={tab !== 'bits'}>
+              <BitPanel
+                smiles={result.smiles}
+                predFp={predFp}
+                modelId={modelId}
+                onSelect={setSelected}
+                onGeometry={setGeometry}
+                selectedIndex={selected?.index ?? null}
+              />
+            </div>
+            {tab === 'refine' && (
+              <div className="compound-detail__tabpanel compound-detail__tabpanel--scroll">
+                <RefinePanel
+                  card={result}
+                  label={label}
+                  predFp={predFp}
+                  modelId={modelId}
+                  selection={region}
+                  onSelection={setRegion}
+                  geometryReady={Boolean(geometry)}
+                  focusRunId={focusRunId}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

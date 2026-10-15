@@ -1,5 +1,7 @@
 import { ResultCard as ResultCardType } from '../../services/api'
-import type { CustomResult } from '../../store/store'
+import { useAppStore, type CustomResult } from '../../store/store'
+import WorkspacePanel from '../workspace/WorkspacePanel'
+import CompoundDetail from './CompoundDetail'
 import ResultCard from './ResultCard'
 import './ResultsGrid.css'
 
@@ -17,6 +19,9 @@ interface ResultsGridProps {
 function ResultsGrid({
   results, customResults = [], onRemoveCustom, predFp, modelId, resultSource,
 }: ResultsGridProps) {
+  const detail = useAppStore((s) => s.detail)
+  const closeDetail = useAppStore((s) => s.closeDetail)
+
   if (results.length === 0 && customResults.length === 0) return null
 
   return (
@@ -35,7 +40,6 @@ function ResultsGrid({
                 isCustom
                 onRemove={onRemoveCustom ? () => onRemoveCustom(entry.id) : undefined}
                 predFp={predFp}
-                modelId={modelId}
               />
             ))}
           </div>
@@ -61,12 +65,28 @@ function ResultsGrid({
                 result={result}
                 position={i + 1}
                 predFp={predFp}
-                modelId={modelId}
               />
             ))}
           </div>
         </section>
       )}
+
+      {/* One expanded view for the page: result cards, refined-search results and
+          workspace entries all open here. */}
+      {detail && predFp && predFp.length > 0 && (
+        <CompoundDetail
+          result={detail.card}
+          label={detail.label}
+          isCustom={detail.isCustom}
+          scoreLabel={detail.scoreLabel}
+          focusRunId={detail.runId}
+          predFp={predFp}
+          modelId={modelId}
+          onClose={closeDetail}
+        />
+      )}
+
+      {predFp && predFp.length > 0 && <WorkspacePanel />}
     </div>
   )
 }

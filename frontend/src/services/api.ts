@@ -237,6 +237,77 @@ export interface BitExplainResponse {
   total_available: number
 }
 
+// ── Fragment deletion / hold-fixed retrieval (hybrid compounds) ─────────────
+
+/** `delete`: subtract the region from the query. `hold`: subtract it from query and candidates alike. */
+export type RefineMode = 'delete' | 'hold'
+/** `cosine`: whole-molecule similarity. `containment`: contains the remainder, extra parts not penalised. */
+export type RefineMetric = 'cosine' | 'containment'
+
+export interface RefineOperation {
+  /** The compound the region was selected on. */
+  smiles: string
+  /** Atom indices in the depiction's atom order. */
+  atoms: number[]
+  mode: RefineMode
+}
+
+export interface RefineRequest {
+  pred_fp: number[]
+  operations: RefineOperation[]
+  metric?: RefineMetric
+  k?: number
+  model_id?: string
+}
+
+export interface UnexplainedBit {
+  index: number
+  fragment_smiles: string
+  /** Still expected at least this many times. */
+  multiplicity: number
+  raw_confidence: number
+  confidence: number
+}
+
+export interface RefineOperationSummary {
+  mode: RefineMode
+  selection_smiles: string
+  removed_occurrences: number
+}
+
+export interface RefineResponse {
+  results: ResultCard[]
+  unexplained: UnexplainedBit[]
+  operations: RefineOperationSummary[]
+  confident_before: number
+  confident_after: number
+  calibrated: boolean
+  metric: RefineMetric
+  model_id?: string
+}
+
+export interface SharedCoreRequest {
+  smiles: string[]
+  target: string
+}
+
+export interface SharedCore {
+  /** Share of the compounds required to contain the core (1, 0.8, 0.6 or 0.5). */
+  coverage: number
+  smarts: string
+  num_atoms: number
+  molecules_with_core: number
+  /** The search hit its time limit, so a larger core may exist. */
+  partial: boolean
+  /** Where the core sits on the target, or null when the target lacks it. */
+  atoms: number[] | null
+}
+
+export interface SharedCoreResponse {
+  molecules: number
+  cores: SharedCore[]
+}
+
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
 /**
@@ -309,6 +380,12 @@ export const api = {
 
   explainBits: (data: BitExplainRequest): Promise<BitExplainResponse> =>
     fetchJson('/fingerprints/explain', { method: 'POST', body: JSON.stringify(data) }),
+
+  refineSearch: (data: RefineRequest): Promise<RefineResponse> =>
+    fetchJson('/refine/search', { method: 'POST', body: JSON.stringify(data) }),
+
+  sharedCore: (data: SharedCoreRequest): Promise<SharedCoreResponse> =>
+    fetchJson('/refine/shared-core', { method: 'POST', body: JSON.stringify(data) }),
 
   queue: () => fetchJson<QueueSnapshot>('/queue'),
 
