@@ -1,22 +1,21 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import {
-  api, RefineMetric, RefineMode, RefineOperation, RefineResponse, ResultCard,
-} from '../../services/api'
-import { cardKey, RefineRun, useAppStore } from '../../store/store'
-import FragmentThumb from './FragmentThumb'
-import MoleculeViewer from './MoleculeViewer'
+import { useQuery } from '@tanstack/react-query'
+import { api, DepictionGeometry, RefineMetric, RefineMode, ResultCard } from '../../services/api'
+import { hasOperation, saveSearch, type RefineOpSpec } from '../../services/refineHandoff'
+import { useAppStore } from '../../store/store'
 import './RefinePanel.css'
 
 /**
  * Hybrid compounds: delete a region of this candidate from the query, or hold it
- * fixed, and retrieve again. A hybrid A+B's retrievals are often all A-like, so B
- * never shows; taking A out of the query lets the rest of the prediction speak.
- * The arithmetic is server-side (backend/app/refine.py).
+ * fixed, and retrieve again in a new browser tab. A hybrid A+B's retrievals are
+ * often all A-like, so B never shows; taking A out of the query lets the rest of
+ * the prediction speak. Inside a search tab, a further edit builds on that tab's
+ * edits. The arithmetic is server-side (backend/app/refine.py); the tab is
+ * pages/RefinePage.tsx.
  */
 
 const MAX_CORE_POOL = 50
-const REFINE_K = 10
+const MIN_K = 10
 
 const METRIC_HINT: Record<RefineMetric, string> = {
   cosine: 'Cosine: compounds that look like what is left. Best when the missing part exists as a compound of its own.',
@@ -25,8 +24,6 @@ const METRIC_HINT: Record<RefineMetric, string> = {
     'Use when the missing part only occurs inside larger molecules.',
 }
 
-const MODE_LABEL: Record<RefineMode, string> = { delete: 'Deleted', hold: 'Held fixed' }
-
 function coverageLabel(coverage: number, found: number, total: number): string {
   return coverage >= 1 ? `All ${total}` : `${found} of ${total}`
 }
@@ -34,26 +31,20 @@ function coverageLabel(coverage: number, found: number, total: number): string {
 interface RefinePanelProps {
   card: ResultCard
   label: string
+  /** The fingerprint this page's results were ranked against (the original prediction on the main page). */
   predFp: number[]
   modelId?: string
   selection: Set<number>
   onSelection: (next: Set<number>) => void
-  /** False until the depiction geometry has loaded; atoms cannot be picked before. */
-  geometryReady: boolean
-  /** Run to show expanded (opened from the workspace). */
-  focusRunId?: string
+  /** Null until the depiction geometry has loaded; atoms cannot be picked before. */
+  geometry: DepictionGeometry | null
 }
 
-function RefinePanel({
-  card, label, predFp, modelId, selection, onSelection, geometryReady, focusRunId,
-}: RefinePanelProps) {
+function RefinePanel({ card, label, predFp, modelId, selection, onSelection, geometry }: RefinePanelProps) {
   const results = useAppStore((s) => s.results)
-  const heldFragments = useAppStore((s) => s.heldFragments)
-  const refineRuns = useAppStore((s) => s.refineRuns)
-  const addHeldFragment = useAppStore((s) => s.addHeldFragment)
-  const addRefineRun = useAppStore((s) => s.addRefineRun)
-  const openDetail = useAppStore((s) => s.openDetail)
-  const [metric, setMetric] = useState<RefineMetric>('cosine')
+  const context = useAppStore((s) => s.refineContext)
+  const [metric, setMetric] = useState<RefineMetric>(context?.metric ?? 'cosine')
+  const [blockedHref, setBlockedHref] = useState<string | null>(null)
 
   const pool = useMemo(() => results.slice(0, MAX_CORE_POOL).map((r) => r.smiles), [results])
   const cores = useQuery({
@@ -64,75 +55,52 @@ function RefinePanel({
     retry: false,
   })
 
-  const activeHolds = heldFragments.filter((h) => h.enabled)
-  const myRuns = useMemo(
-    () => refineRuns.filter((r) => cardKey(r.source) === cardKey(card)).slice().reverse(),
-    [refineRuns, card],
-  )
+  const chain = context?.operations ?? []
+  const atoms = [...selection].sort((a, b) => a - b)
+  const duplicate = atoms.length > 0 && hasOperation(chain, card.smiles, atoms)
 
-  // A held region that is also the region being searched is applied once, not twice.
-  const isSameRegion = (h: { source: ResultCard; atoms: number[] }, atoms: number[]) =>
-    cardKey(h.source) === cardKey(card) && h.atoms.length === atoms.length && h.atoms.every((a, i) => a === atoms[i])
-
-  const search = useMutation<RefineResponse, Error, { mode: RefineMode; atoms: number[] }>({
-    mutationFn: ({ mode, atoms }) => {
-      const operations: RefineOperation[] = [
-        ...activeHolds
-          .filter((h) => !isSameRegion(h, atoms))
-          .map((h) => ({ smiles: h.source.smiles, atoms: h.atoms, mode: 'hold' as const })),
-        { smiles: card.smiles, atoms, mode },
-      ]
-      return api.refineSearch({ pred_fp: predFp, operations, metric, k: REFINE_K, model_id: modelId })
-    },
-    onSuccess: (res, { mode, atoms }) => {
-      const own = res.operations[res.operations.length - 1]
-      if (mode === 'hold') {
-        if (!heldFragments.some((h) => isSameRegion(h, atoms))) {
-          addHeldFragment({ source: card, sourceLabel: label, atoms, fragmentSmiles: own?.selection_smiles ?? '' })
-        }
-        onSelection(new Set())
-      }
-      addRefineRun({
-        seq: refineRuns.reduce((m, r) => Math.max(m, r.seq), 0) + 1,
-        source: card,
-        sourceLabel: label,
-        mode,
-        metric: res.metric,
-        atoms,
-        operations: res.operations,
-        heldApplied: activeHolds.filter((h) => !isSameRegion(h, atoms)).map((h) => h.fragmentSmiles),
-        results: res.results,
-        unexplained: res.unexplained,
-        confidentBefore: res.confident_before,
-        confidentAfter: res.confident_after,
-      })
-    },
-  })
-
-  const run = (mode: RefineMode) => {
-    const atoms = [...selection].sort((a, b) => a - b)
-    if (atoms.length) search.mutate({ mode, atoms })
-  }
-
-  const openResult = (r: RefineRun, result: ResultCard, i: number) =>
-    openDetail({
-      card: result,
-      label: `R${r.seq} · #${i + 1}`,
-      scoreLabel: r.metric === 'containment' ? 'Containment' : 'Cosine (refined)',
+  const open = (mode: RefineMode) => {
+    if (!atoms.length || duplicate) return
+    const op: RefineOpSpec = {
+      smiles: card.smiles, atoms, mode,
+      sourceLabel: context ? `step ${chain.length} · ${label}` : `original · ${label}`,
+      sourceName: card.name ?? '',
+      plainSvg: card.plain_svg,
+      geometry,
+    }
+    const id = saveSearch({
+      // Edits always apply to the original prediction; a search tab passes its own on.
+      predFp: context?.basePredFp ?? predFp,
+      operations: [...chain, op],
+      metric,
+      k: context?.k ?? Math.max(MIN_K, results.length),
+      modelId: context?.modelId ?? modelId,
+      parentId: context?.searchId,
     })
+    const href = `/refine/${id}`
+    const win = window.open(href, '_blank')
+    setBlockedHref(win ? null : href)
+  }
 
   return (
     <div className="refine">
       <p className="refine__intro">
         Select a region of this compound — for example the part every retrieval agrees on — then delete it to
-        search for what the rest of the prediction describes, or hold it fixed to compare compounds only on
-        what lies beyond it.
+        search for what the rest of the prediction describes, or hold it fixed to compare compounds only on what
+        lies beyond it. The search opens in a new tab.
       </p>
+
+      {context && (
+        <p className="refine__context">
+          Builds on this tab’s {chain.length} edit{chain.length === 1 ? '' : 's'}: the new tab applies them
+          and this one.
+        </p>
+      )}
 
       <section className="refine__section">
         <h4 className="refine__heading">1. Select a region</h4>
         <p className="refine__hint">
-          {geometryReady
+          {geometry
             ? 'Click atoms on the structure to toggle them; drag a lasso to add atoms, Alt-drag to remove.'
             : 'Loading the structure…'}
         </p>
@@ -154,7 +122,7 @@ function RefinePanel({
                 key={c.smarts}
                 type="button"
                 className="refine__chip"
-                disabled={!c.atoms || !geometryReady}
+                disabled={!c.atoms || !geometry}
                 onClick={() => c.atoms && onSelection(new Set(c.atoms))}
                 title={c.atoms
                   ? `Select this core (${c.num_atoms} atoms) on this compound${c.partial ? ' — search hit its time limit, a larger core may exist' : ''}`
@@ -169,7 +137,7 @@ function RefinePanel({
       </section>
 
       <section className="refine__section">
-        <h4 className="refine__heading">2. Search</h4>
+        <h4 className="refine__heading">2. Search in a new tab</h4>
         <div className="refine__metric" role="radiogroup" aria-label="Scoring">
           {(['cosine', 'containment'] as RefineMetric[]).map((m) => (
             <label key={m} title={METRIC_HINT[m]} className={metric === m ? 'is-active' : ''}>
@@ -182,109 +150,30 @@ function RefinePanel({
           <button
             type="button"
             className="refine__btn refine__btn--delete"
-            disabled={!selection.size || search.isPending}
-            onClick={() => run('delete')}
-            title="Remove the selected region from the query and retrieve again"
+            disabled={!atoms.length || duplicate}
+            onClick={() => open('delete')}
+            title="Remove the selected region from the query and retrieve again in a new tab"
           >
-            Delete selection &amp; search
+            Delete selection &amp; search ↗
           </button>
           <button
             type="button"
             className="refine__btn"
-            disabled={!selection.size || search.isPending}
-            onClick={() => run('hold')}
-            title="Accept the region as present: keep it in the workspace and compare compounds on what lies beyond it"
+            disabled={!atoms.length || duplicate}
+            onClick={() => open('hold')}
+            title="Accept the region as present and compare compounds on what lies beyond it, in a new tab"
           >
-            Hold fixed &amp; search
+            Hold fixed &amp; search ↗
           </button>
         </div>
-        {activeHolds.length > 0 && (
-          <p className="refine__hint">
-            {activeHolds.length} held fragment{activeHolds.length === 1 ? '' : 's'} from the workspace
-            {' '}apply to every search.
+        {duplicate && <p className="refine__hint">This region is already one of this tab’s edits.</p>}
+        {blockedHref && (
+          <p className="refine__error">
+            The browser blocked the new tab. <a href={blockedHref} target="_blank" rel="noopener">Open the search</a>.
           </p>
         )}
-        {search.isPending && <p className="refine__muted">Searching…</p>}
-        {search.isError && <p className="refine__error">{search.error.message}</p>}
       </section>
-
-      {myRuns.length > 0 && (
-        <section className="refine__section">
-          <h4 className="refine__heading">Searches from this compound</h4>
-          {myRuns.map((r, i) => (
-            <RunView
-              key={r.id}
-              run={r}
-              defaultOpen={focusRunId ? r.id === focusRunId : i === 0}
-              onOpen={(res, k) => openResult(r, res, k)}
-            />
-          ))}
-        </section>
-      )}
     </div>
-  )
-}
-
-interface RunViewProps {
-  run: RefineRun
-  defaultOpen: boolean
-  onOpen: (card: ResultCard, i: number) => void
-}
-
-export function RunView({ run, defaultOpen, onOpen }: RunViewProps) {
-  const own = run.operations[run.operations.length - 1]
-  return (
-    <details className="refine-run" open={defaultOpen}>
-      <summary className="refine-run__summary">
-        <span className="refine-run__seq">R{run.seq}</span>
-        <span className={`refine-run__mode refine-run__mode--${run.mode}`}>{MODE_LABEL[run.mode]}</span>
-        {own?.selection_smiles && (
-          <span className="refine-run__frag">
-            <FragmentThumb fragmentSmiles={own.selection_smiles} atomSymbol="" alt={own.selection_smiles} />
-          </span>
-        )}
-        <span className="refine-run__meta">
-          {run.metric === 'containment' ? 'containment' : 'cosine'}
-          {run.heldApplied.length > 0 && ` · +${run.heldApplied.length} held`}
-          {' · '}confident bits {run.confidentBefore} → {run.confidentAfter}
-        </span>
-      </summary>
-
-      <ol className="refine-run__results">
-        {run.results.map((res, i) => (
-          <li key={cardKey(res)}>
-            <button type="button" className="refine-run__result" onClick={() => onOpen(res, i)}>
-              <span className="refine-run__rank">#{i + 1}</span>
-              <span className="refine-run__thumb">
-                <MoleculeViewer plainSvg={res.plain_svg} smiles={res.smiles} />
-              </span>
-              <span className="refine-run__name" title={res.name || res.smiles}>{res.name || res.smiles}</span>
-              <span className="refine-run__score">{res.similarity.toFixed(3)}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      {run.unexplained.length > 0 && (
-        <details className="refine-run__unexplained">
-          <summary>Left unexplained ({run.unexplained.length} confident fragments)</summary>
-          <p className="refine__hint">
-            Substructures the prediction still expects after the edit — what the rest of the true structure
-            should contain.
-          </p>
-          <div className="refine-run__frags">
-            {run.unexplained.map((u) => (
-              <figure key={u.index} className="refine-run__fragcell" title={u.fragment_smiles}>
-                <FragmentThumb fragmentSmiles={u.fragment_smiles} atomSymbol="" alt={u.fragment_smiles} />
-                <figcaption>
-                  {u.multiplicity > 1 ? `≥${u.multiplicity}× · ` : ''}{Math.round(u.confidence * 100)}%
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </details>
-      )}
-    </details>
   )
 }
 

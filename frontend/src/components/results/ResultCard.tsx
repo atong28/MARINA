@@ -6,6 +6,9 @@ import './ResultCard.css'
 
 const COSINE_HINT =
   'Cosine similarity between the query fingerprint and this compound’s fingerprint.'
+const CONTAINMENT_HINT =
+  'Containment of the edited query in this compound (Tversky index): how much of what is left of the ' +
+  'prediction this compound contains, without penalising its other parts.'
 const TANIMOTO_HINT =
   'Generalised Tanimoto similarity. The query fingerprint holds predicted ' +
   'probabilities rather than 0/1 bits, so this is not the usual binary Tanimoto ' +
@@ -53,6 +56,8 @@ function ResultCard({
   const tanimoto = result.tanimoto_similarity
 
   const openDetail = useAppStore((s) => s.openDetail)
+  // In a secondary-search tab scored by containment, the first badge is that score.
+  const containment = useAppStore((s) => s.refineContext?.metric === 'containment')
 
   const canExplain = Boolean(predFp && predFp.length > 0)
   const open = useCallback(
@@ -86,8 +91,8 @@ function ResultCard({
       <div className="result-card__header">
         <span className="result-card__rank">{isCustom ? 'Custom' : `#${position}`}</span>
         <div className="result-card__badges">
-          <span className="result-card__badge result-card__badge--cosine" title={COSINE_HINT}>
-            C: {cosine.toFixed(3)}
+          <span className="result-card__badge result-card__badge--cosine" title={containment ? CONTAINMENT_HINT : COSINE_HINT}>
+            {containment ? 'Ct' : 'C'}: {cosine.toFixed(3)}
           </span>
           {typeof tanimoto === 'number' && (
             <span className="result-card__badge result-card__badge--tanimoto" title={TANIMOTO_HINT}>

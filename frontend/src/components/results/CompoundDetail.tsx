@@ -31,24 +31,24 @@ interface CompoundDetailProps {
   /** Header label, e.g. "#3" or "R2 · #1". */
   label: string
   isCustom?: boolean
-  /** What the card's score means when it is not the plain query cosine. */
-  scoreLabel?: string
-  /** Open on the Refine tab with this refined search shown. */
-  focusRunId?: string
   predFp: number[]
   modelId?: string
   onClose: () => void
 }
 
 function CompoundDetail({
-  result, label, isCustom = false, scoreLabel, focusRunId, predFp, modelId, onClose,
+  result, label, isCustom = false, predFp, modelId, onClose,
 }: CompoundDetailProps) {
   const [selected, setSelected] = useState<BitExplanation | null>(null)
   const [geometry, setGeometry] = useState<DepictionGeometry | null>(null)
-  const [tab, setTab] = useState<Tab>(focusRunId ? 'refine' : 'bits')
+  const [tab, setTab] = useState<Tab>('bits')
   const [region, setRegion] = useState<Set<number>>(() => new Set())
   const closeRef = useRef<HTMLButtonElement>(null)
   const highlightEnabled = useAppStore((s) => s.highlightEnabled)
+  // In a secondary-search tab the score is against the edited query, and may be containment.
+  const refineMetric = useAppStore((s) => s.refineContext?.metric)
+  const scoreLabel = refineMetric === 'containment' ? 'Containment'
+    : refineMetric ? 'Cosine (edited query)' : 'Cosine'
 
   // One dialog serves every compound (a refined-search result opens in place),
   // so per-compound state resets when the compound changes.
@@ -57,8 +57,8 @@ function CompoundDetail({
     setSelected(null)
     setGeometry(null)
     setRegion(new Set())
-    setTab(focusRunId ? 'refine' : 'bits')
-  }, [compoundKey, focusRunId])
+    setTab('bits')
+  }, [compoundKey])
 
   const { database_links } = result
   const cosine = result.cosine_similarity ?? result.similarity
@@ -168,7 +168,7 @@ function CompoundDetail({
             )}
 
             <dl className="compound-detail__facts">
-              <div><dt title={COSINE_HINT}>{scoreLabel ?? 'Cosine'}</dt><dd>{cosine.toFixed(3)}</dd></div>
+              <div><dt title={COSINE_HINT}>{scoreLabel}</dt><dd>{cosine.toFixed(3)}</dd></div>
               {typeof tanimoto === 'number' && (
                 <div><dt title={TANIMOTO_HINT}>Tanimoto</dt><dd>{tanimoto.toFixed(3)}</dd></div>
               )}
@@ -260,8 +260,7 @@ function CompoundDetail({
                   modelId={modelId}
                   selection={region}
                   onSelection={setRegion}
-                  geometryReady={Boolean(geometry)}
-                  focusRunId={focusRunId}
+                  geometry={geometry}
                 />
               </div>
             )}

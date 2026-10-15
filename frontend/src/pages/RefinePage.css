@@ -1,0 +1,251 @@
+.refine-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+  color: #374151;
+}
+
+.refine-page--missing {
+  max-width: 640px;
+}
+
+.refine-page__header {
+  margin-bottom: 18px;
+}
+
+.refine-page__brand {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.refine-page__title {
+  margin: 2px 0 4px;
+  font-size: 22px;
+  color: #111827;
+}
+
+.refine-page__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.refine-page__layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* The edits stay in view while the cards scroll. */
+.refine-page__side {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.refine-page__side > * {
+  /* The column scrolls; its items must keep their size rather than squeeze to fit. */
+  flex-shrink: 0;
+}
+
+.refine-page__heading {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.refine-page__note {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.refine-page__status {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.refine-page__error {
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.refine-page__metric {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.refine-page__metric label {
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.refine-page__metric label + label {
+  border-left: 1px solid #d1d5db;
+}
+
+.refine-page__metric label.is-active {
+  background: #1f2937;
+  color: #fff;
+}
+
+.refine-page__metric input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── One edit ─────────────────────────────────────────────────────────────── */
+
+.refine-op {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.refine-op--delete {
+  border-color: #fecaca;
+}
+
+.refine-op--hold {
+  border-color: #bbf7d0;
+}
+
+.refine-op__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.refine-op__step {
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.refine-op__mode {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.refine-op__mode--delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.refine-op__mode--hold {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.refine-op__source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #111827;
+}
+
+.refine-op__figure {
+  border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* A held region is drawn green; a deleted one keeps the overlay's red. */
+.refine-op--hold .fragment-overlay__fill,
+.refine-op--hold .fragment-overlay__outline {
+  fill: #16a34a;
+  stroke: #16a34a;
+}
+
+.refine-op__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.refine-op__frag .bit-panel__thumb {
+  width: 96px;
+  height: 56px;
+}
+
+.refine-op__meta {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Left unexplained ─────────────────────────────────────────────────────── */
+
+.refine-page__unexplained > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.refine-page__frags {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.refine-page__fragcell {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #f3f4f6;
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+}
+
+.refine-page__fragcell .bit-panel__thumb {
+  width: 64px;
+  height: 48px;
+}
+
+.refine-page__fragcell figcaption {
+  font-size: 10px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .refine-page__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .refine-page__side {
+    position: static;
+    max-height: none;
+  }
+}

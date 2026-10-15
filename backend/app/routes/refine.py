@@ -75,6 +75,7 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
         conf = (lambda v: calibrator(float(v))) if calibrator else float
         return {
             "results": cards,
+            "query_fp": q.tolist(),
             "unexplained": refine.unexplained_bits(session, q, calibrator),
             "operations": summaries,
             "confident_before": sum(1 for v in p.tolist() if v >= 0.05 and conf(v) >= 0.5),
@@ -93,6 +94,7 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
 
     return RefineResponse(
         results=[ResultCard(**c) for c in out["results"]],
+        query_fp=out["query_fp"],
         unexplained=out["unexplained"],
         operations=out["operations"],
         confident_before=out["confident_before"],

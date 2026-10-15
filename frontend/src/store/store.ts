@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { RefineMetric, RefineMode, RefineOperationSummary, ResultCard, UnexplainedBit } from '../services/api'
+import { RefineMetric, ResultCard } from '../services/api'
+import type { RefineOpSpec } from '../services/refineHandoff'
 
 type ResultSource = 'prediction' | 'smiles-search' | null
 
@@ -47,14 +48,12 @@ interface AppState {
   // Each carries a stable id so removal keys off identity, not list position.
   customResults: CustomResult[]
 
-  // The compound open in the expanded view. One view for the whole page, so a
-  // refined-search result or a workspace entry can open in it too.
+  // The compound open in the expanded view: one view for the whole page.
   detail: DetailTarget | null
 
-  // Hybrid-compound workspace. Both depend on the fingerprint of the current
-  // results, so a new search clears them.
-  heldFragments: HeldFragment[]
-  refineRuns: RefineRun[]
+  // Set only in a secondary-search tab (/refine/<id>): the edits behind its
+  // results, so a further delete / hold from one of its cards builds on them.
+  refineContext: RefineContext | null
 
   // Actions
   setHSQC: (data: number[]) => void
@@ -88,61 +87,26 @@ interface AppState {
 
   openDetail: (target: DetailTarget) => void
   closeDetail: () => void
-
-  addHeldFragment: (held: Omit<HeldFragment, 'id' | 'enabled'>) => HeldFragment
-  toggleHeldFragment: (id: string) => void
-  removeHeldFragment: (id: string) => void
-  addRefineRun: (run: Omit<RefineRun, 'id' | 'createdAt'>) => RefineRun
-  removeRefineRun: (id: string) => void
-  clearWorkspace: () => void
+  setRefineContext: (context: RefineContext | null) => void
 }
 
 /** What the expanded view shows: a card plus how to label it. */
 export interface DetailTarget {
   card: ResultCard
-  /** Header label, e.g. "#3", "Custom", "R2 · #1". */
+  /** Header label, e.g. "#3" or "Custom". */
   label: string
   isCustom?: boolean
-  /** What the card's score means when it is not the plain query cosine. */
-  scoreLabel?: string
-  /** Open on the Refine tab with this search shown. */
-  runId?: string
 }
 
-/** A region the chemist accepts as present; applied to every refined search while enabled. */
-export interface HeldFragment {
-  id: string
-  /** The compound it was selected on. */
-  source: ResultCard
-  sourceLabel: string
-  atoms: number[]
-  fragmentSmiles: string
-  enabled: boolean
-}
-
-/** One refined search, kept for the page session. */
-export interface RefineRun {
-  id: string
-  /** Sequence number shown as "R1", "R2", … */
-  seq: number
-  source: ResultCard
-  sourceLabel: string
-  mode: RefineMode
+/** The secondary search a /refine tab is showing. */
+export interface RefineContext {
+  searchId: string
+  /** The original prediction; edits are always applied to it, server-side. */
+  basePredFp: number[]
+  operations: RefineOpSpec[]
   metric: RefineMetric
-  atoms: number[]
-  operations: RefineOperationSummary[]
-  /** Held fragments applied alongside this run's own region. */
-  heldApplied: string[]
-  results: ResultCard[]
-  unexplained: UnexplainedBit[]
-  confidentBefore: number
-  confidentAfter: number
-  createdAt: number
-}
-
-/** Identity of a card across lists: retrieval index plus structure. */
-export function cardKey(card: Pick<ResultCard, 'index' | 'smiles'>): string {
-  return `${card.index}|${card.smiles}`
+  k: number
+  modelId?: string
 }
 
 export interface CustomResult {
@@ -158,7 +122,6 @@ export interface FormulaFilterEntry {
 }
 
 let customIdSeq = 0
-let workspaceSeq = 0
 
 const HIGHLIGHT_STORAGE_KEY = 'marina.highlightEnabled'
 
@@ -199,8 +162,7 @@ export const useAppStore = create<AppState>((set) => ({
   customResults: [],
 
   detail: null,
-  heldFragments: [],
-  refineRuns: [],
+  refineContext: null,
 
   setHSQC: (data) => set({ hsqc: data }),
   setHNMR: (data) => set({ h_nmr: data }),
@@ -223,14 +185,14 @@ export const useAppStore = create<AppState>((set) => ({
     set({
       results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [],
       activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
-      detail: null, heldFragments: [], refineRuns: [],
+      detail: null,
     }),
 
   setSmilesResults: (results, queryFp, model) =>
     set({
       results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [],
       activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
-      detail: null, heldFragments: [], refineRuns: [],
+      detail: null,
     }),
 
   addCustomResult: (result) =>
@@ -245,29 +207,5 @@ export const useAppStore = create<AppState>((set) => ({
 
   openDetail: (detail) => set({ detail }),
   closeDetail: () => set({ detail: null }),
-
-  addHeldFragment: (held) => {
-    const entry: HeldFragment = { ...held, id: `held-${++workspaceSeq}`, enabled: true }
-    set((state) => ({ heldFragments: [...state.heldFragments, entry] }))
-    return entry
-  },
-
-  toggleHeldFragment: (id) =>
-    set((state) => ({
-      heldFragments: state.heldFragments.map((h) => (h.id === id ? { ...h, enabled: !h.enabled } : h)),
-    })),
-
-  removeHeldFragment: (id) =>
-    set((state) => ({ heldFragments: state.heldFragments.filter((h) => h.id !== id) })),
-
-  addRefineRun: (run) => {
-    const entry: RefineRun = { ...run, id: `run-${++workspaceSeq}`, createdAt: Date.now() }
-    set((state) => ({ refineRuns: [...state.refineRuns, entry] }))
-    return entry
-  },
-
-  removeRefineRun: (id) =>
-    set((state) => ({ refineRuns: state.refineRuns.filter((r) => r.id !== id) })),
-
-  clearWorkspace: () => set({ heldFragments: [], refineRuns: [] }),
+  setRefineContext: (refineContext) => set({ refineContext }),
 }))

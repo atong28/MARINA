@@ -277,6 +277,8 @@ export interface RefineOperationSummary {
 
 export interface RefineResponse {
   results: ResultCard[]
+  /** The edited query the results were ranked against. */
+  query_fp: number[]
   unexplained: UnexplainedBit[]
   operations: RefineOperationSummary[]
   confident_before: number

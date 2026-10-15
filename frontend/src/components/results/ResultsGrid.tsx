@@ -1,6 +1,5 @@
 import { ResultCard as ResultCardType } from '../../services/api'
 import { useAppStore, type CustomResult } from '../../store/store'
-import WorkspacePanel from '../workspace/WorkspacePanel'
 import CompoundDetail from './CompoundDetail'
 import ResultCard from './ResultCard'
 import './ResultsGrid.css'
@@ -71,22 +70,17 @@ function ResultsGrid({
         </section>
       )}
 
-      {/* One expanded view for the page: result cards, refined-search results and
-          workspace entries all open here. */}
+      {/* One expanded view for the page, whichever card opened it. */}
       {detail && predFp && predFp.length > 0 && (
         <CompoundDetail
           result={detail.card}
           label={detail.label}
           isCustom={detail.isCustom}
-          scoreLabel={detail.scoreLabel}
-          focusRunId={detail.runId}
           predFp={predFp}
           modelId={modelId}
           onClose={closeDetail}
         />
       )}
-
-      {predFp && predFp.length > 0 && <WorkspacePanel />}
     </div>
   )
 }

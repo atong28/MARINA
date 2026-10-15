@@ -330,6 +330,7 @@ class RefineOperationSummary(BaseModel):
 
 class RefineResponse(BaseModel):
     results:           List[ResultCard]
+    query_fp:          List[float] = Field(..., description="The edited query fingerprint the results were ranked against")
     unexplained:       List[UnexplainedBit]
     operations:        List[RefineOperationSummary]
     confident_before:  int = Field(..., description="Bits at p ≥ 0.5 in the original query")

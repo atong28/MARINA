@@ -117,54 +117,12 @@ describe('highlightEnabled', () => {
   })
 })
 
-describe('hybrid workspace', () => {
-  const run = {
-    seq: 1, source: card('CCO'), sourceLabel: '#1', mode: 'delete' as const, metric: 'cosine' as const,
-    atoms: [0, 1], operations: [], heldApplied: [], results: [], unexplained: [],
-    confidentBefore: 10, confidentAfter: 6,
-  }
-
-  beforeEach(() => {
-    useAppStore.setState({ detail: null, heldFragments: [], refineRuns: [] })
-  })
-
-  it('holds fragments enabled, toggles and removes them', () => {
+describe('expanded view', () => {
+  it('is closed by a new search', () => {
     const s = useAppStore.getState()
-    const h = s.addHeldFragment({ source: card('CCO'), sourceLabel: '#1', atoms: [0], fragmentSmiles: 'C' })
-    expect(useAppStore.getState().heldFragments).toHaveLength(1)
-    expect(h.enabled).toBe(true)
-    s.toggleHeldFragment(h.id)
-    expect(useAppStore.getState().heldFragments[0].enabled).toBe(false)
-    s.removeHeldFragment(h.id)
-    expect(useAppStore.getState().heldFragments).toHaveLength(0)
-  })
-
-  it('keeps refined searches with distinct ids', () => {
-    const s = useAppStore.getState()
-    const a = s.addRefineRun(run)
-    const b = s.addRefineRun({ ...run, seq: 2 })
-    expect(a.id).not.toBe(b.id)
-    s.removeRefineRun(a.id)
-    expect(useAppStore.getState().refineRuns.map((r) => r.id)).toEqual([b.id])
-  })
-
-  it('is cleared, with the open compound, by a new search', () => {
-    const s = useAppStore.getState()
-    s.addHeldFragment({ source: card('CCO'), sourceLabel: '#1', atoms: [0], fragmentSmiles: 'C' })
-    s.addRefineRun(run)
     s.openDetail({ card: card('CCO'), label: '#1' })
+    expect(useAppStore.getState().detail?.label).toBe('#1')
     s.setPredictResults([card('CCN')], [0.1, 0.2])
-    const after = useAppStore.getState()
-    expect(after.heldFragments).toEqual([])
-    expect(after.refineRuns).toEqual([])
-    expect(after.detail).toBeNull()
-  })
-})
-
-describe('cardKey', () => {
-  it('distinguishes cards by index and structure', async () => {
-    const { cardKey } = await import('./store')
-    expect(cardKey(card('CCO'))).not.toBe(cardKey(card('CCN')))
-    expect(cardKey(card('CCO'))).toBe(cardKey({ ...card('CCO') }))
+    expect(useAppStore.getState().detail).toBeNull()
   })
 })
