@@ -1,6 +1,7 @@
 import { memo, useCallback } from 'react'
-import { ResultCard as ResultCardType } from '../../services/api'
+import { DepictionGeometry, FragmentOccurrence, ResultCard as ResultCardType } from '../../services/api'
 import { useAppStore } from '../../store/store'
+import FragmentOverlay from './FragmentOverlay'
 import MoleculeViewer from './MoleculeViewer'
 import './ResultCard.css'
 
@@ -44,10 +45,17 @@ interface ResultCardProps {
   onRemove?: () => void
   /** Reference fingerprint for this session; enables the expanded view. */
   predFp?: number[] | null
+  /** The shared core of the retrievals, where this compound has it. */
+  coreOverlay?: CoreOverlay | null
+}
+
+export interface CoreOverlay {
+  geometry: DepictionGeometry
+  occurrences: FragmentOccurrence[]
 }
 
 function ResultCard({
-  result, position, isCustom = false, onRemove, predFp,
+  result, position, isCustom = false, onRemove, predFp, coreOverlay,
 }: ResultCardProps) {
   const { database_links } = result
   const highlightEnabled = useAppStore((s) => s.highlightEnabled)
@@ -66,6 +74,9 @@ function ResultCard({
   )
 
   const layers = pickDepiction(result, highlightEnabled)
+  const core = coreOverlay
+    ? <FragmentOverlay geometry={coreOverlay.geometry} occurrences={coreOverlay.occurrences} variant="core" />
+    : null
 
   const hasLinks = !isCustom && Boolean(
     database_links?.coconut || database_links?.lotus || database_links?.npmrd
@@ -129,11 +140,15 @@ function ResultCard({
           onClick={open}
           title="Expand this compound to see its substructures"
         >
-          <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles} />
+          <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles}>
+            {core}
+          </MoleculeViewer>
           <span className="result-card__expand-hint">Expand ↗</span>
         </button>
       ) : (
-        <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles} />
+        <MoleculeViewer plainSvg={layers.plain} mapSrc={layers.map} smiles={result.smiles}>
+          {core}
+        </MoleculeViewer>
       )}
 
       <div className="result-card__footer">

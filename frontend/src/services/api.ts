@@ -285,7 +285,10 @@ export interface RefineResponse {
 
 export interface SharedCoreRequest {
   smiles: string[]
-  target: string
+  /** Compound to map each core onto (`SharedCore.atoms`). */
+  target?: string
+  /** Also map each core onto every compound, with their depiction geometry. */
+  matches?: boolean
 }
 
 export interface SharedCore {
@@ -298,11 +301,15 @@ export interface SharedCore {
   partial: boolean
   /** Where the core sits on the target, or null when the target lacks it. */
   atoms: number[] | null
+  /** With `matches`: per compound, the atoms of each copy of the core, or null when it lacks it. */
+  matches?: Array<number[][] | null>
 }
 
 export interface SharedCoreResponse {
   molecules: number
   cores: SharedCore[]
+  /** With `matches`: per compound, where its atoms land on its card depiction. */
+  geometries?: Array<DepictionGeometry | null>
 }
 
 // ── HTTP client ───────────────────────────────────────────────────────────────

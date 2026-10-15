@@ -104,16 +104,25 @@ async def refine_shared_core(body: SharedCoreRequest) -> SharedCoreResponse:
     """
     Maximum common substructures of the retrieved compounds at several coverage
     levels (every compound, 80 %, 60 %, half), complete rings only, each mapped
-    onto the target compound so the client can select it there.
+    onto the target compound so the client can select it there. With `matches`,
+    each is also located on every compound, with the geometry to draw it over
+    the result cards.
     """
     from app import refine
+    from app.config import MOLECULE_IMG_SIZE
+    from app.renderer import depiction_geometry
 
+    smiles = [s.strip() for s in body.smiles]
     try:
         n, cores = await asyncio.to_thread(
-            refine.shared_cores, [s.strip() for s in body.smiles], body.target.strip())
+            refine.shared_cores, smiles, body.target.strip() if body.target else None, body.matches)
+        geometries = None
+        if body.matches:
+            geometries = await asyncio.to_thread(
+                lambda: [depiction_geometry(s, MOLECULE_IMG_SIZE) for s in smiles[:n]])
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         logger.error("refine_shared_core error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Shared-core search failed.")
-    return SharedCoreResponse(molecules=n, cores=cores)
+    return SharedCoreResponse(molecules=n, cores=cores, geometries=geometries)

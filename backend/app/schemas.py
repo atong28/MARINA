@@ -341,8 +341,9 @@ class RefineResponse(BaseModel):
 class SharedCoreRequest(BaseModel):
     smiles:   List[str] = Field(..., min_length=2, max_length=MAX_TOP_K,
                                 description="Retrieved compounds to find a shared core in, best first")
-    target:   str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
-                                description="Compound to map each core onto")
+    target:   Optional[str] = Field(None, min_length=1, max_length=MAX_SMILES_LENGTH,
+                                    description="Compound to map each core onto")
+    matches:  bool      = Field(False, description="Also map each core onto every compound, with their depiction geometry")
 
     @field_validator("smiles")
     @classmethod
@@ -355,8 +356,8 @@ class SharedCoreRequest(BaseModel):
 
     @field_validator("target")
     @classmethod
-    def _target_size(cls, v: str) -> str:
-        return check_heavy_atoms(v)
+    def _target_size(cls, v: Optional[str]) -> Optional[str]:
+        return check_heavy_atoms(v) if v else v
 
 
 class SharedCore(BaseModel):
@@ -367,8 +368,12 @@ class SharedCore(BaseModel):
     partial:             bool = Field(..., description="Search hit its time limit; the core may not be the largest")
     atoms:               Optional[List[int]] = Field(
         None, description="Where the core sits on the target, or null if the target lacks it")
+    matches:             Optional[List[Optional[List[List[int]]]]] = Field(
+        None, description="Per compound: the atoms of each copy of the core, or null if it lacks it")
 
 
 class SharedCoreResponse(BaseModel):
-    molecules: int
-    cores:     List[SharedCore]
+    molecules:  int
+    cores:      List[SharedCore]
+    geometries: Optional[List[Optional[DepictionGeometry]]] = Field(
+        None, description="Per compound, with `matches`: atom positions on its card depiction")

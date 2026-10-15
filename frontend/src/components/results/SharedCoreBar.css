@@ -1,0 +1,42 @@
+.shared-core {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.shared-core__title {
+  font-weight: 600;
+  margin-right: 4px;
+  cursor: help;
+}
+
+.shared-core__muted {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.shared-core__find,
+.shared-core__chip {
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.shared-core__find:hover,
+.shared-core__chip:hover {
+  background: #ccfbf1;
+}
+
+.shared-core__chip.is-active {
+  background: #0d9488;
+  border-color: #0d9488;
+  color: #fff;
+}

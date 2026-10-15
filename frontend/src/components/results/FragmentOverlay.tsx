@@ -50,9 +50,11 @@ function Shape({ occ, geometry, r }: ShapeProps) {
 interface FragmentOverlayProps {
   geometry: DepictionGeometry
   occurrences: FragmentOccurrence[]
+  /** `core`: the shared-core highlight on result cards, drawn in its own colour. */
+  variant?: 'bit' | 'core'
 }
 
-function FragmentOverlay({ geometry, occurrences }: FragmentOverlayProps) {
+function FragmentOverlay({ geometry, occurrences, variant = 'bit' }: FragmentOverlayProps) {
   // useId's delimiters are not safe inside url(#…); keep only plain characters.
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const { size } = geometry
@@ -62,7 +64,7 @@ function FragmentOverlay({ geometry, occurrences }: FragmentOverlayProps) {
 
   return (
     <svg
-      className="fragment-overlay"
+      className={`fragment-overlay${variant === 'core' ? ' fragment-overlay--core' : ''}`}
       viewBox={`0 0 ${size} ${size}`}
       aria-hidden="true"
     >

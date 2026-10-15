@@ -1,7 +1,9 @@
+import { useMemo, useState } from 'react'
 import { ResultCard as ResultCardType } from '../../services/api'
 import { useAppStore, type CustomResult } from '../../store/store'
 import CompoundDetail from './CompoundDetail'
-import ResultCard from './ResultCard'
+import ResultCard, { type CoreOverlay } from './ResultCard'
+import SharedCoreBar from './SharedCoreBar'
 import './ResultsGrid.css'
 
 interface ResultsGridProps {
@@ -20,6 +22,8 @@ function ResultsGrid({
 }: ResultsGridProps) {
   const detail = useAppStore((s) => s.detail)
   const closeDetail = useAppStore((s) => s.closeDetail)
+  const [coreOverlays, setCoreOverlays] = useState<Array<CoreOverlay | null> | null>(null)
+  const resultSmiles = useMemo(() => results.map((r) => r.smiles), [results])
 
   if (results.length === 0 && customResults.length === 0) return null
 
@@ -57,6 +61,7 @@ function ResultsGrid({
               closest matches.
             </p>
           )}
+          <SharedCoreBar smiles={resultSmiles} onOverlays={setCoreOverlays} />
           <div className="results-grid__list">
             {results.map((result, i) => (
               <ResultCard
@@ -64,6 +69,7 @@ function ResultsGrid({
                 result={result}
                 position={i + 1}
                 predFp={predFp}
+                coreOverlay={coreOverlays?.[i] ?? null}
               />
             ))}
           </div>

@@ -39,6 +39,17 @@
   opacity: 0.3;
 }
 
+/* The shared core of the retrievals, on result cards: teal, so it is not read as a picked bit. */
+.fragment-overlay--core .fragment-overlay__outline,
+.fragment-overlay--core .fragment-overlay__fill {
+  fill: #0d9488;
+  stroke: #0d9488;
+}
+
+.fragment-overlay--core .fragment-overlay__fill {
+  opacity: 0.22;
+}
+
 @keyframes fragment-overlay-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }

@@ -34,7 +34,7 @@ import functools
 import logging
 import threading
 from collections import Counter, defaultdict
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import torch
 
@@ -250,18 +250,37 @@ def _cores(smiles: Tuple[str, ...]) -> Tuple[Tuple[float, str, int, int, bool], 
     return tuple(out)
 
 
-def shared_cores(smiles: Sequence[str], target: str) -> Tuple[int, List[dict]]:
-    """Cores shared by the given compounds, each mapped onto the target's atoms when it has one."""
+# A compound can hold a core more than once (a dimer); every copy is highlighted, up to this many.
+MAX_CORE_COPIES = 4
+
+
+def shared_cores(smiles: Sequence[str], target: Optional[str] = None,
+                 matches: bool = False) -> Tuple[int, List[dict]]:
+    """
+    Cores shared by the given compounds. Each is mapped onto the target's atoms
+    when a target is given and has it; with `matches`, also onto every compound
+    of the pool (one atom list per copy, in depiction atom order, or None).
+    """
     from rdkit import Chem
 
     pool = tuple(smiles[:MAX_CORE_MOLECULES])
-    mol = _parse(target)
+    target_mol = _parse(target) if target else None
+    pool_mols = [_parse(s) for s in pool] if matches else []
     cores = []
     for cov, smarts, n_atoms, found, timed_out in _cores(pool):
-        match = mol.GetSubstructMatch(Chem.MolFromSmarts(smarts))
-        cores.append({
+        query = Chem.MolFromSmarts(smarts)
+        core = {
             "coverage": cov, "smarts": smarts, "num_atoms": n_atoms,
-            "molecules_with_core": found, "partial": timed_out,
-            "atoms": sorted(match) if match else None,
-        })
+            "molecules_with_core": found, "partial": timed_out, "atoms": None,
+        }
+        if target_mol is not None:
+            match = target_mol.GetSubstructMatch(query)
+            core["atoms"] = sorted(match) if match else None
+        if matches:
+            core["matches"] = [
+                [sorted(m) for m in mol.GetSubstructMatches(query, uniquify=True, maxMatches=MAX_CORE_COPIES)]
+                or None
+                for mol in pool_mols
+            ]
+        cores.append(core)
     return len(pool), cores

@@ -152,3 +152,23 @@ def test_shared_core_maps_onto_target_or_reports_absence():
     assert full["atoms"] and len(full["atoms"]) == full["num_atoms"]
     _, cores = shared_cores(pool, "CCCCCC")
     assert all(c["atoms"] is None for c in cores)
+
+
+def test_shared_core_matches_every_compound():
+    from app.refine import shared_cores
+    pool = ["CCOC(=O)C=Cc1ccc(O)cc1", "OC1CCCCC1OC(=O)C=Cc1ccc(O)cc1", "CCCCCC"]
+    n, cores = shared_cores(pool, matches=True)
+    assert n == 3
+    half = next(c for c in cores if c["molecules_with_core"] == 2)
+    assert half["atoms"] is None                       # no target given
+    found, lacking = half["matches"][:2], half["matches"][2]
+    assert lacking is None
+    for copies in found:
+        assert copies and all(len(atoms) == half["num_atoms"] for atoms in copies)
+
+
+def test_shared_core_reports_every_copy():
+    from app.refine import shared_cores
+    dimer = "OC(=O)C=Cc1ccc(OCCOc2ccc(C=CC(=O)O)cc2)cc1"
+    _, cores = shared_cores(["OC(=O)C=Cc1ccc(O)cc1", dimer], matches=True)
+    assert len(cores[0]["matches"][1]) == 2
