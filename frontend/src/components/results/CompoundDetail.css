@@ -95,6 +95,15 @@
   border: 1px solid #f0f0f0;
   border-radius: 8px;
   overflow: hidden;
+  /* Never squeezed by the column: a shorter box would clip the square depiction. */
+  flex-shrink: 0;
+}
+
+/* On short screens (laptops, browser zoom) cap the square at the height the
+   dialog leaves for it — backdrop padding, header, body padding and the caption
+   below — so the whole molecule stays in view. */
+.compound-detail__figure .molecule-viewer__stack {
+  max-width: max(200px, calc(100dvh - 170px));
 }
 
 .compound-detail__caption {
