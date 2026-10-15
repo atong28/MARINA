@@ -34,7 +34,7 @@ paper/
 | **Checkpoint** | per seed, the single early-stopping-best `epoch_*.ckpt` (max `val/mean_cos`, patience 30, 750-epoch cap). |
 | **Aggregation** | MARINA: mean ± sample std over seeds 0/1/2. SPECTRE: the single released model. |
 | **Benchmarks** | MARINA-Bench = `Benchmark/benchmark-sim.pkl` (466 = 232 val / 234 test; experimental NMR from the papers + ICEBERG-simulated MS/MS; sha256 `c56a5b5d…`). SPECTRE-clean = journal compounds absent from SPECTRE's train and val: test 205 (`bench_clean_205`), val 207 (`bench_clean_val207`). Journal tautomer twins of training molecules (18) are kept, reported as is. |
-| **Datasets** | MARINA-DB = CH-NMR-NP-first build (disk `Datasets/MARINA-DB-OPEN`, zip sha256 `2780459f…`, retrieval 531,927). MARINA-DB-PRIVATE = original build (disk `Datasets/MARINA-DB`, zip sha256 `5f6190be…`, retrieval 531,087). |
+| **Datasets** | MARINA-DB = CH-NMR-NP-first build (disk `Datasets/MARINA-DB-OPEN`, zip sha256 `2780459f…`, retrieval 531,927). MARINA-DB-PRIVATE = original build (disk `Datasets/MARINA-DB-PRIVATE`, zip sha256 `5f6190be…`, retrieval 531,087). |
 
 Every table is built for the split the paper reports and for the other split (`<table>_<split>.tex`).
 
@@ -99,7 +99,7 @@ of the two models (MARINA wherever SPECTRE has no value). Run: `run_eval.sh flag
 **1. Stage a work dir `W`** on a GPU box (layout in the header of `run_eval.sh`). On anthony3 the staging dir
 `~/Workspace/PaperEvalStage/` already has this layout as symlinks; copy it to the GPU box with
 `rsync -avhPL -S --exclude packed --exclude arrow/train vm3:Workspace/PaperEvalStage/ $W/`. Its pieces:
-- `data/MARINA-DB` → `Datasets/MARINA-DB-OPEN`; `data/MARINA-DB-PRIVATE` → `Datasets/MARINA-DB`
+- `data/MARINA-DB` → `Datasets/MARINA-DB-OPEN`; `data/MARINA-DB-PRIVATE` → `Datasets/MARINA-DB-PRIVATE`
 - `data/SPECTRE-clean-{test,val}`: `DATASET_ROOT=/tmp PYTHONPATH=. pixi run python paper/tools/augment_spectre_bank.py
   --bundle ~/Deployments/SPECTRE-web/checkpoints/spectre_flexible --journal <bench pkl> --out <dir>`
 - `bench/full` → `Benchmark/benchmark-sim.pkl`; `bench/clean_test` → `Benchmark/bench_clean_205/…`;

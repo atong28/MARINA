@@ -28,7 +28,7 @@ spec:
           env:
             - { name: BRANCH,   value: "exp/marina-db-runs" }
             - { name: COMMIT,   value: "67bed4970b6bfd9b5784f66a98ae4da1a970b050" }  # pinned exact SHA — see wiki/active/experiment-registry.md
-            - { name: DATASETS, value: "MARINA-DB.zip" }  # packed-inclusive (ships packed/)
+            - { name: DATASETS, value: "MARINA-DB-PRIVATE.zip" }  # packed-inclusive (ships packed/)
           command: ["/bin/bash", "-c"]
           args:
             - >-

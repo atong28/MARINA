@@ -56,18 +56,18 @@ echo "==> verifying data on shared /projects (rsync only what is missing)"
 "${SSH[@]}" bash -s <<EOF
 set -eu
 ok=1
-for f in datasets/MARINA-DB.zip benchmark/benchmark-journal.pkl benchmark/benchmark.pkl wandb_api_key.json; do
+for f in datasets/MARINA-DB-PRIVATE.zip benchmark/benchmark-journal.pkl benchmark/benchmark.pkl wandb_api_key.json; do
     if [ -e "$PROJECT_ROOT/\$f" ]; then
         echo "  present: \$f (\$(du -h "$PROJECT_ROOT/\$f" | cut -f1))"
     else
         echo "  MISSING: \$f" >&2; ok=0
     fi
 done
-sub="$PROJECT_ROOT/fp-artifacts/MARINA-DB/RankingEntropySubstructure"
+sub="$PROJECT_ROOT/fp-artifacts/MARINA-DB-PRIVATE/RankingEntropySubstructure"
 if [ -f "\$sub/rankingset.pt" ] && [ -f "\$sub/bitinfo_to_idx.pkl" ]; then
-    echo "  present: fp-artifacts/MARINA-DB/RankingEntropySubstructure/ (vocab overlay)"
+    echo "  present: fp-artifacts/MARINA-DB-PRIVATE/RankingEntropySubstructure/ (vocab overlay)"
 else
-    echo "  MISSING: substructure vocab overlay under fp-artifacts/MARINA-DB/" >&2; ok=0
+    echo "  MISSING: substructure vocab overlay under fp-artifacts/MARINA-DB-PRIVATE/" >&2; ok=0
 fi
 [ "\$ok" = 1 ] || { echo "  --> stage the missing data before submitting." >&2; exit 1; }
 EOF
@@ -88,7 +88,7 @@ Staged. Launch the substructure smoke job (1 GPU, global batch 512) with:
 
   ssh -S $SOCK $TARGET \\
     "cd $PROJECT_ROOT/code/MARINA && \\
-     EXPERIMENT_NAME=marina-deltaai-substructure-s0 DATASET=MARINA-DB \\
+     EXPERIMENT_NAME=marina-deltaai-substructure-s0 DATASET=MARINA-DB-PRIVATE \\
      FP_TYPE=RankingEntropySubstructure SEED=0 \\
      sbatch singularity/deltaai-train.sbatch"
 

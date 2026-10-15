@@ -13,7 +13,7 @@
   "section": "3.2 Comparison between Sherlock and Multiplicity Fingerprints",
   "eval_group": "C",
   "description": "MARINA trained on MARINA-DB-PRIVATE with different fingerprint targets; main table = Unique multiplicity vs Sherlock, the other three kept for the appendix",
-  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB-PRIVATE)",
   "arms": {
     "Unique mult.\\ (ours)": {
       "experiments": [

@@ -41,7 +41,7 @@ spec:
               export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no";
               git clone -q git@github.com:atong28/MARINA.git /code/MARINA; cd /code/MARINA; git checkout -q "$COMMIT";
               git log -1 --format='[bootstrap] code @ %h %s';
-              mkdir -p /workspace; unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropyMultiplicityUncapped/*' 'arrow/val/*' index.pkl retrieval.pkl -d /workspace;
+              mkdir -p /workspace; unzip -q -o /root/datasets/MARINA-DB-PRIVATE.zip 'RankingEntropyMultiplicityUncapped/*' 'arrow/val/*' index.pkl retrieval.pkl -d /workspace;
                ls -la /workspace /workspace/arrow/val;
               pixi install;
               for s in 0 1 2; do

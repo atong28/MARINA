@@ -15,7 +15,7 @@
 # last.ckpt and logs to one W&B run, and stop cleanly on a COMPLETE sentinel.
 #
 #   Submit (1 GPU, global batch 512 = batch_size 512 * 1 rank * accum 1):
-#            EXPERIMENT_NAME=marina-deltaai-substructure-s0 DATASET=MARINA-DB \
+#            EXPERIMENT_NAME=marina-deltaai-substructure-s0 DATASET=MARINA-DB-PRIVATE \
 #            FP_TYPE=RankingEntropySubstructure SEED=0 \
 #            sbatch singularity/deltaai-train.sbatch
 #

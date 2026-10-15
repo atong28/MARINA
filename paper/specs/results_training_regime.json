@@ -13,7 +13,7 @@
   "section": "3.3 The Effect of Data Type Dropout",
   "eval_group": "D",
   "description": "Uncapped-multiplicity MARINA trained on three input regimes, compared on the same NMR inputs",
-  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB-PRIVATE)",
   "fingerprint": "RankingEntropyMultiplicityUncapped",
   "arms": {
     "NMR\\\\$+$MW": [

@@ -3,8 +3,8 @@
 Question: do MARINA's training spectra contain solvent residual peaks (so should users include them at inference)?
 
     cd ~/Workspace/MARINA
-    DATASET_ROOT=/tmp pixi run python analysis/solvent-peaks/train_solvent_peaks.py ../Datasets/MARINA-DB MARINA-DB
-    DATASET_ROOT=/tmp pixi run python analysis/solvent-peaks/hsqc_solvent.py ../Datasets/MARINA-DB MARINA-DB
+    DATASET_ROOT=/tmp pixi run python analysis/solvent-peaks/train_solvent_peaks.py ../Datasets/MARINA-DB-PRIVATE MARINA-DB
+    DATASET_ROOT=/tmp pixi run python analysis/solvent-peaks/hsqc_solvent.py ../Datasets/MARINA-DB-PRIVATE MARINA-DB
     (same with ../Datasets/MARINA-DB-OPEN; it splits by source via nmr_sources.parquet)
 
 - `train_solvent_peaks.py`: share of molecules with a 1D peak at a solvent line vs at nearby control positions. Not

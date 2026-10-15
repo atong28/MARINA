@@ -8,6 +8,22 @@ CASPRE/PROSPERE 1D, and SPECTRE's own copy of CH-NMR-NP) is never consulted. MS/
 MARINA-DB molecules is untouched (same SOURCE_PRIORITY as MARINA-DB). The earlier Mnova-only
 MARINA-DB-OPEN (2026-09-16) is reproducible from MARINA 4913309.
 
+2026-10-14 rebuild (the release MARINA-DB; the 2026-09-29 MARINA-DB-OPEN is reproducible from 2a2907d,
+its sentinel-free variant from 0b0ddad). Three changes, everything else as below:
+  * MS/MS: every row takes MS+ / MS- from the current ICEBERG deployment (iceberg-nist23):
+    existing rows from the full MARINA-DB re-prediction (--ms_all_pos / --ms_all_neg, jsonl.gz keyed
+    by the index SMILES), new rows from --ms_pos / --ms_neg as before. No fallback to the stored
+    spectra of the older ICEBERG deployment; a row without a current prediction has no MS/MS.
+  * NIST23 MS/MS blacklist (--ms_blacklist, dir of nist23_random_split_*_smiles_inchikeys.txt):
+    MS/MS predicted for a NIST23 structure may not be released, so every index row whose InChIKey
+    first block (2D connectivity; MARINA SMILES carry no stereo) matches a NIST23 structure keeps its
+    NMR but gets no MS/MS. Row existence is decided before the blacklist, so idx and splits are
+    unchanged.
+  * fingerprints (replaces D below): every FP family's vocab is RECOMPUTED by stage 4
+    (4_fp_rankingset.py) as entropy over the final retrieval set -- which holds every confirmed
+    CH-NMR-NP structure and the journal -- and stage 9 (9_fp_fragidx.py) rebuilds FragIdx for every
+    index row. The count_*.pkl caches stage 4 writes are moved out of the dataset to <out>.counts/.
+
   A. MARINA-DB molecules keep idx / split / FP / MS. Per modality (HSQC, 13C, 1H independently)
      the spectrum is CH-NMR-NP's when the molecule has a confirmed record carrying it, else
      Mnova (stage-6 cache mapping.json). Quality guards against the Mnova 13C prediction:
@@ -48,13 +64,16 @@ MARINA-DB-OPEN (2026-09-16) is reproducible from MARINA 4913309.
         --out ../Datasets/MARINA-DB-OPEN
 """
 import argparse
+import csv
 import glob
+import gzip
 import importlib
 import json
-import math
+import os
 import pickle
 import random
 import shutil
+import subprocess
 import sys
 import time
 from collections import Counter
@@ -64,7 +83,6 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-import torch
 from rdkit import Chem, RDLogger
 from rdkit.Chem import rdMolDescriptors
 from tqdm import tqdm
@@ -74,13 +92,12 @@ sys.path.insert(0, str(_HERE.parent))                        # config, lib
 sys.path.insert(0, str(_HERE.parent / "build"))              # stage modules
 sys.path.insert(0, str(_HERE.parents[1] / "dataset"))        # pack_arrow
 sys.path.insert(0, str(_HERE.parents[2]))                    # repo root
-from config import (DATA_DATASET, DATA_CLEANED, MARINA_DATA_ROOT, SOURCE_PRIORITY, BENCH_JOURNAL,
+from config import (DATA_DATASET, DATA_CLEANED, MARINA_DATA_ROOT, BENCH_JOURNAL,
                     SPECTRE_SPLITS_PKL, MW_MAX_EXACT, MIN_HEAVY_ATOMS, FP_RADIUS, PEAK_COLLAPSE_TOL, SEED)
 from lib import chnmr
 from src.modules.data.smiles import canonicalize_smiles
 from src.modules.data.formula import formula_to_vector
 from src.modules.data.fp_loader import FP_LOADERS
-from src.modules.data.fp_utils import _init_csr, _worker_row_nonzeros
 
 assemble = importlib.import_module("8_assemble_arrow")
 splits = importlib.import_module("7_splits")
@@ -93,7 +110,8 @@ RDLogger.DisableLog("rdApp.*")
 SPLITS = ("train", "val", "test")
 NMR = ("hsqc", "c_nmr", "h_nmr")
 MODS = NMR + ("mass_spec", "mass_spec_neg")
-OPEN_PRIORITY = {**SOURCE_PRIORITY, **{m: ["mnova"] for m in NMR}}
+OPEN_PRIORITY = {m: ["mnova"] for m in NMR}
+MS = ("mass_spec", "mass_spec_neg")
 MIN_C_COVERAGE = 0.5
 MAE_REPORT_THRESHOLDS = (2, 3, 4, 5, 6, 8, 10, 15, 20)
 
@@ -120,6 +138,28 @@ def load_iceberg(d, workers):
         return {}
     recs = [r for f in sorted(glob.glob(str(Path(d) / "iceberg_*.json"))) for r in json.load(open(f))]
     return {c: r["peaks"] for c, r in zip(_canon_all([r["SMILES"] for r in recs], workers), recs) if c}
+
+
+def load_iceberg_jsonl(path):
+    """{SMILES as sent: peaks} from a predict_parse.py jsonl.gz (first record wins)."""
+    out = {}
+    for line in gzip.open(path, "rt"):
+        r = json.loads(line)
+        out.setdefault(r["SMILES"], r["peaks"])
+    return out
+
+
+def _inchikey_block1(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    return Chem.MolToInchiKey(mol)[:14] if mol else None
+
+
+def load_blacklist(d):
+    """InChIKey first blocks of every structure in the NIST23 train/val/test lists."""
+    out = set()
+    for f in sorted(glob.glob(str(Path(d) / "*_smiles_inchikeys.txt"))):
+        out |= {r["inchikey"][:14] for r in csv.DictReader(open(f), delimiter="\t") if r["inchikey"]}
+    return out
 
 
 def chnmr_choice(info, mnova_c, mae_max, trust_above):
@@ -152,11 +192,14 @@ def pctl(v, ps=(0, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.9, 100)):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--src", default=str(DATA_DATASET), help="built MARINA-DB root")
-    ap.add_argument("--out", default=str(MARINA_DATA_ROOT / "Datasets" / "MARINA-DB-OPEN"))
+    ap.add_argument("--out", default=str(MARINA_DATA_ROOT / "Datasets" / "MARINA-DB"))
     ap.add_argument("--structures", required=True, help="TSV chnmr_id<TAB>smiles of CONFIRMED structures")
     ap.add_argument("--records", default=str(MARINA_DATA_ROOT / "CH-NMR-NP" / "records.jsonl"))
     ap.add_argument("--ms_pos", default=None, help="dir of ICEBERG [M+H]+ iceberg_*.json (new molecules)")
     ap.add_argument("--ms_neg", default=None, help="dir of ICEBERG [M-H]- iceberg_*.json (new molecules)")
+    ap.add_argument("--ms_all_pos", required=True, help="ICEBERG [M+H]+ jsonl.gz of the MARINA-DB index re-prediction")
+    ap.add_argument("--ms_all_neg", required=True, help="ICEBERG [M-H]- jsonl.gz of the MARINA-DB index re-prediction")
+    ap.add_argument("--ms_blacklist", required=True, help="dir of NIST23 *_smiles_inchikeys.txt (no MS/MS for these)")
     ap.add_argument("--mae_max", type=float, default=5.0,
                     help="HSQC/13C/1H fall back to Mnova above this CH-NMR-NP-vs-Mnova 13C MAE (ppm)")
     ap.add_argument("--mae_trust_above", type=float, default=15.0,
@@ -169,7 +212,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     work.mkdir(parents=True, exist_ok=True)
     summary = {"src": str(src), "out": str(out), "structures": a.structures, "records": a.records,
-               "ms_pos": a.ms_pos, "ms_neg": a.ms_neg, "mae_max": a.mae_max,
+               "ms_pos": a.ms_pos, "ms_neg": a.ms_neg, "ms_all_pos": a.ms_all_pos, "ms_all_neg": a.ms_all_neg,
+               "ms_blacklist": a.ms_blacklist, "mae_max": a.mae_max,
                "mae_trust_above": a.mae_trust_above,
                "min_c_coverage": MIN_C_COVERAGE, "fp_radius": FP_RADIUS}
 
@@ -206,6 +250,25 @@ def main():
     }
     print(f"CH-NMR-NP: {json.dumps(summary['chnmr'])}  {time.time()-t0:.0f}s", flush=True)
 
+    # ---- MS/MS (current ICEBERG) + NIST23 blacklist ----
+    ms_all = {"mass_spec": load_iceberg_jsonl(a.ms_all_pos), "mass_spec_neg": load_iceberg_jsonl(a.ms_all_neg)}
+    blacklist = load_blacklist(a.ms_blacklist)
+    with Pool(a.workers) as pool:
+        block1 = dict(zip(idx_of, pool.map(_inchikey_block1, list(idx_of), chunksize=2000)))
+        block1.update(zip((c for c in info if c not in idx_of),
+                          pool.map(_inchikey_block1, [c for c in info if c not in idx_of], chunksize=200)))
+    ms_stats = Counter()        # (split, what)
+    print(f"MS/MS: re-prediction {len(ms_all['mass_spec']):,} pos / {len(ms_all['mass_spec_neg']):,} neg; "
+          f"NIST23 blacklist {len(blacklist):,} first blocks  {time.time()-t0:.0f}s", flush=True)
+
+    def strip_blacklisted(smiles, row, split):
+        if block1[smiles] in blacklist:
+            ms_stats[(split, "nist23_blacklisted")] += 1
+            ms_stats[(split, "nist23_blacklisted_lost_ms")] += any(row[m] for m in MS)
+            for m in MS:
+                row[m] = []
+            ms_stats[(split, "nist23_blacklisted_no_spectral_modality")] += not any(row[m] for m in MODS)
+
     # ---- A. existing molecules: CH-NMR-NP first, Mnova fallback ----
     mapping = json.load(open(DATA_CLEANED / "mapping.json"))
     print(f"mapping: {len(mapping):,} SMILES  {time.time()-t0:.0f}s", flush=True)
@@ -220,6 +283,9 @@ def main():
         row = {"idx": e["idx"], "smiles": e["smiles"]}
         for mod, order in OPEN_PRIORITY.items():
             row[mod] = assemble._priority_access(m.get(mod, {}), order)
+        for mod in MS:
+            row[mod] = ms_all[mod].get(e["smiles"], [])
+            ms_stats[(e["split"], f"{mod}_no_current_prediction")] += not row[mod]
         src_of = {mod: ("mnova" if row[mod] else "absent") for mod in NMR}
         chnmr_id = chnmr_solvent = None
         if e["smiles"] in info:
@@ -237,8 +303,10 @@ def main():
                     row[mod], src_of[mod] = use[mod], "chnmr"
                 else:
                     fallback[(mod, why[mod], src_of[mod])] += 1
-        for mod in NMR:
+        strip_blacklisted(e["smiles"], row, e["split"])
+        for mod in MODS:
             e[f"has_{mod}"] = row[mod] != []
+        for mod in NMR:
             source[(mod, src_of[mod], e["split"])] += 1
         provenance[e["idx"]] = (src_of["hsqc"], src_of["c_nmr"], src_of["h_nmr"], chnmr_id, chnmr_solvent)
         handles[e["split"]].write(json.dumps(row) + "\n")
@@ -279,6 +347,7 @@ def main():
             dropped["no_spectrum"] += 1
             continue
         new_why.update((mod, r) for mod, r in why.items())
+        strip_blacklisted(c, row, "new")
         formula = rdMolDescriptors.CalcMolFormula(mol)
         new_index[next_idx] = {
             "idx": next_idx, "smiles": c, "split": None,
@@ -340,6 +409,12 @@ def main():
         "with_chnmr_id": sum(p[3] is not None for p in provenance.values()),
         "any_modality_from_chnmr": sum("chnmr" in p[:3] for p in provenance.values())}
 
+    summary["ms"] = {
+        "source": "current ICEBERG (iceberg-nist23) for every row; no fallback to stored spectra",
+        "stats": {f"{sp} {what}": n for (sp, what), n in sorted(ms_stats.items())},
+        "present_by_split": {mod: {sp: sum(e[f"has_{mod}"] for e in full_index.values() if e["split"] == sp)
+                                   for sp in SPLITS} for mod in MS}}
+    print(f"MS/MS: {json.dumps(summary['ms'])}", flush=True)
     new_split = Counter(e["split"] for e in new_index.values())
     summary["new_index_rows"] = {
         "candidates_not_in_index": sum(c not in idx_of for c in info),
@@ -386,41 +461,26 @@ def main():
     print(f"retrieval: {json.dumps(summary['retrieval'])}  {time.time()-t0:.0f}s", flush=True)
     del metadata
 
-    # ---- D. fingerprints under the FIXED vocab ----
-    todo = sorted(set(new_ret) | {e["smiles"] for e in new_index.values()})
+    # ---- D. fingerprints: vocab recomputed over the final retrieval set (stage 4), FragIdx (stage 9) ----
     fp_types = [t for t in FP_LOADERS if (src / t / "bitinfo_to_idx.pkl").exists()]
-    for fp_type in fp_types:
-        loader = FP_LOADERS[fp_type]
-        vocab = pickle.load(open(src / fp_type / "bitinfo_to_idx.pkl", "rb"))
-        with Pool(a.workers, initializer=_init_csr, initargs=(FP_RADIUS, vocab, loader.FEATURE_KIND)) as pool:
-            cols_of = {todo[k]: cols for k, cols in pool.map(_worker_row_nonzeros, list(enumerate(todo)), chunksize=8)}
-
-        (out / fp_type).mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src / fp_type / "bitinfo_to_idx.pkl", out / fp_type / "bitinfo_to_idx.pkl")
-        rs = torch.load(src / fp_type / "rankingset.pt", weights_only=True)
-        assert rs.shape[0] == len(retrieval), f"{fp_type} rankingset rows {rs.shape[0]} != retrieval"
-        crow, col, val = [rs.crow_indices()], [rs.col_indices()], [rs.values()]
-        nnz = int(crow[0][-1])
-        for c in new_ret:               # same row construction as fp_utils.build_rankingset_csr
-            cols = cols_of[c]
-            nnz += len(cols)
-            crow.append(torch.tensor([nnz], dtype=torch.int64))
-            col.append(torch.tensor(cols, dtype=torch.int64))
-            val.append(torch.full((len(cols),), 1.0 / math.sqrt(len(cols)) if cols else 0.0, dtype=torch.float32))
-        torch.save(torch.sparse_csr_tensor(torch.cat(crow), torch.cat(col), torch.cat(val),
-                                           size=(len(full_retrieval), rs.shape[1])),
-                   out / fp_type / "rankingset.pt")
-
-        fname = loader.FRAGIDX_FILENAME
-        for sp in SPLITS:
-            tab = pq.read_table(src / "arrow" / sp / fname)
-            rows = [(i, cols_of[e["smiles"]]) for i, e in sorted(new_index.items()) if e["split"] == sp]
-            add = pa.table({"idx": pa.array([i for i, _ in rows], pa.int64()),
-                            "cols": pa.array([c for _, c in rows], pa.list_(pa.int32()))}, schema=tab.schema)
-            pq.write_table(pa.concat_tables([tab, add]), out / "arrow" / sp / fname)
-        print(f"[{fp_type}] +{len(new_ret)} rankingset rows, +{len(new_index)} {fname} rows  "
-              f"{time.time()-t0:.0f}s", flush=True)
+    env = {**os.environ, "DATASET_ROOT": str(out)}
+    for script, extra in (("4_fp_rankingset.py", ["--retrieval", str(out / "retrieval.pkl")]),
+                          ("9_fp_fragidx.py", [])):
+        subprocess.run([sys.executable, str(_HERE.parent / "build" / script), "--fp_types", ",".join(fp_types),
+                        "--num_procs", str(a.workers), *extra], env=env, check=True)
+    counts = out.parent / (out.name + ".counts")       # stage-4 caches, kept outside the dataset for checks
+    counts.mkdir(exist_ok=True)
+    for p in out.glob("count_*.pkl"):
+        shutil.move(p, counts / p.name)
     summary["fp_types"] = fp_types
+    summary["vocab_vs_src"] = {}
+    for fp_type in fp_types:
+        old = pickle.load(open(src / fp_type / "bitinfo_to_idx.pkl", "rb"))
+        new = pickle.load(open(out / fp_type / "bitinfo_to_idx.pkl", "rb"))
+        summary["vocab_vs_src"][fp_type] = {
+            "size": len(new), "shared_features": len(old.keys() & new.keys()),
+            "same_column": sum(old.get(k) == v for k, v in new.items())}
+    print(f"vocab vs src: {json.dumps(summary['vocab_vs_src'])}  {time.time()-t0:.0f}s", flush=True)
 
     summary["mnova_sentinels_dropped"] = drop_sentinels(out)   # F/P atoms Mnova lists as -100000
     collapse.collapse_dataset(out)      # stage 11 (dataset only; journal untouched)
@@ -429,8 +489,8 @@ def main():
     summary["seconds"] = int(time.time() - t0)
     json.dump(summary, open(out / "open_build_summary.json", "w"), indent=1)
     print(json.dumps(summary, indent=1), flush=True)
-    print(f"MARINA-DB-OPEN built at {out}; now run 12_verify.py --dataset_root {out} and "
-          f"check_open_identity.py --out {out}", flush=True)
+    print(f"MARINA-DB built at {out}; now run 12_verify.py --dataset_root {out} and "
+          f"check_marina_db.py --out {out}", flush=True)
 
 
 def _canon_3d(smiles):

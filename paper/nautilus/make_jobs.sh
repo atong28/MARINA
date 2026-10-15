@@ -56,9 +56,9 @@ spec:
               git log -1 --format='[bootstrap] code @ %h %s'
               W=/workspace/W
               mkdir -p \$W/data/MARINA-DB-PRIVATE \$W/bench/full \$W/ckpt /root/gurusmart/paper-eval/results
-              echo "[bootstrap] dataset zip sha256 \$(sha256sum /root/datasets/MARINA-DB.zip | cut -c1-64) (expect 5f6190be2b2456f1...)"
-              unzip -q -o /root/datasets/MARINA-DB.zip index.pkl retrieval.pkl 'RankingEntropy*' 'arrow/test/*' -d \$W/data/MARINA-DB-PRIVATE
-              cp /root/gurusmart/marina-db/dataset/ecfp_bank_2048.pt \$W/data/MARINA-DB-PRIVATE/
+              echo "[bootstrap] dataset zip sha256 \$(sha256sum /root/datasets/MARINA-DB-PRIVATE.zip | cut -c1-64) (expect 5f6190be2b2456f1...)"
+              unzip -q -o /root/datasets/MARINA-DB-PRIVATE.zip index.pkl retrieval.pkl 'RankingEntropy*' 'arrow/test/*' -d \$W/data/MARINA-DB-PRIVATE
+              cp /root/gurusmart/marina-db-private/dataset/ecfp_bank_2048.pt \$W/data/MARINA-DB-PRIVATE/
               cp /root/gurusmart/bench_sim/benchmark-journal.pkl \$W/bench/full/
               echo "[bootstrap] journal sha256 \$(sha256sum \$W/bench/full/benchmark-journal.pkl | cut -c1-64) (expect c56a5b5d93f8f5b2...)"
               ln -sfn /root/gurusmart/paper-eval/results \$W/results

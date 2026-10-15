@@ -31,7 +31,7 @@ spec:
               set -uo pipefail &&
               bash /root/gurusmart/startup.sh MARINA1.zip main &&
               cd /code &&
-              DATASET_ROOT=/root/gurusmart/marina-db/dataset BENCHMARK_ROOT=/root/gurusmart/bench_sim_nmr466 PYTHONPATH=/code
+              DATASET_ROOT=/root/gurusmart/marina-db-private/dataset BENCHMARK_ROOT=/root/gurusmart/bench_sim_nmr466 PYTHONPATH=/code
               pixi run python scripts/benchmark/eval_journal_benchmark.py
               --results_root /root/gurusmart/Moonshot/results
               --experiments marina-db-uniqmult-formula-s0 marina-db-uniqmult-formula-s1 marina-db-uniqmult-formula-s2

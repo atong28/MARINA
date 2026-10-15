@@ -51,13 +51,13 @@ spec:
           env:
             - { name: BRANCH,   value: "exp/marina-db-uniqmult" }
             - { name: COMMIT,   value: "f673c3c480feab50578081a4705b4398fc816ab7" }
-            - { name: DATASETS, value: "MARINA-DB.zip" }
+            - { name: DATASETS, value: "MARINA-DB-PRIVATE.zip" }
           command: ["/bin/bash", "-c"]
           args:
             - >-
               set -euxo pipefail &&
               bash /root/gurusmart/startup.sh &&
-              DS=/root/gurusmart/marina-db/dataset &&
+              DS=/root/gurusmart/marina-db-private/dataset &&
               cp -r "$DS/RankingEntropyUniqueMultiplicity" /workspace/ &&
               for d in /workspace/arrow/*/; do s=$(basename "$d");
                 cp "$DS/arrow/$s/FragIdxUniqueMultiplicity.parquet" "$d"/; done &&

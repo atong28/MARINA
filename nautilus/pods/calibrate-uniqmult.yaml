@@ -40,7 +40,7 @@ spec:
       env:
         - { name: BRANCH,   value: "exp/marina-db-uniqmult" }
         - { name: COMMIT,   value: "f673c3c480feab50578081a4705b4398fc816ab7" }
-        - { name: DATASETS, value: "MARINA-DB.zip" }
+        - { name: DATASETS, value: "MARINA-DB-PRIVATE.zip" }
       volumeMounts:
         - mountPath: "/root/gurusmart"
           name: atong-spectre

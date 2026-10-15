@@ -7,7 +7,7 @@ import os
 import shutil
 import zipfile
 
-SRC = '/home/atong/Workspace/Datasets/MARINA-DB.zip'
+SRC = '/home/atong/Workspace/Datasets/MARINA-DB-PRIVATE.zip'
 NEW_INDEX = '/home/atong/Workspace/MARINA/data/dataset/index.pkl'
 TMP = SRC + '.new'
 

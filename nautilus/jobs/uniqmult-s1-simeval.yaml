@@ -31,7 +31,7 @@ spec:
               set -uo pipefail &&
               bash /root/gurusmart/startup.sh MARINA1.zip main &&
               cd /code &&
-              DATASET_ROOT=/root/gurusmart/marina-db/dataset
+              DATASET_ROOT=/root/gurusmart/marina-db-private/dataset
               BENCHMARK_ROOT=/root/gurusmart/bench_sim
               PYTHONPATH=/code
               pixi run python scripts/benchmark/eval_journal_benchmark.py --sim --no-journal --deltas

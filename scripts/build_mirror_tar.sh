@@ -5,7 +5,7 @@
 set -euo pipefail
 
 DS_ROOT=/home/atong/Workspace/MARINA/data/dataset
-ZIP=/home/atong/Workspace/Datasets/MARINA-DB.zip
+ZIP=/home/atong/Workspace/Datasets/MARINA-DB-PRIVATE.zip
 OUT_DIR=/home/atong/Workspace/Snapshots/Dataset
 TAR="$OUT_DIR/MARINA-DB.tar"
 MANIFEST="$OUT_DIR/MANIFEST.sha256"

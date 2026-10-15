@@ -6,7 +6,7 @@
     "fp_comparison (appendix row)",
     "results_training_regime (All inputs)"
   ],
-  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+  "training_dataset": "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB-PRIVATE)",
   "fp_type": "RankingEntropyMultiplicityUncapped",
   "input_types": [
     "hsqc",

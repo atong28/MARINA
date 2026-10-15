@@ -51,7 +51,7 @@ def write(exp, ckpt_file, nbytes, sha, params, locations, reg, extra=None):
         "model": "MARINA",
         "used_in": TABLES.get(fam, []),
         "training_dataset": DATASET["marina-db-open"] if fam.startswith("marina-db-open") else
-                            "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB)",
+                            "MARINA-DB-PRIVATE (disk Datasets/MARINA-DB-PRIVATE)",
         "fp_type": params.get("fp_type"),
         "input_types": params.get("input_types"),
         **reg.get(exp, {}),

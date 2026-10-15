@@ -33,7 +33,7 @@ spec:
       # arrow/packed are for training/sim and are NOT unzipped, keeping under 30Gi ephemeral).
       - >-
         bash /root/gurusmart/startup.sh MARINA1.zip exp/marina-db-runs &&
-        unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropy/*' 'RankingEntropyMultiplicity/*' 'retrieval.pkl' -d /workspace &&
+        unzip -q -o /root/datasets/MARINA-DB-PRIVATE.zip 'RankingEntropy/*' 'RankingEntropyMultiplicity/*' 'retrieval.pkl' -d /workspace &&
         echo "[bench] rankingsets staged" &&
         sleep infinity
       volumeMounts:

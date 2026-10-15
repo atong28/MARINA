@@ -42,7 +42,7 @@ spec:
               echo "[job] code @ $(git -C /code rev-parse --short HEAD)" &&
               pixi install --manifest-path /code/pixi.toml &&
               mkdir -p /workspace &&
-              unzip -q -o /root/datasets/MARINA-DB.zip 'RankingEntropyMultiplicityUncapped/*' 'arrow/test/*' 'index.pkl' -d /workspace &&
+              unzip -q -o /root/datasets/MARINA-DB-PRIVATE.zip 'RankingEntropyMultiplicityUncapped/*' 'arrow/test/*' 'index.pkl' -d /workspace &&
               echo "[job] staged:" &&
               ls /workspace/RankingEntropyMultiplicityUncapped &&
               ls /workspace/arrow/test | head &&
