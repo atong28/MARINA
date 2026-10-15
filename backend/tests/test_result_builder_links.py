@@ -44,3 +44,11 @@ def test_ch_nmr_np_does_not_override_a_database_record():
     entry = {"coconut": {"coconut_id": "CNP0561556.2", "name": "Some Name"},
              "ch_nmr_np": [{"id": 1, "name": "Other"}]}
     assert _primary(entry)[0] == "Some Name"
+
+
+def test_name_from_another_record_when_the_linked_one_has_none():
+    entry = {"coconut": {"coconut_id": "CNP0000011.0", "name": None},
+             "npmrd": {"npid": "NP0000011", "name": "2-(5,5,5-tribromopentyl)oxirane"}}
+    name, link = _primary(entry)
+    assert name == "2-(5,5,5-tribromopentyl)oxirane"
+    assert "coconut" in link                          # the link keeps database precedence

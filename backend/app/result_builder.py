@@ -92,8 +92,11 @@ def _npclassifier(session: Any, global_idx: int) -> Optional[Dict[str, Any]]:
 
 
 def _primary(entry: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
-    """Return (name, link) for the most authoritative database."""
+    """Return (name, link): the link of the most authoritative database, and the
+    first name any record carries -- a COCONUT id often comes without a name that
+    the NP-MRD or LOTUS record of the same structure does have."""
     # NP-MRD id lives under 'npmrd_id' (MARINA1) or 'npid' (MARINA-DB), so both are tried.
+    link = None
     for db, url_template, id_keys in [
         ("coconut", "https://coconut.naturalproducts.net/compounds/{}", ("coconut_id",)),
         ("lotus",   "https://lotus.naturalproducts.net/compound/lotus_id/{}", ("lotus_id",)),
@@ -102,12 +105,13 @@ def _primary(entry: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
         rec = entry.get(db) or {}
         db_id = next((rec[k] for k in id_keys if rec.get(k)), None)
         if db_id:
-            return rec.get("name"), url_template.format(db_id)
-    # CH-NMR-NP-only structures (MARINA-DB): a name, but no public per-compound link.
-    for rec in entry.get("ch_nmr_np") or []:
-        if rec.get("name"):
-            return rec["name"], None
-    return None, None
+            link = url_template.format(db_id)
+            break
+    # CH-NMR-NP-only structures (MARINA-DB) have a name but no public per-compound link.
+    records = [entry.get(db) or {} for db in ("coconut", "lotus", "npmrd")]
+    records += list(entry.get("ch_nmr_np") or [])
+    name = next((rec["name"] for rec in records if rec.get("name")), None)
+    return name, link
 
 
 def build_result_cards(
