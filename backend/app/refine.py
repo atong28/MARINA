@@ -1,13 +1,10 @@
 """
-Fragment deletion / hold-fixed retrieval for hybrid compounds.
+Fragment deletion retrieval for hybrid compounds.
 
 A hybrid A+B tends to retrieve only A-like compounds: A's bits dominate the
 prediction and B never surfaces. The chemist picks a region of one retrieved
-candidate (atoms S) and either
-
-* deletes it  -- retrieve against what the prediction says is NOT S, or
-* holds it fixed -- S is accepted as present; compare query and candidates only
-  on what lies beyond S.
+candidate (atoms S) and deletes it: retrieval then runs against what the
+prediction says is NOT S.
 
 The multiplicity vocabularies make this arithmetic rather than masking. A bit is
 "fragment f occurs at least k times", so a fragment's bits form a cumulative
@@ -24,11 +21,6 @@ c(f) counts every occurrence that *touches* S -- inside it, or spanning the
 junction between S and the rest -- because a compound resembling the remainder
 alone cannot carry the junction environments either.
 
-Holding S fixed applies the same shift to every candidate as well as the query,
-x'(f, >=k) = x(f, >=k + c(f)), so both are compared on what lies beyond S. That
-is computed without touching the bank: x'.q' = x.w and |x'| = x.m for
-column-remapped vectors w and m.
-
 The bank rows are stored L2-normalised (binary rows divided by sqrt(nnz)), so a
 binary product is the stored product times sqrt(nnz); no second copy of the
 bank is needed.
@@ -42,7 +34,7 @@ import functools
 import logging
 import threading
 from collections import Counter, defaultdict
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 import torch
 
@@ -147,7 +139,7 @@ def selection_counts(session, smiles: str, atoms: Iterable[int]) -> Counter:
 
 
 def selection_smiles(smiles: str, atoms: Iterable[int]) -> str:
-    """The selected atoms as a SMILES fragment, for the workspace thumbnail."""
+    """The selected atoms as a SMILES fragment, for the edit's thumbnail."""
     from rdkit import Chem
     mol = _parse(smiles)
     sel = sorted({int(a) for a in atoms})
@@ -174,25 +166,6 @@ def shift_query(p: torch.Tensor, counts: Dict[str, int], ladders) -> torch.Tenso
     return q
 
 
-def hold_vectors(q: torch.Tensor, counts: Dict[str, int], ladders) -> Tuple[torch.Tensor, torch.Tensor]:
-    """(w, m) with x'.q = x.w and |x'| = x.m, where x' is any candidate shifted by `counts`."""
-    w = q.clone()
-    m = torch.ones_like(q)
-    for frag, c in counts.items():
-        if c <= 0:
-            continue
-        lad = ladders[frag]
-        for col in lad.values():
-            w[col] = 0.0
-            m[col] = 0.0
-        for k, col in lad.items():
-            src = lad.get(k + c)
-            if src is not None:
-                w[src] += q[col]
-                m[src] = 1.0
-    return w, m
-
-
 def _bank(session) -> Tuple[torch.Tensor, torch.Tensor]:
     """(L2-normalised CSR bank, sqrt(nnz) per row), the latter cached on the session."""
     store = session.get_rankingset().data
@@ -213,17 +186,11 @@ def _binary_dot(store: torch.Tensor, sq: torch.Tensor, v: torch.Tensor) -> torch
     return out * sq
 
 
-def score_bank(session, q: torch.Tensor, hold: Optional[Dict[str, int]], metric: str) -> torch.Tensor:
-    """Similarity of every bank row to the edited query, optionally with held fragments shifted out."""
+def score_bank(session, q: torch.Tensor, metric: str) -> torch.Tensor:
+    """Similarity of every bank row to the edited query."""
     store, sq = _bank(session)
-    nnz = sq * sq
-    if hold:
-        w, m = hold_vectors(q, hold, _ladders(session))
-        inter = _binary_dot(store, sq, w)
-        size = _binary_dot(store, sq, m)
-    else:
-        inter = _binary_dot(store, sq, q)
-        size = nnz
+    inter = _binary_dot(store, sq, q)
+    size = sq * sq
     if metric == "containment":
         missed = q.sum() - inter
         extra = size - inter

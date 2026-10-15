@@ -1,5 +1,5 @@
 /**
- * Hand a secondary search (delete / hold a region, then retrieve again) to a new
+ * Hand a secondary search (delete a region, then retrieve again) to a new
  * browser tab.
  *
  * The opening tab writes the search — the original predicted fingerprint plus

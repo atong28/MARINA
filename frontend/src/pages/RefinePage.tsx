@@ -13,16 +13,14 @@ import './RefinePage.css'
 
 /**
  * A secondary search in its own tab: the original prediction with regions of
- * retrieved compounds deleted or held fixed, retrieved again at full scale.
+ * retrieved compounds deleted, retrieved again at full scale.
  *
- * The edits are shown down the side — each region on the compound it was taken
- * from — so what was removed or accepted stays in view next to the new cards.
+ * The deletions are shown down the side — each region on the compound it was
+ * taken from — so what was removed stays in view next to the new cards.
  * Expanding a card works as on the main page, scored against the edited query; a
- * further delete / hold from one opens another tab that builds on these edits.
+ * further deletion from one opens another tab that builds on these.
  * The search itself comes from the opening tab via refineHandoff.
  */
-
-const MODE_LABEL = { delete: 'Deleted', hold: 'Held fixed' } as const
 
 function OpCard({ op, step, smiles, removed }: {
   op: RefineOpSpec
@@ -36,10 +34,9 @@ function OpCard({ op, step, smiles, removed }: {
   }, [op])
 
   return (
-    <article className={`refine-op refine-op--${op.mode}`}>
+    <article className="refine-op">
       <header className="refine-op__header">
         <span className="refine-op__step">{step}</span>
-        <span className={`refine-op__mode refine-op__mode--${op.mode}`}>{MODE_LABEL[op.mode]}</span>
         <span className="refine-op__source" title={op.sourceName || op.smiles}>
           {op.sourceLabel}{op.sourceName ? ` · ${op.sourceName}` : ''}
         </span>
@@ -80,7 +77,7 @@ function RefinePage() {
     queryKey: ['refine-search', id, metric],
     queryFn: () => api.refineSearch({
       pred_fp: spec!.predFp,
-      operations: spec!.operations.map(({ smiles, atoms, mode }) => ({ smiles, atoms, mode })),
+      operations: spec!.operations.map(({ smiles, atoms }) => ({ smiles, atoms })),
       metric,
       k: spec!.k,
       model_id: spec!.modelId,
@@ -103,7 +100,7 @@ function RefinePage() {
 
   useEffect(() => {
     const n = spec?.operations.length ?? 0
-    document.title = `MARINA · Secondary search (${n} edit${n === 1 ? '' : 's'})`
+    document.title = `MARINA · Secondary search (${n} deletion${n === 1 ? '' : 's'})`
   }, [spec])
 
   const changeMetric = (m: RefineMetric) => {
@@ -132,14 +129,14 @@ function RefinePage() {
         <h1 className="refine-page__title">Secondary search</h1>
         <p className="refine-page__subtitle">
           The original prediction with {spec.operations.length} region{spec.operations.length === 1 ? '' : 's'}
-          {' '}deleted or held fixed, retrieved again.
+          {' '}deleted, retrieved again.
           {parent && <> Builds on <a href={`/refine/${parent.id}`}>the previous search</a>.</>}
         </p>
       </header>
 
       <div className="refine-page__layout">
-        <aside className="refine-page__side" aria-label="Edits">
-          <h2 className="refine-page__heading">Edits</h2>
+        <aside className="refine-page__side" aria-label="Deleted regions">
+          <h2 className="refine-page__heading">Deleted regions</h2>
           {spec.operations.map((op, i) => (
             <OpCard
               key={i}
@@ -162,7 +159,7 @@ function RefinePage() {
           {data && (
             <>
               <p className="refine-page__note">
-                Confident predicted fragments: {data.confident_before} → {data.confident_after} after the edits.
+                Confident predicted fragments: {data.confident_before} → {data.confident_after} after the deletions.
               </p>
               {data.unexplained.length > 0 && (
                 <details className="refine-page__unexplained" open>

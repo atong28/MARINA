@@ -235,9 +235,9 @@ function CompoundDetail({
                 type="button" role="tab" aria-selected={tab === 'refine'}
                 className={`compound-detail__tab${tab === 'refine' ? ' is-active' : ''}`}
                 onClick={() => setTab('refine')}
-                title="Delete or hold fixed a region of this compound and search again (hybrid compounds)"
+                title="Delete a region of this compound and search again (hybrid compounds)"
               >
-                Delete / hold region
+                Delete region
               </button>
             </div>
             {/* Kept mounted on the other tab: it loads the depiction geometry both tabs draw on. */}

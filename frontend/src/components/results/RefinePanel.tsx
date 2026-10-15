@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api, DepictionGeometry, RefineMetric, RefineMode, ResultCard } from '../../services/api'
+import { api, DepictionGeometry, RefineMetric, ResultCard } from '../../services/api'
 import { hasOperation, saveSearch, type RefineOpSpec } from '../../services/refineHandoff'
 import { useAppStore } from '../../store/store'
 import './RefinePanel.css'
 
 /**
- * Hybrid compounds: delete a region of this candidate from the query, or hold it
- * fixed, and retrieve again in a new browser tab. A hybrid A+B's retrievals are
+ * Hybrid compounds: delete a region of this candidate from the query and
+ * retrieve again in a new browser tab. A hybrid A+B's retrievals are
  * often all A-like, so B never shows; taking A out of the query lets the rest of
- * the prediction speak. Inside a search tab, a further edit builds on that tab's
- * edits. The arithmetic is server-side (backend/app/refine.py); the tab is
+ * the prediction speak. Inside a search tab, a further deletion builds on that
+ * tab's deletions. The arithmetic is server-side (backend/app/refine.py); the tab is
  * pages/RefinePage.tsx.
  */
 
@@ -59,10 +59,10 @@ function RefinePanel({ card, label, predFp, modelId, selection, onSelection, geo
   const atoms = [...selection].sort((a, b) => a - b)
   const duplicate = atoms.length > 0 && hasOperation(chain, card.smiles, atoms)
 
-  const open = (mode: RefineMode) => {
+  const open = () => {
     if (!atoms.length || duplicate) return
     const op: RefineOpSpec = {
-      smiles: card.smiles, atoms, mode,
+      smiles: card.smiles, atoms,
       sourceLabel: context ? `step ${chain.length} · ${label}` : `original · ${label}`,
       sourceName: card.name ?? '',
       plainSvg: card.plain_svg,
@@ -86,14 +86,13 @@ function RefinePanel({ card, label, predFp, modelId, selection, onSelection, geo
     <div className="refine">
       <p className="refine__intro">
         Select a region of this compound — for example the part every retrieval agrees on — then delete it to
-        search for what the rest of the prediction describes, or hold it fixed to compare compounds only on what
-        lies beyond it. The search opens in a new tab.
+        search for what the rest of the prediction describes. The search opens in a new tab.
       </p>
 
       {context && (
         <p className="refine__context">
-          Builds on this tab’s {chain.length} edit{chain.length === 1 ? '' : 's'}: the new tab applies them
-          and this one.
+          Builds on this tab’s {chain.length} deletion{chain.length === 1 ? '' : 's'}: the new tab applies
+          them and this one.
         </p>
       )}
 
@@ -151,22 +150,13 @@ function RefinePanel({ card, label, predFp, modelId, selection, onSelection, geo
             type="button"
             className="refine__btn refine__btn--delete"
             disabled={!atoms.length || duplicate}
-            onClick={() => open('delete')}
+            onClick={open}
             title="Remove the selected region from the query and retrieve again in a new tab"
           >
             Delete selection &amp; search ↗
           </button>
-          <button
-            type="button"
-            className="refine__btn"
-            disabled={!atoms.length || duplicate}
-            onClick={() => open('hold')}
-            title="Accept the region as present and compare compounds on what lies beyond it, in a new tab"
-          >
-            Hold fixed &amp; search ↗
-          </button>
         </div>
-        {duplicate && <p className="refine__hint">This region is already one of this tab’s edits.</p>}
+        {duplicate && <p className="refine__hint">This region is already deleted in this tab.</p>}
         {blockedHref && (
           <p className="refine__error">
             The browser blocked the new tab. <a href={blockedHref} target="_blank" rel="noopener">Open the search</a>.

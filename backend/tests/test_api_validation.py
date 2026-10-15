@@ -193,14 +193,6 @@ def test_refine_needs_an_operation(client):
     assert r.status_code == 422
 
 
-def test_refine_rejects_unknown_mode(client):
-    r = client.post("/api/refine/search", json={
-        "pred_fp": [0.1] * 8,
-        "operations": [{"smiles": "CCO", "atoms": [0], "mode": "erase"}],
-    })
-    assert r.status_code == 422
-
-
 def test_refine_rejects_unknown_metric(client):
     r = client.post("/api/refine/search", json={
         "pred_fp": [0.1] * 8, "metric": "dice",

@@ -1,9 +1,9 @@
 """
-app.refine: fragment deletion / hold-fixed retrieval for hybrid compounds.
+app.refine: fragment deletion retrieval for hybrid compounds.
 
 The arithmetic is checked against its definition on a real unique-multiplicity
 vocabulary: deleting a region must leave exactly the occurrences that do not
-touch it, and the hold-fixed shortcut must equal shifting every candidate.
+touch it.
 """
 from collections import Counter
 
@@ -103,23 +103,10 @@ def test_shift_reads_a_missing_rung_as_absent(session):
     assert float(q[lad[1]]) == 0.0
 
 
-def test_hold_vectors_equal_shifting_every_candidate(session):
-    from app.refine import _ladders, hold_vectors, selection_counts, shift_query
-    ladders = _ladders(session)
-    counts = selection_counts(session, HYBRID, _hybrid_atoms(CYCLOHEXANOL))
-    q = shift_query(torch.rand(session.fp_loader.out_dim), counts, ladders)
-    w, m = hold_vectors(q, counts, ladders)
-    for smi in (HYBRID, COUMARIC, CYCLOHEXANOL):
-        x = _fp(session, smi)
-        shifted = shift_query(x, counts, ladders)          # the same ladder shift, on the candidate
-        assert torch.isclose(x @ w, shifted @ q, atol=1e-5)
-        assert torch.isclose(x @ m, shifted.sum(), atol=1e-5)
-
-
 def test_cosine_without_edits_matches_plain_cosine(session):
     from app.refine import score_bank
     p = _fp(session, HYBRID) * 0.8
-    s = score_bank(session, p, None, "cosine")
+    s = score_bank(session, p, "cosine")
     bank = session.get_rankingset().data.to_dense()
     expected = bank @ (p / p.norm())
     assert torch.allclose(s, expected, atol=1e-5)
@@ -132,7 +119,7 @@ def test_deleting_one_half_retrieves_the_other(session):
     q = shift_query(p, selection_counts(session, HYBRID, _hybrid_atoms("C(=O)C=Cc1ccc(O)cc1")),
                     _ladders(session))
     for metric in ("cosine", "containment"):
-        s = score_bank(session, q, None, metric)
+        s = score_bank(session, q, metric)
         assert float(s[2]) > float(s[1]), metric      # rows: hybrid, coumaric, cyclohexanol
         assert bool(((s >= 0) & (s <= 1 + 1e-6)).all())
 

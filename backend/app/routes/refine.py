@@ -1,5 +1,5 @@
 """
-POST /api/refine/search      – retrieve again after deleting / holding fixed a region of a candidate.
+POST /api/refine/search      – retrieve again after deleting a region of a candidate.
 POST /api/refine/shared-core – the largest substructures the retrieved compounds share.
 
 See app/refine.py for the fingerprint arithmetic.
@@ -23,11 +23,8 @@ router = APIRouter()
 @router.post("/refine/search", response_model=RefineResponse, status_code=status.HTTP_200_OK)
 async def refine_search(body: RefineRequest) -> RefineResponse:
     """
-    Edit the query fingerprint by the selected regions and retrieve again.
-
-    `delete` regions are subtracted from the query only; `hold` regions are
-    subtracted from the query and from every candidate, so both are compared on
-    what lies beyond them. Runs in the main process: no model forward pass.
+    Subtract the selected regions from the query fingerprint and retrieve again.
+    Runs in the main process: no model forward pass.
     """
     from app.manifest import resolve_model_id
     from app.registry import ensure_loaded
@@ -55,19 +52,16 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
     def _run():
         ladders = refine._ladders(session)
         p = torch.tensor(body.pred_fp, dtype=torch.float32).clamp(0.0, 1.0)
-        removed, held, summaries = Counter(), Counter(), []
+        removed, summaries = Counter(), []
         for op in body.operations:
             counts = refine.selection_counts(session, op.smiles.strip(), op.atoms)
             removed.update(counts)
-            if op.mode == "hold":
-                held.update(counts)
             summaries.append({
-                "mode": op.mode,
                 "selection_smiles": refine.selection_smiles(op.smiles.strip(), op.atoms),
                 "removed_occurrences": sum(counts.values()),
             })
         q = refine.shift_query(p, removed, ladders)
-        scores = refine.score_bank(session, q, held or None, body.metric)
+        scores = refine.score_bank(session, q, body.metric)
         n = min(body.k, scores.numel())
         top, idx = torch.topk(scores, n)
         pairs = [(int(i), float(min(max(s, 0.0), 1.0))) for s, i in zip(top.tolist(), idx.tolist())]

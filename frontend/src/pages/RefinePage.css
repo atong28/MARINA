@@ -115,18 +115,10 @@
 /* ── One edit ─────────────────────────────────────────────────────────────── */
 
 .refine-op {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #fecaca;
   border-radius: 10px;
   background: #fff;
   overflow: hidden;
-}
-
-.refine-op--delete {
-  border-color: #fecaca;
-}
-
-.refine-op--hold {
-  border-color: #bbf7d0;
 }
 
 .refine-op__header {
@@ -142,26 +134,6 @@
   color: #6b7280;
 }
 
-.refine-op__mode {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.refine-op__mode--delete {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.refine-op__mode--hold {
-  background: #dcfce7;
-  color: #166534;
-}
-
 .refine-op__source {
   min-width: 0;
   overflow: hidden;
@@ -173,13 +145,6 @@
 .refine-op__figure {
   border-top: 1px solid #f3f4f6;
   border-bottom: 1px solid #f3f4f6;
-}
-
-/* A held region is drawn green; a deleted one keeps the overlay's red. */
-.refine-op--hold .fragment-overlay__fill,
-.refine-op--hold .fragment-overlay__outline {
-  fill: #16a34a;
-  stroke: #16a34a;
 }
 
 .refine-op__footer {

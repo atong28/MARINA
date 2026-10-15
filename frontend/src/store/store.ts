@@ -52,7 +52,7 @@ interface AppState {
   detail: DetailTarget | null
 
   // Set only in a secondary-search tab (/refine/<id>): the edits behind its
-  // results, so a further delete / hold from one of its cards builds on them.
+  // results, so a further deletion from one of its cards builds on them.
   refineContext: RefineContext | null
 
   // Actions

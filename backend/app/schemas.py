@@ -293,15 +293,14 @@ class CustomSmilesCardResponse(BaseModel):
     result: ResultCard
 
 
-# ── Fragment deletion / hold-fixed retrieval (hybrid compounds) ──────────────
+# ── Fragment deletion retrieval (hybrid compounds) ──────────────────────────
 
 class RefineOperation(_SmilesInput):
-    """A region of one retrieved compound to delete from, or hold fixed in, the query."""
+    """A region of one retrieved compound to delete from the query."""
     smiles: str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
                               description="The compound the region was selected on")
     atoms:  List[int] = Field(..., min_length=1, max_length=MAX_HEAVY_ATOMS,
                               description="Selected atom indices, in the depiction's atom order")
-    mode:   Literal["delete", "hold"]
 
 
 class RefineRequest(BaseModel):
@@ -323,7 +322,6 @@ class UnexplainedBit(BaseModel):
 
 
 class RefineOperationSummary(BaseModel):
-    mode:                 str
     selection_smiles:     str = Field(..., description="The selected atoms as a SMILES fragment")
     removed_occurrences:  int = Field(..., description="Fragment occurrences the selection accounts for")
 

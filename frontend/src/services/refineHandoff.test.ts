@@ -22,7 +22,7 @@ function memoryStorage(quota = Infinity) {
 
 const spec = (predFp: number[]) => ({
   predFp,
-  operations: [{ smiles: 'CCO', atoms: [0, 1], mode: 'delete' as const, sourceLabel: 'original #1', sourceName: '' }],
+  operations: [{ smiles: 'CCO', atoms: [0, 1], sourceLabel: 'original #1', sourceName: '' }],
   metric: 'cosine' as const,
   k: 10,
 })
@@ -82,7 +82,7 @@ describe('saveSearch / loadSearch', () => {
 
 describe('hasOperation', () => {
   it('matches the same region on the same compound only', () => {
-    const ops = [{ smiles: 'CCO', atoms: [0, 1], mode: 'hold' as const }]
+    const ops = [{ smiles: 'CCO', atoms: [0, 1] }]
     expect(hasOperation(ops, 'CCO', [0, 1])).toBe(true)
     expect(hasOperation(ops, 'CCO', [0])).toBe(false)
     expect(hasOperation(ops, 'CCN', [0, 1])).toBe(false)

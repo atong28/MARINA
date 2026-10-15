@@ -237,10 +237,7 @@ export interface BitExplainResponse {
   total_available: number
 }
 
-// ── Fragment deletion / hold-fixed retrieval (hybrid compounds) ─────────────
-
-/** `delete`: subtract the region from the query. `hold`: subtract it from query and candidates alike. */
-export type RefineMode = 'delete' | 'hold'
+// ── Fragment deletion retrieval (hybrid compounds) ──────────────────────────
 /** `cosine`: whole-molecule similarity. `containment`: contains the remainder, extra parts not penalised. */
 export type RefineMetric = 'cosine' | 'containment'
 
@@ -249,7 +246,6 @@ export interface RefineOperation {
   smiles: string
   /** Atom indices in the depiction's atom order. */
   atoms: number[]
-  mode: RefineMode
 }
 
 export interface RefineRequest {
@@ -270,7 +266,6 @@ export interface UnexplainedBit {
 }
 
 export interface RefineOperationSummary {
-  mode: RefineMode
   selection_smiles: string
   removed_occurrences: number
 }
