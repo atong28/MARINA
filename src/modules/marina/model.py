@@ -205,6 +205,9 @@ class MARINA(pl.LightningModule):
         for m, x in batch.items():
             if m not in SELF_ATTN_INPUTS:
                 continue
+            if m == 'hsqc' and x.shape[-1] > len(self.encoders[m].dim_coords):
+                # shifts-only HSQC encoder (--nmr_dim_coords 392 392): drop the multiplicity-edit sign column
+                x = x[..., :len(self.encoders[m].dim_coords)]
             B, L, D_in = x.shape
             mask = (x.abs().sum(-1) == 0)
             enc_seq = self.encoders[m](x.view(B * L, D_in)).view(B, L, self.dim_model)
