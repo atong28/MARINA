@@ -2,8 +2,9 @@
 table, and the development-dataset table (MARINA-DB-PARTIAL vs MARINA-DB-PRIVATE vs MARINA-DB) from the shipped
 dataset indexes.
 
-MARINA-DB         = $DATASETS_ROOT/MARINA-DB-OPEN (CH-NMR-NP-first build, zip sha256 2780459f...)
-MARINA-DB-PRIVATE = $DATASETS_ROOT/MARINA-DB
+MARINA-DB         = $DATASETS_ROOT/MARINA-DB-OPEN-OLD (the build the committed tables came from, zip sha256 2780459f...;
+                    the 2026-10-15 release is $DATASETS_ROOT/MARINA-DB, 49442996... -- switch here to regenerate on it)
+MARINA-DB-PRIVATE = $DATASETS_ROOT/MARINA-DB-PRIVATE
 MARINA-DB-PARTIAL = $DATASETS_ROOT/MARINA1 (no negative-mode MS/MS: that count is 0)
 Counts = molecules with the has_* flag; experimental = NMR source 'chnmr' in nmr_sources.parquet.
 SPECTRE-DB column is carried over from the previous table (external dataset, no local artifact).
@@ -66,8 +67,8 @@ def table(cols, rows, header):
 
 
 def main():
-    new = stats(os.path.join(DATASETS, "MARINA-DB-OPEN"), sources=True)
-    priv = stats(os.path.join(DATASETS, "MARINA-DB"))
+    new = stats(os.path.join(DATASETS, "MARINA-DB-OPEN-OLD"), sources=True)
+    priv = stats(os.path.join(DATASETS, "MARINA-DB-PRIVATE"))
     partial = stats(os.path.join(DATASETS, "MARINA1"))
     main_rows = []
     for r in COUNT_ROWS:

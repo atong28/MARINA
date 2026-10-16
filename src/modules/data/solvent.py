@@ -7,7 +7,7 @@ convention (CDCl3), while the journal benchmark mixes solvents. Per training mol
 a target solvent from the benchmark's empirical mix and a correlated (dC, dH) from that solvent's
 offset distribution, relative to Mnova, measured on 486 NP-FIDBench compounds
 (wiki MARINA/experiments/marina-global-shift-offsets.md). Spectra that are already experimental
-(CH-NMR-NP in MARINA-DB-OPEN) are moved from their own solvent: its mean offset is subtracted.
+(CH-NMR-NP in the open builds: MARINA-DB, MARINA-DB-OPEN-OLD) are moved from their own solvent: its mean offset is subtracted.
 The model never sees the solvent, so inference is solvent-blind.
 """
 import math
@@ -66,7 +66,7 @@ class SolventJitter:
 
     @classmethod
     def from_dataset(cls, root, idxs, p):
-        """Source solvents from `root/nmr_sources.parquet` (MARINA-DB-OPEN): 'mnova' spectra are the
+        """Source solvents from `root/nmr_sources.parquet` (MARINA-DB / MARINA-DB-OPEN-OLD): 'mnova' spectra are the
         reference; 'chnmr' spectra use their record's `chnmr_solvent`. Without the file every
         spectrum is treated as the reference."""
         path = os.path.join(root, "nmr_sources.parquet")

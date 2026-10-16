@@ -99,8 +99,8 @@ unpacks straight into `checkpoints/marina_db_s1/`. The script then writes
 ```
 
 `marina_db_s1` is the flagship `marina-db-open-chnmr-uniqmult-formula-s1` checkpoint
-(epoch 738; trained on MARINA-DB, the CH-NMR-NP-first build; `RankingEntropyUniqueMultiplicity`,
-radius 10), ranking against the 531,927-structure MARINA-DB retrieval set. It replaced
+(epoch 738; trained on MARINA-DB-OPEN-OLD, the 2026-09-29 CH-NMR-NP-first build; `RankingEntropyUniqueMultiplicity`,
+radius 10), ranking against the 531,927-structure MARINA-DB-OPEN-OLD retrieval set (same rows as the release MARINA-DB). It replaced
 `marina_uniqmult_s1` (MARINA-DB-PRIVATE) in October 2026. Its `calibration.json`, count
 table and vocabulary are only valid for this checkpoint: copying them across
 models would silently serve wrong confidences or rank in the wrong space.

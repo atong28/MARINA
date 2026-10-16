@@ -9,7 +9,7 @@ for sp in ('train', 'val', 'test'):
     lens = pc.list_value_length(t['data']).to_numpy(zero_copy_only=False) // 3
     ids.append(np.repeat(t['idx'].to_numpy(), lens)); rows.append(pc.list_flatten(t['data']).to_numpy(zero_copy_only=False).reshape(-1, 3))
 ids, rows = np.concatenate(ids), np.concatenate(rows)
-# source per molecule: MARINA-DB-OPEN from nmr_sources; MARINA-DB by row signature (ACD = intensity column, else ±1)
+# source per molecule: MARINA-DB-OPEN-OLD from nmr_sources; MARINA-DB-PRIVATE by row signature (ACD = intensity column, else ±1)
 if os.path.isfile(f'{root}/nmr_sources.parquet'):
     s = pq.read_table(f'{root}/nmr_sources.parquet', columns=['idx', 'hsqc']).to_pandas().set_index('idx')['hsqc']
     src = s.reindex(ids).to_numpy()

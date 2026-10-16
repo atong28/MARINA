@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the reference FP rankingsets over the NEW MARINA-DB retrieval (N=531,927) with the repo's
+# Build the reference FP rankingsets over the NEW MARINA-DB-OPEN-OLD retrieval (N=531,927) with the repo's
 # builders (same flags as the published rows), then per FP: Exp 2 (+ prefix check) and FP-Tanimoto
 # on the Exp 1 pair index. Large rankingsets (Atom Pair, MAP4: 2.5-6 GB each) are deleted after use
 # because the workstation disk is ~98% full; they are deterministic and rebuildable with this script.
@@ -7,7 +7,7 @@ set -eu
 cd /home/atong/Workspace
 H=MARINA/analysis/fp-quality
 N=$H/marina-db-new
-RET=Datasets/MARINA-DB-OPEN/retrieval.pkl
+RET=Datasets/MARINA-DB-OPEN-OLD/retrieval.pkl
 RS=$N/rankingsets
 W=${W:-3}
 PAIRS=$N/results/pairs_fp_tanimoto.parquet
@@ -27,7 +27,7 @@ one() {  # name keep(0/1) builder args...
 
 [ -f $PAIRS ] || cp $N/results/pairs_index.parquet $PAIRS
 # MARINA entropy FPs (already built over the new set in the dataset dir) -> Tanimoto columns
-D=Datasets/MARINA-DB-OPEN
+D=Datasets/MARINA-DB-OPEN-OLD
 $PY $H/scripts/exp1_add_fps.py --pairs $PAIRS --out $PAIRS \
   --fp uniqmult=$D/RankingEntropyUniqueMultiplicity/rankingset.pt \
   --fp uncapped=$D/RankingEntropyMultiplicityUncapped/rankingset.pt \

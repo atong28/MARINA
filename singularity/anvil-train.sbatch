@@ -18,7 +18,7 @@
 # W&B run, stop on a COMPLETE sentinel, MAX_CHUNKS backstop.
 #
 #   Submit (1 GPU, global batch 512 = 512 * 1 rank * 1 accum; H100 80GB):
-#       EXPERIMENT_NAME=marina-db-open-solvjit-uniqmult-formula-s0 DATASET=MARINA-DB-OPEN \
+#       EXPERIMENT_NAME=marina-db-open-solvjit-uniqmult-formula-s0 DATASET=MARINA-DB-OPEN-OLD \
 #       FP_TYPE=RankingEntropyUniqueMultiplicity SEED=0 \
 #       EXTRA_ARGS="--solvent_jitter_p 1.0" \
 #       sbatch --job-name=mdbopen-solvjit-s0-$(date +%Y%m%d-%H%M) singularity/anvil-train.sbatch
@@ -41,7 +41,7 @@ set -euo pipefail
 PROJECT_ROOT="${PROJECT_ROOT:-/anvil/projects/x-bio260190/atong1}"
 SCRATCH_ROOT="${SCRATCH_ROOT:-/anvil/scratch/x-atong1}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:?set EXPERIMENT_NAME when submitting}"
-DATASET="${DATASET:-MARINA-DB-OPEN}"
+DATASET="${DATASET:-MARINA-DB-OPEN-OLD}"  # the solvjit arms ran on the 2026-09-29 open build (renamed from MARINA-DB-OPEN); release = MARINA-DB (not staged on Anvil)
 FP_TYPE="${FP_TYPE:-RankingEntropyUniqueMultiplicity}"
 SEED="${SEED:-0}"
 BATCH_SIZE="${BATCH_SIZE:-512}"

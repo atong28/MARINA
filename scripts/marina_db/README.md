@@ -2,7 +2,9 @@
 
 One source of truth for building **MARINA-DB**, the final dataset that supersedes
 MARINA1/2/3/4 for all paper work. Everything needed to go from raw source dumps to a
-trainable, scorable dataset lives under `scripts/marina_db/`. Run it with:
+trainable, scorable dataset lives under `scripts/marina_db/`. `run_build.sh` (stages 1-13) produces the
+base build, MARINA-DB-PRIVATE (ACD/Labs NMR); the release **MARINA-DB** (2026-10-15, zip `49442996…`) is
+derived from it by `build_open.py` and verified by `check_marina_db.py`. Run it with:
 
 ```bash
 scripts/marina_db/run_build.sh            # full build

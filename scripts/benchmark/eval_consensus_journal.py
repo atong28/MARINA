@@ -74,7 +74,7 @@ def main():
     ap.add_argument("--deltas", action="store_true", help="also emit +Formula/+MW combo subsets (Table 1/S1)")
     ap.add_argument("--benchmark", default=None,
                     help="benchmark set pkl (default BENCHMARK_ROOT/benchmark-journal.pkl); "
-                         "point at the 466 journal (Table 1) or the 205 SPECTRE-clean (Table 3)")
+                         "point at the full journal (MARINA-Bench, 456; Bench-466 before 2026-10-15) (Table 1) or the 205 SPECTRE-clean (Table 3)")
     ap.add_argument("--limit", type=int, default=None, help="cap entries per split (smoke test)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()

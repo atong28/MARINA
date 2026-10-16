@@ -12,7 +12,7 @@ for s in $(seq 19 -1 0); do
   if [ -f $f ] || grep -q "^shard $s/20" $LOG; then break; fi
   echo "tail runner: shard $s"
   nice -n 5 pixi run python MARINA/analysis/fp-quality/scripts/exp1_mces.py \
-    --retrieval Datasets/MARINA-DB-OPEN/retrieval.pkl --n-pool 5000 --n-pairs 100000 \
+    --retrieval Datasets/MARINA-DB-OPEN-OLD/retrieval.pkl --n-pool 5000 --n-pairs 100000 \
     --workers $W --seed 0 --timeout 60 --num-shards 20 --shard-id $s --out $f.tmp.parquet \
     && mv $f.tmp.parquet $f
 done

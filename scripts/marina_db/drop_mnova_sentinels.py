@@ -6,7 +6,7 @@ MARINA-DB stage-6 reader took them as real peaks, so ~0.5% of molecules ship wit
 C_NMR / H_NMR / HSQC_NMR, and MARINA2.0's 2D builds carry them into HMBC_NMR / COSY_NMR. This removes every
 peak with any coordinate <= MNOVA_SENTINEL_FLOOR. A spectrum left with no peaks is dropped and its index.pkl
 has_* flag cleared. Shards are replaced by rename, never rewritten in place: MARINA-DB-OPEN-2D hard-links its 1D
-shards to MARINA-DB-OPEN, and an in-place write would change both trees.
+shards to MARINA-DB-OPEN-OLD, and an in-place write would change both trees.
 
 Run on a dataset root (arrow/ + index.pkl), then repack:  pack_arrow.py --root <root> --force
 build_open.py calls drop_sentinels() itself before collapse + pack.

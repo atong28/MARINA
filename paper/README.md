@@ -6,7 +6,7 @@ Appendix tables are out of scope for now.
 
 **Ranking metric: cosine** (decided 2026-10-01 after a full comparison). Binary-Tanimoto ranking was evaluated too and
 is kept for reference (`results/raw-jaccard/`, `results/tables-jaccard/`): on identical checkpoints it is ~1.5–4 pp
-lower at rank@1 than cosine (PRIVATE flagship journal test NMR+MS/MS 71.08 → 68.52; MARINA-DB flagship 70.23 → 66.24).
+lower at rank@1 than cosine (PRIVATE flagship journal test NMR+MS/MS 71.08 → 68.52; MARINA-DB-OPEN-OLD flagship 70.23 → 66.24).
 
 ```
 paper/
@@ -33,8 +33,8 @@ paper/
 | **mean cos** | cosine between prediction and gold fingerprint (journal: probabilities; simulated test: binarised prediction, the training test-loop convention). Raw files also carry binary Tanimoto (`tani`). |
 | **Checkpoint** | per seed, the single early-stopping-best `epoch_*.ckpt` (max `val/mean_cos`, patience 30, 750-epoch cap). |
 | **Aggregation** | MARINA: mean ± sample std over seeds 0/1/2. SPECTRE: the single released model. |
-| **Benchmarks** | MARINA-Bench = `Benchmark/benchmark-sim.pkl` (466 = 232 val / 234 test; experimental NMR from the papers + ICEBERG-simulated MS/MS; sha256 `c56a5b5d…`). SPECTRE-clean = journal compounds absent from SPECTRE's train and val: test 205 (`bench_clean_205`), val 207 (`bench_clean_val207`). Journal tautomer twins of training molecules (18) are kept, reported as is. |
-| **Datasets** | MARINA-DB = CH-NMR-NP-first build (disk `Datasets/MARINA-DB-OPEN`, zip sha256 `2780459f…`, retrieval 531,927). MARINA-DB-PRIVATE = original build (disk `Datasets/MARINA-DB-PRIVATE`, zip sha256 `5f6190be…`, retrieval 531,087). |
+| **Benchmarks** | MARINA-Bench (Bench-466 for every result here; the path now holds the 456 benchmark, the 466 original is in `Benchmark/archive/pre-nist23-drop-2026-10-14/`) = `Benchmark/benchmark-sim.pkl` (466 = 232 val / 234 test; experimental NMR from the papers + ICEBERG-simulated MS/MS; sha256 `c56a5b5d…`). SPECTRE-clean = journal compounds absent from SPECTRE's train and val: test 205 (`bench_clean_205`), val 207 (`bench_clean_val207`). Journal tautomer twins of training molecules (18) are kept, reported as is. |
+| **Datasets** | MARINA-DB-OPEN-OLD ("MARINA-DB" in Draft 2) = CH-NMR-NP-first build (disk `Datasets/MARINA-DB-OPEN-OLD`, zip sha256 `2780459f…`, retrieval 531,927). MARINA-DB-PRIVATE = original build (disk `Datasets/MARINA-DB-PRIVATE`, zip sha256 `5f6190be…`, retrieval 531,087). |
 
 Every table is built for the split the paper reports and for the other split (`<table>_<split>.tex`).
 
@@ -50,10 +50,10 @@ experimental rows). SPECTRE-DB counts are constants from the SPECTRE paper.
 ### Table 2 — `results_main` (dereplication + annotation)
 | Condition | Value |
 |---|---|
-| Model | MARINA flagship `marina-db-open-chnmr-uniqmult-formula-s{0,1,2}` (CH-NMR-NP-first MARINA-DB, no solvent-offset augmentation) |
+| Model | MARINA flagship `marina-db-open-chnmr-uniqmult-formula-s{0,1,2}` (MARINA-DB-OPEN-OLD, no solvent-offset augmentation) |
 | Fingerprint | `RankingEntropyUniqueMultiplicity`, 16,384 bits |
-| Retrieval set | MARINA-DB, 531,927 |
-| Benchmark | MARINA-Bench **test** (n = 234); val (n = 232) also built |
+| Retrieval set | MARINA-DB-OPEN-OLD, 531,927 |
+| Benchmark | MARINA-Bench-466 **test** (n = 234); val (n = 232) also built |
 | Rows (journal subset) | NMR+MS/MS* `nmr_msms` · NMR `nmr` · ME-HSQC `hsqc` · ¹³C `c_nmr` · ¹H `h_nmr` |
 | Columns | Base = the subset; +F = `<subset>_formula` − `<subset>` per seed, then mean ± std |
 | Metrics | (a) exp-rank@1/5/10; (b) exp-ann@1/5/10 |
@@ -64,7 +64,7 @@ experimental rows). SPECTRE-DB counts are constants from the SPECTRE paper.
 |---|---|---|
 | Model | same checkpoints as Table 2 | released website model `spectre-deployed` (`--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre`) |
 | Fingerprint | unique multiplicity | `RankingEntropy` (Sherlock), 16,384 bits |
-| Retrieval set | MARINA-DB, 531,927 | deployed SPECTRE retrieval (526,316 rows) + the subset's structures that are not already in it (test: +196 → 526,512; val: +200 → 526,516), built by `tools/augment_spectre_bank.py` |
+| Retrieval set | MARINA-DB-OPEN-OLD, 531,927 | deployed SPECTRE retrieval (526,316 rows) + the subset's structures that are not already in it (test: +196 → 526,512; val: +200 → 526,516), built by `tools/augment_spectre_bank.py` |
 | Ranking | cosine | cosine |
 
 Benchmark: SPECTRE-clean **test** (n = 205); val (n = 207) also built. Rows: NMR+MS/MS+Formula* (`nmr_msms_formula`,
@@ -78,7 +78,7 @@ of the two models (MARINA wherever SPECTRE has no value). Run: `run_eval.sh flag
 | Models (MARINA-DB-PRIVATE, 3 seeds each) | **main:** Unique mult. `marina-db-uniqmult-formula`, Sherlock `marina-db-sherlock-formula`; **appendix (`fp_comparison_all`):** Uncapped `marina-db-uncapped-formula`, Capped k=5 `marina-db-cap5-formula`, Substructure `marina-deltaai-substructure` (s2 early-stopped at epoch 144 — a finished run) |
 | Fingerprint | each arm's own (`RankingEntropyUniqueMultiplicity` / `RankingEntropy` / `…MultiplicityUncapped` / `…Multiplicity` / `…Substructure`) |
 | Retrieval set | MARINA-DB-PRIVATE, 531,087, each fingerprint's own rankingset |
-| Benchmark | MARINA-Bench **val** (n = 232); test also built |
+| Benchmark | MARINA-Bench-466 **val** (n = 232); test also built |
 | Input | full NMR + molecular formula, MW and MS/MS withheld (`nmr_formula`) |
 | Metrics | exp-rank@1/5/10, exp-mean-cos (in each fingerprint's space); bold = best per column |
 | Run | `run_eval.sh fpsweep <experiments>` (Nautilus Jobs `fp-*` + `regime-formula`; substructure on a local GPU box) |
@@ -89,7 +89,7 @@ of the two models (MARINA wherever SPECTRE has no value). Run: `run_eval.sh flag
 | Models (MARINA-DB-PRIVATE, uncapped multiplicity, 3 seeds each) | NMR+MW `marina-db-uncapped-nmr` · NMR+MS/MS+MW `marina-db-uncapped-noform` · All inputs `marina-db-uncapped-formula` |
 | Fingerprint / retrieval | `RankingEntropyMultiplicityUncapped`; MARINA-DB-PRIVATE, 531,087 |
 | Eval inputs | NMR · ME-HSQC · ¹³C · ¹H (spectra only) |
-| Experimental | MARINA-Bench **val** (n = 232); test also built |
+| Experimental | MARINA-Bench-466 **val** (n = 232); test also built |
 | Simulated | MARINA-DB-PRIVATE **test** split (24,329), `--sim --deltas --sim_only hsqc_c_nmr_h_nmr hsqc c_nmr h_nmr` |
 | Metrics | r@1/5/10 and mean cos, both sides; bold = mean ± std interval above every other regime's |
 | Run | `run_eval.sh regime <experiments>` (Nautilus Jobs `regime-*`) |
@@ -99,10 +99,10 @@ of the two models (MARINA wherever SPECTRE has no value). Run: `run_eval.sh flag
 **1. Stage a work dir `W`** on a GPU box (layout in the header of `run_eval.sh`). On anthony3 the staging dir
 `~/Workspace/PaperEvalStage/` already has this layout as symlinks; copy it to the GPU box with
 `rsync -avhPL -S --exclude packed --exclude arrow/train vm3:Workspace/PaperEvalStage/ $W/`. Its pieces:
-- `data/MARINA-DB` → `Datasets/MARINA-DB-OPEN`; `data/MARINA-DB-PRIVATE` → `Datasets/MARINA-DB-PRIVATE`
+- `data/MARINA-DB` → `Datasets/MARINA-DB-OPEN-OLD`; `data/MARINA-DB-PRIVATE` → `Datasets/MARINA-DB-PRIVATE`
 - `data/SPECTRE-clean-{test,val}`: `DATASET_ROOT=/tmp PYTHONPATH=. pixi run python paper/tools/augment_spectre_bank.py
   --bundle ~/Deployments/SPECTRE-web/checkpoints/spectre_flexible --journal <bench pkl> --out <dir>`
-- `bench/full` → `Benchmark/benchmark-sim.pkl`; `bench/clean_test` → `Benchmark/bench_clean_205/…`;
+- `bench/full` → `Benchmark/benchmark-sim.pkl` (456 since 2026-10-15; the Bench-466 originals of it, `benchmark-sim-nmr-466.pkl` and `bench_clean_val207/` are in `Benchmark/archive/pre-nist23-drop-2026-10-14/`); `bench/clean_test` → `Benchmark/bench_clean_205/…`;
   `bench/clean_val` → `Benchmark/bench_clean_val207/…`
 - `ckpt/<experiment>/<ts>/` from the locations in `checkpoints/<experiment>.json`. Checkpoints that live only on the
   Nautilus PVC are streamed straight to the GPU box through a host with kubectl (nothing stored in between):

@@ -72,8 +72,8 @@ def journal_coverable_set(journal):
     """Modalities the journal can supply: union of per-entry input keys, plus 'formula'
     (always derivable on the fly from SMILES). The journal now carries real MS/MS for every
     entry, so MS-containing combos are scored on the journal too -- every non-empty combo is
-    benchmark-coverable and the simulated full-test-set path is skipped entirely (466 real
-    journal samples per combo vs the full ~24k test population under simulation)."""
+    benchmark-coverable and the simulated full-test-set path is skipped entirely (456 real
+    journal samples (466 before 2026-10-15) per combo vs the full ~24k test population under simulation)."""
     cov = set()
     for e in journal.values():
         cov |= set(e.get('input', {}).keys())

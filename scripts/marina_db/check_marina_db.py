@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check_marina_db.py -- verify the 2026-10-14 MARINA-DB build (build_open.py) against its reference.
 
-The reference is the sentinel-free MARINA-DB-OPEN (2026-09-29 build + drop_mnova_sentinels). The rebuild
+The reference is the sentinel-free MARINA-DB-OPEN-OLD (2026-09-29 build + drop_mnova_sentinels). The rebuild
 may only change MS/MS (current ICEBERG, NIST23 blacklist) and the fingerprints (vocab recomputed). Checks:
 
   1. index.pkl: same idx set; every field identical to the reference except has_mass_spec(_neg)

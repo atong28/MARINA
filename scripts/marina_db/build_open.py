@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""build_open.py -- derive MARINA-DB-OPEN from a built MARINA-DB + CH-NMR-NP.
+"""build_open.py -- derive the open MARINA-DB (the release; earlier builds were called MARINA-DB-OPEN) from a
+built MARINA-DB-PRIVATE (stages 1-13, --src) + CH-NMR-NP.
 
-MARINA-DB-OPEN is MARINA-DB with NMR taken only from sources we may redistribute: CH-NMR-NP
+The open build is MARINA-DB-PRIVATE with NMR taken only from sources we may redistribute: CH-NMR-NP
 (JEOL experimental natural-product NMR, NONCOMMERCIAL licence -- the release must be NC and
 attribute CH-NMR-NP) first, the Mnova simulations second. The SPECTRE corpus (ACD/Labs HSQC,
 CASPRE/PROSPERE 1D, and SPECTRE's own copy of CH-NMR-NP) is never consulted. MS/MS of the
@@ -59,9 +60,9 @@ its sentinel-free variant from 0b0ddad). Three changes, everything else as below
     DATASET_ROOT=$PWD/data/dataset pixi run python scripts/marina_db/build_open.py \
         --structures ../CH-NMR-NP/<confirmed>.tsv --ms_pos <iceberg pos dir> --ms_neg <iceberg neg dir>
     DATASET_ROOT=$PWD/data/dataset pixi run python scripts/marina_db/build/12_verify.py \
-        --dataset_root ../Datasets/MARINA-DB-OPEN
+        --dataset_root ../Datasets/MARINA-DB
     DATASET_ROOT=$PWD/data/dataset pixi run python scripts/marina_db/check_open_identity.py \
-        --out ../Datasets/MARINA-DB-OPEN
+        --out ../Datasets/MARINA-DB
 """
 import argparse
 import csv

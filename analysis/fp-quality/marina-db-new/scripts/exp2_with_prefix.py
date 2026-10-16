@@ -1,7 +1,7 @@
 """Exp 2 over the new retrieval set, plus a prefix reproduction check.
 
 Uses exp2_specificity.py's own load_csr_colsets / mass_vector / specificity (identical metric
-definitions). The new MARINA-DB retrieval.pkl is the old 531,087 rows in the same order with 840
+definitions). The MARINA-DB-OPEN-OLD retrieval.pkl is the old 531,087 rows in the same order with 840
 CH-NMR-NP rows appended, so restricting every FP to rows [0, --prefix) must reproduce the published
 (old-set) numbers — a check that the rebuilt reference FPs match the published definitions.
 Masses are cached (.npy) so per-FP invocations don't redo the single-threaded mass pass.

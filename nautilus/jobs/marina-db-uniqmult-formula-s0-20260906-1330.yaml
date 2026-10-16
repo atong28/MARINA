@@ -5,7 +5,7 @@
 # cherry-pick 6692458 -> 4887d32), same input_types, same seed. The ONLY difference is
 # --fp_type RankingEntropyUniqueMultiplicity.
 #
-# The fp's artifacts are not in MARINA-DB.zip, so after startup unzips the dataset we inject
+# The fp's artifacts are not in MARINA-DB-PRIVATE.zip, so after startup unzips the dataset we inject
 # them into node-local /workspace from the persistent PVC, then re-run pack_arrow (skip-if-
 # exists packs only the new FragIdx) before training:
 #   /workspace/RankingEntropyUniqueMultiplicity/{bitinfo_to_idx.pkl,rankingset.pt}

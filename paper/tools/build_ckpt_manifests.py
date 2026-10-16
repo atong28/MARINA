@@ -26,7 +26,7 @@ TABLES = {
     "marina-db-uncapped-nmr": ["results_training_regime (NMR+MW)"],
     "marina-db-uncapped-noform": ["results_training_regime (NMR+MS/MS+MW)"],
 }
-DATASET = {"marina-db-open": "MARINA-DB (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN, zip sha256 2780459f...)"}
+DATASET = {"marina-db-open": "MARINA-DB-OPEN-OLD (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN-OLD, zip sha256 2780459f...)"}
 
 
 def family(exp):

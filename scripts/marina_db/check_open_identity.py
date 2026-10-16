@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""check_open_identity.py -- MARINA-DB-OPEN leaves everything but NMR of MARINA-DB untouched.
+"""check_open_identity.py -- MARINA-DB-OPEN (now MARINA-DB-OPEN-OLD) leaves everything but NMR of MARINA-DB-PRIVATE untouched.
+Not valid for the 2026-10-14 release build (MS/MS and FP vocab change there): use check_marina_db.py.
 
 build_open.py may only (a) swap the NMR of existing molecules (HSQC/C_NMR/H_NMR shards and the
 has_hsqc/has_c_nmr/has_h_nmr flags), (b) APPEND index rows, retrieval rows, rankingset rows,
@@ -21,7 +22,7 @@ against the source MARINA-DB, for every PRE-EXISTING idx / retrieval idx:
 Exits nonzero on any failure.
 
     DATASET_ROOT=$PWD/data/dataset pixi run python scripts/marina_db/check_open_identity.py \
-        --out ../Datasets/MARINA-DB-OPEN
+        --out ../Datasets/MARINA-DB-OPEN-OLD
 """
 import argparse
 import hashlib

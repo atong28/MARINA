@@ -4,15 +4,16 @@
 # kept for comparison); annotation is always ECFP4 cosine >= 0.8.
 #
 # Work dir W (one GPU box; build it with the "stage" commands in paper/README.md):
-#   W/data/MARINA-DB/            CH-NMR-NP-first dataset (disk name MARINA-DB-OPEN): index, retrieval, arrow/{val,test},
+#   W/data/MARINA-DB/            MARINA-DB-OPEN-OLD, the CH-NMR-NP-first dataset (disk Datasets/MARINA-DB-OPEN-OLD): index, retrieval, arrow/{val,test},
 #                                RankingEntropyUniqueMultiplicity/
-#   W/data/MARINA-DB-PRIVATE/    original dataset (disk name MARINA-DB): index, retrieval, arrow/test, the five
+#   W/data/MARINA-DB-PRIVATE/    original dataset (disk Datasets/MARINA-DB-PRIVATE): index, retrieval, arrow/test, the five
 #                                RankingEntropy*/ dirs (fp sweep + training regimes)
 #   W/data/SPECTRE-clean-{test,val}/  SPECTRE retrieval + RankingEntropy/ bank with the clean-subset structures appended
 #   W/bench/{full,clean_test,clean_val,simnmr}/benchmark-journal.pkl
-#        full = MARINA-Bench 466 (232 val / 234 test; experimental NMR + simulated MS/MS = Benchmark/benchmark-sim.pkl)
+#        full = MARINA-Bench (experimental NMR + simulated MS/MS = Benchmark/benchmark-sim.pkl; 456 = 227 val / 229 test
+#               since 2026-10-15, Bench-466 = 232 val / 234 test before, archived in Benchmark/archive/pre-nist23-drop-2026-10-14/)
 #        clean_test = SPECTRE-clean test 205, clean_val = SPECTRE-clean val 207
-#        simnmr = the same 466 benchmark compounds with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl)
+#        simnmr = the same benchmark compounds with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl; holds 456, legacy filename)
 #   W/ckpt/<experiment>/<ts>/{epoch_*.ckpt,params.json}   (exactly one ckpt per experiment)
 #   W/ckpt/spectre-deployed/{best.ckpt,params.json}
 # Outputs: W/results-<metric>/<bench>/benchmarks/<name>_benchmark_journal_results.pkl and <name>_sim_results.json.

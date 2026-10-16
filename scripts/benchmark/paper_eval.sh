@@ -1,12 +1,13 @@
 #!/bin/bash
-# Paper eval driver for the MARINA-DB (CH-NMR-NP-first, ex-"OPEN") rewrite. Runs on one GPU box
+# Paper eval driver for the MARINA-DB-OPEN-OLD (CH-NMR-NP-first, ex-"OPEN") rewrite. Runs on one GPU box
 # (grapefruit) against a staged work dir W:
-#   W/data/MARINA-DB/                      the CH-NMR-NP-first dataset (arrow/{val,test}, index, retrieval,
+#   W/data/MARINA-DB/                      MARINA-DB-OPEN-OLD, the CH-NMR-NP-first dataset (arrow/{val,test}, index, retrieval,
 #                                          RankingEntropy*/, nmr_sources.parquet)
 #   W/bench/{full,clean_test,clean_val,simnmr}/benchmark-journal.pkl
-#        full       = journal 466 (232 val / 234 test), real NMR + simulated MS/MS
+#        full       = journal (Benchmark/benchmark-sim.pkl; 456 = 227 val / 229 test since 2026-10-15, was 466 = 232 / 234),
+#                     real NMR + simulated MS/MS
 #        clean_test = SPECTRE-clean test 205 (Table 3), clean_val = SPECTRE-clean val 207
-#        simnmr     = the same 466 with Mnova-simulated NMR (sim-exp gap table)
+#        simnmr     = the same compounds with Mnova-simulated NMR (sim-exp gap table)
 #   W/ckpt/<experiment>/<ts>/{epoch_*.ckpt,params.json}
 # Outputs land in W/bench/<bench>/benchmarks/ and W/out/.
 #

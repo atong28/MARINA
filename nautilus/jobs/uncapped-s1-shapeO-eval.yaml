@@ -28,7 +28,7 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             # Shape-O uncapped eval. Bootstrap = startup.sh's clone+pixi ONLY (no dataset unzip):
-            # /workspace must hold MARINA-DB uncapped bits alone — MARINA1's arrow/retrieval.pkl
+            # /workspace must hold MARINA-DB-PRIVATE uncapped bits alone — MARINA1's arrow/retrieval.pkl
             # would mismatch the uncapped bank. Selective unzip matches run_uncapped_evals.sh
             # (the exact staging that produced the s0/s2 uncapped pkls the tables already use).
             - >-

@@ -20,7 +20,7 @@
     "marina-db-open-chnmr-uniqmult-formula-s1",
     "marina-db-open-chnmr-uniqmult-formula-s2"
   ],
-  "training_dataset": "MARINA-DB (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN)",
+  "training_dataset": "MARINA-DB-OPEN-OLD (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN-OLD)",
   "retrieval_set": {
     "name": "MARINA-DB",
     "size": 531927,

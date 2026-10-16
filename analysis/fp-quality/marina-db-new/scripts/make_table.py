@@ -52,8 +52,8 @@ def main():
         return ("  % " if com else "  ") + rf"\quad {lab:<34s}& " + " & ".join(cells[k]) + r" \\"
 
     today = datetime.date.today().isoformat()
-    L = [rf"% tab:fp_quality over the 531,927-molecule MARINA-DB (CH-NMR-NP-first) retrieval set",
-         r"% (Datasets/MARINA-DB-OPEN/retrieval.pkl = the old 531,087 rows, same order, + 840 CH-NMR-NP rows).",
+    L = [rf"% tab:fp_quality over the 531,927-molecule MARINA-DB-OPEN-OLD (CH-NMR-NP-first) retrieval set",
+         r"% (Datasets/MARINA-DB-OPEN-OLD/retrieval.pkl = the old 531,087 rows, same order, + 840 CH-NMR-NP rows).",
          r"% Produced by MARINA/analysis/fp-quality/marina-db-new/ (run_refs.sh, run_mces.sh,",
          r"% scripts/{exp2_with_prefix,make_pairs,merge_mces,make_table}.py; repo builders + exp1_analyze.py);",
          r"% results: marina-db-new/results/{exp2_*.json, exp1_spearman.json}. MCES rho: fresh RASCAL pass over",

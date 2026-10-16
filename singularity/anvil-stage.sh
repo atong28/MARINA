@@ -73,7 +73,7 @@ cat <<EOF
 Staged. Launch one seed with:
 
   ssh $HOST "cd $PROJECT_ROOT/code/$CODE_NAME && \\
-     EXPERIMENT_NAME=marina-db-open-solvjit-uniqmult-formula-s0 DATASET=${DATASETS[0]:-MARINA-DB-OPEN} \\
+     EXPERIMENT_NAME=marina-db-open-solvjit-uniqmult-formula-s0 DATASET=${DATASETS[0]:-MARINA-DB-OPEN-OLD} \\
      FP_TYPE=RankingEntropyUniqueMultiplicity SEED=0 EXTRA_ARGS='--solvent_jitter_p 1.0' \\
      sbatch --job-name=mdbopen-solvjit-s0-\$(date +%Y%m%d-%H%M) singularity/anvil-train.sbatch"
 EOF
