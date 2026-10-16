@@ -92,7 +92,7 @@ unpacks straight into `checkpoints/marina_db_s1/`. The script then writes
             "root": "marina_db_s1",
             "type": "marina",
             "default": true,
-            "display_name": "MARINA-DB (unique-multiplicity, formula-capable)"
+            "display_name": "MARINA-DB-OPEN-OLD (unique-multiplicity, formula-capable)"
         }
     ]
 }
