@@ -5,23 +5,60 @@ table, one manifest per checkpoint, the evaluation runner, the table builder and
 Appendix tables are out of scope for now.
 
 **Ranking metric: cosine** (decided 2026-10-01 after a full comparison). Binary-Tanimoto ranking was evaluated too and
-is kept for reference (`results/raw-jaccard/`, `results/tables-jaccard/`): on identical checkpoints it is ~1.5–4 pp
+is kept for reference (`results/raw-jaccard{,-466}/`, `results/tables-jaccard{,-466}/`): on identical checkpoints it is ~1.5–4 pp
 lower at rank@1 than cosine (PRIVATE flagship journal test NMR+MS/MS 71.08 → 68.52; MARINA-DB-OPEN-OLD flagship 70.23 → 66.24).
 
 ```
 paper/
-  specs/<table>.json            exact conditions of each table (machine-readable; read by make_tables.py)
+  specs/<table>.json            paper package: exact conditions of each table (read by make_tables.py) + benchmarks.json (expected n)
+  specs-466/                    the 2026-10-02 package (MARINA-DB-OPEN-OLD / -PRIVATE checkpoints, Bench-466), same layout
   checkpoints/<experiment>.json one per checkpoint: file, epoch, bytes, sha256, locations, training commit/cluster,
                                 and the full training params.json
-  run_eval.sh                   GPU runner (groups flagship / spectre / fpsweep / regime / collect)
-  nautilus/make_jobs.sh         Nautilus Jobs for the PRIVATE checkpoints that live on the atong-spectre PVC
-  make_tables.py                raw results -> results/tables/<table>{,_<split>}.{tex,json}
-  db_comparison/                Table 1 generator + its two snippets (counts, no model)
+  run_eval.sh                   GPU runner (groups flagship / spectre / fpsweep / regime / simgap / simfull / singleatom / collect)
+  nautilus/make_jobs.sh         Nautilus Jobs for the PRIVATE checkpoints that live on the atong-spectre PVC (2026-10-02 package)
+  make_tables.py                raw results -> results/tables<SET>/<table>{,_<split>}.{tex,json}   (--set release | 466)
+  db_comparison/                Table 1 generator; *.tex = release MARINA-DB counts, 466/*.tex = the 2026-10-02 (OPEN-OLD) counts
   tools/                        build_ckpt_manifests.py, verify_ckpts.py, augment_spectre_bank.py
-  results/raw-cosine/<bench>/   committed per-checkpoint outputs (<exp>_benchmark_journal_results.pkl, _sim_results.json)
-  results/tables/               built paper tables (cosine; \tbd where an input is missing; json lists what is missing)
-  results/raw-jaccard/, results/tables-jaccard/   the same with binary-Tanimoto ranking (comparison only)
+  results/raw-cosine/<bench>/   paper package: per-checkpoint outputs (<exp>_benchmark_journal_results.pkl, _sim_results.json)
+  results/tables/               paper package: built tables (cosine; \tbd where an input is missing; json lists what is missing)
+  results/raw-cosine-466/, results/tables-466/   the 2026-10-02 package (reproduces its committed tables byte for byte)
+  results/raw-jaccard{,-466}/, results/tables-jaccard{,-466}/   the same with binary-Tanimoto ranking (comparison only)
 ```
+
+## Two packages: the paper (release MARINA-DB + MARINA-Bench 456) and the 2026-10-02 package (`-466`)
+
+**Paper package (unsuffixed, the default everywhere)**:
+- release MARINA-DB (`Datasets/MARINA-DB`, zip sha256 `49442996…`; FP vocab recomputed, NIST23 molecules without MS/MS);
+- MARINA-Bench 456 (test 229 / val 227; SPECTRE-clean test 205, val 206);
+- flagship `marina-db-flagship-uniqmult-s{0,1,2}`; Table 4 = that vs `marina-db-flagship-sherlock-s{0,1,2}`.
+
+**2026-10-02 package (`-466`)**:
+- `marina-db-open-chnmr-uniqmult-formula-*` on MARINA-DB-OPEN-OLD plus the MARINA-DB-PRIVATE fingerprint sweep / training regimes;
+- MARINA-Bench 466 (234 / 232; SPECTRE-clean 205 / 207);
+- kept so it reproduces as committed. The tables that stay legacy in the supplement are built from it: training regimes, the 5-FP appendix, the PRIVATE fingerprint comparison.
+
+Every spec set has a `benchmarks.json` with the expected n per bench and split; `make_tables.py` refuses a raw file with
+any other n, so the two packages can never be mixed in one table. Table headers take n from the records.
+
+```bash
+# paper package (GPU box / Nautilus pod, work dir W: data/MARINA-DB = release, bench/* = the 456 journals)
+W=$W bash paper/run_eval.sh flagship  marina-db-flagship-uniqmult-s{0,1,2}
+FPSWEEP_DATA=MARINA-DB W=$W bash paper/run_eval.sh fpsweep marina-db-flagship-sherlock-s{0,1,2}
+W=$W bash paper/run_eval.sh simfull   marina-db-flagship-uniqmult-s{0,1,2}
+W=$W bash paper/run_eval.sh simgap    marina-db-flagship-uniqmult-s{0,1,2}
+W=$W bash paper/run_eval.sh singleatom marina-db-flagship-uniqmult-s{0,1,2}
+W=$W bash paper/run_eval.sh spectre
+W=$W bash paper/run_eval.sh collect
+DATASET_ROOT=/tmp pixi run python paper/make_tables.py                    # -> results/tables/
+DATASETS_ROOT=~/Workspace/Datasets pixi run python paper/db_comparison/gen_db_comparison.py
+# 2026-10-02 package
+RES_TAG=-466 FLAG_DATA=MARINA-DB-OPEN-OLD W=$W466 bash paper/run_eval.sh flagship marina-db-open-chnmr-uniqmult-formula-s{0,1,2}
+DATASET_ROOT=/tmp pixi run python paper/make_tables.py --set 466          # -> results/tables-466/
+MARINA_DB_BUILD=MARINA-DB-OPEN-OLD OUT_DIR=$PWD/paper/db_comparison/466 pixi run python paper/db_comparison/gen_db_comparison.py
+```
+The sections below were written for the 2026-10-02 package (their Benchmarks/Datasets rows, run names and paths are its
+own, now under `-466`). The ranking, rank@k, annotation, checkpoint-selection and aggregation conventions apply to both.
+Plan, checks and provenance: wiki `MARINA/paper-results-provenance.md`.
 
 ## Conventions shared by every table
 

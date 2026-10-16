@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Build the main-paper result tables from the raw evaluation outputs.
 
-Reads paper/specs/<table>.json and paper/results/raw-<metric>/<bench>/ (written by `paper/run_eval.sh collect`), and
-writes paper/results/tables[-jaccard]/<table>.{tex,json} for the split the paper reports plus <table>_<other split>.
+Reads paper/specs<SET>/<table>.json and paper/results/raw-<metric><SET>/<bench>/ (written by `paper/run_eval.sh collect`),
+and writes paper/results/tables[-jaccard]<SET>/<table>.{tex,json} for the split the paper reports plus <table>_<other split>.
+SET is empty for the paper package (release MARINA-DB, MARINA-Bench 456) and "-466" (--set 466) for the 2026-10-02 package
+(MARINA-DB-OPEN-OLD / MARINA-DB-PRIVATE checkpoints, Bench-466), which is kept reproducible byte for byte.
 --metric cosine (paper, default) or jaccard picks the raw dir, the output dir and the mean-similarity column.
 Missing inputs become \\tbd cells and are listed under "missing" in the json, so the tables can be rebuilt as runs land.
 
@@ -43,6 +45,8 @@ class Raw:
             self._cache[path] = pickle.load(open(path, "rb")) if os.path.exists(path) else None
             if self._cache[path] is None:
                 self.missing.append(os.path.relpath(path, HERE))
+            else:
+                check_n(bench, path, self._cache[path])
         return self._cache[path]
 
     def sim(self, bench, name):
@@ -51,6 +55,24 @@ class Raw:
             self.missing.append(os.path.relpath(path, HERE))
             return None
         return json.load(open(path))["metrics"]
+
+
+EXPECT_N = {}  # <specs>/benchmarks.json: {bench: {split: n}}; a raw file with any other n is refused
+
+
+def check_n(bench, path, saved):
+    """Refuse raw journal results whose per-split record counts are not the benchmark the specs describe (so 466-era
+    and 456-era files can never be mixed into one table)."""
+    for key, recs in saved.items():
+        split = key.split("/")[0]
+        want = EXPECT_N.get(bench, {}).get(split)
+        if want is not None and recs and len(recs) != want:
+            raise SystemExit(f"{os.path.relpath(path, HERE)}: {key} has n={len(recs)}, specs expect {bench}/{split} n={want}")
+
+
+def exp_n(per):
+    """n of the experimental records behind a table column (first seed that has them)."""
+    return next((m["n"] for m in per if m), None)
 
 
 def jmetrics(saved, key):
@@ -202,7 +224,7 @@ def fp_comparison(raw, spec, split, main_only):
         lines.append(f"  {lab:<24}& " + " & ".join(cells) + " \\\\")
     head = (PRE % ("", "7pt", "1.2") + "\\begin{tabular}{@{}l cccc@{}}\n  \\toprule\n  \\hd{Fingerprint}\n"
             "      & \\hd{exp-rank@1} & \\hd{exp-rank@5} & \\hd{exp-rank@10} & \\hd{" + LABEL[METRIC][0] + "} \\\\\n  \\midrule\n")
-    note = (f"% {spec['table']} — MARINA-DB-PRIVATE arms, journal {split}, input {sub} (NMR + formula; MW and MS/MS "
+    note = (f"% {spec['table']} — {spec['training_dataset'].split(' (')[0]} arms, journal {split}, input {sub} (NMR + formula; MW and MS/MS "
             f"withheld); ranking = {LABEL[METRIC][2]}; {'main rows' if main_only else 'all five fingerprints (appendix)'}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, {"split": split, "subset": sub, "rows": stats}
 
@@ -224,6 +246,8 @@ def results_training_regime(raw, spec, split):
             key = f"test/mean_{SIM[METRIC]}/{scombo}"
             st_["sim_sim"] = agg([None if s is None or key not in s else s[key] for s in ss])
             stats[(regime, label)] = st_
+    n_exp = exp_n([jmetrics(j, f"{split}/{spec['eval_inputs'][0][1]}") for j in
+                   (raw.journal(bench, e) for exps in spec["arms"].values() for e in exps)])
     cols = [f"exp_r@{k}" for k in KS] + ["exp_sim"] + [f"sim_r@{k}" for k in KS] + ["sim_sim"]
     regimes = list(spec["arms"])
     lines = []
@@ -245,7 +269,7 @@ def results_training_regime(raw, spec, split):
             data["rows"][f"{regime} | {label}"] = stats[(regime, label)]
     head = (PRE % ("\\small\n", "5pt", "1.15") + "\\begin{tabular}{@{}l l cccc cccc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Training}} & \\multirow{2}{*}{\\hd{Eval input}}\n"
-            f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
+            f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{n_exp}$)}}}}\n"
             "      & \\multicolumn{4}{c}{\\hd{Simulated (MARINA-DB-PRIVATE test)}} \\\\\n"
             "  \\cmidrule(lr){3-6}\\cmidrule(lr){7-10}\n"
             "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "}\n"
@@ -320,12 +344,13 @@ def results_full(raw, spec, kind):
             lines.append(first + " & " + " & ".join(cells) + " \\\\")
         if i != len(S1_ROWS) - 1:
             lines.append("  \\cmidrule(l){2-10}" if kind == "derep" else "  \\cmidrule(l){2-8}")
+    n_exp = exp_n([jmetrics(x, f"{split}/{S1_ROWS[0][1]}") for x in js])
     n = len(cols)
     sub_hd = " & ".join(f"\\hd{{{'r@' + c.split('@')[1] if c.startswith('rank') else c}}}" for c in cols)
     head = (PRE % ("\\small\n", "5pt" if kind == "derep" else "6pt", "1.15") +
             f"\\begin{{tabular}}{{@{{}}l l {'c' * n} {'c' * n}@{{}}}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Input}} & \\multirow{2}{*}{\\hd{}}\n"
-            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{232 if split == 'val' else 234}$)}}}}\n"
+            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{n_exp}$)}}}}\n"
             f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Simulated (MARINA-DB test)}}}} \\\\\n"
             f"  \\cmidrule(lr){{3-{2 + n}}}\\cmidrule(lr){{{3 + n}-{2 + 2 * n}}}\n"
             f"      & & {sub_hd}\n        & {sub_hd} \\\\\n  \\midrule\n")
@@ -415,15 +440,26 @@ def main():
     global OUT_DIR, METRIC
     ap = argparse.ArgumentParser()
     ap.add_argument("--metric", default="cosine", choices=["cosine", "jaccard"])
-    ap.add_argument("--raw", default=None, help="default paper/results/raw-<metric>")
-    ap.add_argument("--out", default=None, help="default paper/results/tables (cosine) or tables-jaccard")
+    ap.add_argument("--set", default="release", choices=["release", "466"],
+                    help="release (default: release MARINA-DB + MARINA-Bench 456) or 466 (the 2026-10-02 package); "
+                         "picks specs<SET>/, results/raw-<metric><SET>/ and results/tables[-jaccard]<SET>/")
+    ap.add_argument("--raw", default=None, help="default paper/results/raw-<metric><SET>")
+    ap.add_argument("--out", default=None, help="default paper/results/tables<SET> (cosine) or tables-jaccard<SET>")
+    ap.add_argument("--specs", default=None, help="default paper/specs<SET>; tables whose spec is absent are skipped")
     a = ap.parse_args()
     METRIC = a.metric
-    a.raw = a.raw or os.path.join(HERE, "results", f"raw-{METRIC}")
-    OUT_DIR = a.out or os.path.join(HERE, "results", "tables" if METRIC == "cosine" else "tables-jaccard")
-    specs = {k: json.load(open(os.path.join(HERE, "specs", f"{k}.json")))
-             for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")}
-    specs_extra = {"sim_exp_gap": json.load(open(os.path.join(HERE, "specs", "sim_exp_gap.json")))}
+    SET = "" if a.set == "release" else "-466"
+    S = a.specs or os.path.join(HERE, f"specs{SET}")
+    bj = os.path.join(S, "benchmarks.json")
+    if os.path.exists(bj):
+        EXPECT_N.update(json.load(open(bj))["n"])
+    a.raw = a.raw or os.path.join(HERE, "results", f"raw-{METRIC}{SET}")
+    OUT_DIR = a.out or os.path.join(HERE, "results", ("tables" if METRIC == "cosine" else "tables-jaccard") + SET)
+    has = lambda k: os.path.exists(os.path.join(S, f"{k}.json"))
+    load = lambda k: json.load(open(os.path.join(S, f"{k}.json")))
+    specs = {k: load(k) for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")
+             if has(k)}
+    specs_extra = {k: load(k) for k in ("sim_exp_gap",) if has(k)}
     summary = {}
     for table, spec in specs.items():
         paper_split = (spec.get("benchmark") or spec["experimental"])["paper_split"]
@@ -444,20 +480,21 @@ def main():
             data["missing"] = sorted(set(raw.missing))
             out(f"{table}{suffix}", tex, data)
             summary[f"{table}{suffix}"] = "complete" if not data["missing"] else f"{len(data['missing'])} inputs missing"
-    sp = json.load(open(os.path.join(HERE, "specs", "results_full.json")))
-    for kind, name in (("derep", "results_full_derep"), ("ann", "results_full_ann")):
+    sp = load("results_full") if has("results_full") else None
+    for kind, name in ((("derep", "results_full_derep"), ("ann", "results_full_ann")) if sp else ()):
         raw = Raw(a.raw)
         tex, data = results_full(raw, sp, kind)
         data["missing"] = sorted(set(raw.missing))
         out(name, tex, data)
         summary[name] = ("complete" if not data["missing"] and not data.get("tbd_cells")
                          else f"{len(data['missing'])} files missing, {data.get('tbd_cells', 0)} cells pending")
-    raw = Raw(a.raw)
-    ov, pe, data = single_atom(raw, json.load(open(os.path.join(HERE, "specs", "single_atom_formula.json"))))
-    if ov:
-        out("single_atom_formula_overall", ov, data)
-        out("single_atom_formula_perelement", pe, data)
-    summary["single_atom_formula"] = "complete" if ov else f"{len(data['missing'])} inputs missing"
+    if has("single_atom_formula"):
+        raw = Raw(a.raw)
+        ov, pe, data = single_atom(raw, load("single_atom_formula"))
+        if ov:
+            out("single_atom_formula_overall", ov, data)
+            out("single_atom_formula_perelement", pe, data)
+        summary["single_atom_formula"] = "complete" if ov else f"{len(data['missing'])} inputs missing"
     for table, spec in specs_extra.items():   # appendix tables (one version)
         raw = Raw(a.raw)
         tex, data = sim_exp_gap(raw, spec)

@@ -1,0 +1,9 @@
+{
+  "description": "Expected per-split record counts of the raw journal results this spec set reads (make_tables.py refuses any other n). Bench-466 = MARINA-Bench before the 2026-10-14 NIST23 drop (archived in Benchmark/archive/pre-nist23-drop-2026-10-14/).",
+  "n": {
+    "full":       {"val": 232, "test": 234},
+    "simnmr":     {"val": 232, "test": 234},
+    "clean_test": {"test": 205},
+    "clean_val":  {"val": 207}
+  }
+}

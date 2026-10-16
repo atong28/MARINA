@@ -1,0 +1,19 @@
+{
+  "description": "Expected per-split record counts of the raw journal results this spec set reads (make_tables.py refuses any other n). MARINA-Bench 456 = after the 2026-10-14 NIST23 drop; SPECTRE-clean val 207 -> 206, test 205 unchanged.",
+  "n": {
+    "full": {
+      "val": 227,
+      "test": 229
+    },
+    "simnmr": {
+      "val": 227,
+      "test": 229
+    },
+    "clean_test": {
+      "test": 205
+    },
+    "clean_val": {
+      "val": 206
+    }
+  }
+}

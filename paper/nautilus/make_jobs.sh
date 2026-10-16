@@ -64,7 +64,7 @@ spec:
               ln -sfn /root/gurusmart/paper-eval/results \$W/results
               for e in $exps; do ln -sfn /root/gurusmart/Moonshot/results/\$e \$W/ckpt/\$e; ls -la \$W/ckpt/\$e/*/; done
               pixi install
-              W=\$W bash paper/run_eval.sh $group $exps
+              RES_TAG=-466 W=\$W bash paper/run_eval.sh $group $exps
               for e in $exps; do
                 echo "[result] \$e"
                 ls -la \$W/results/full/benchmarks/\${e}_* || true

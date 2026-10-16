@@ -2,8 +2,8 @@
 table, and the development-dataset table (MARINA-DB-PARTIAL vs MARINA-DB-PRIVATE vs MARINA-DB) from the shipped
 dataset indexes.
 
-MARINA-DB         = $DATASETS_ROOT/MARINA-DB-OPEN-OLD (the build the committed tables came from, zip sha256 2780459f...;
-                    the 2026-10-15 release is $DATASETS_ROOT/MARINA-DB, 49442996... -- switch here to regenerate on it)
+MARINA-DB         = $DATASETS_ROOT/MARINA-DB (the 2026-10-15 release, zip sha256 49442996...) -> paper/db_comparison/*.tex;
+                    the 2026-10-02 package used $DATASETS_ROOT/MARINA-DB-OPEN-OLD (2780459f...) -> paper/db_comparison/466/
 MARINA-DB-PRIVATE = $DATASETS_ROOT/MARINA-DB-PRIVATE
 MARINA-DB-PARTIAL = $DATASETS_ROOT/MARINA1 (no negative-mode MS/MS: that count is 0)
 Counts = molecules with the has_* flag; experimental = NMR source 'chnmr' in nmr_sources.parquet.
@@ -18,6 +18,10 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATASETS = os.environ.get("DATASETS_ROOT", os.path.expanduser("~/Workspace/Datasets"))
+# MARINA-DB column = the release build (Datasets/MARINA-DB, 49442996...) -> snippets in this directory. The 2026-10-02
+# package's snippets (MARINA-DB-OPEN-OLD, 2780459f...) live in 466/: MARINA_DB_BUILD=MARINA-DB-OPEN-OLD OUT_DIR=<repo>/paper/db_comparison/466
+MARINA_DB_BUILD = os.environ.get("MARINA_DB_BUILD", "MARINA-DB")
+OUT_DIR = os.environ.get("OUT_DIR", HERE)
 
 SPECTRE_DB = {"train": 173422, "val": 4056, "test": 4056, "has_hsqc": 117806, "has_c_nmr": 111521,
               "has_h_nmr": 101486, "has_mass_spec": 0, "has_mass_spec_neg": 0, "total": 181534,
@@ -67,19 +71,20 @@ def table(cols, rows, header):
 
 
 def main():
-    new = stats(os.path.join(DATASETS, "MARINA-DB-OPEN-OLD"), sources=True)
+    new = stats(os.path.join(DATASETS, MARINA_DB_BUILD), sources=True)
     priv = stats(os.path.join(DATASETS, "MARINA-DB-PRIVATE"))
     partial = stats(os.path.join(DATASETS, "MARINA1"))
+    os.makedirs(OUT_DIR, exist_ok=True)
     main_rows = []
     for r in COUNT_ROWS:
         main_rows.append(r)
         if r and r[1] in EXP_AFTER:
             main_rows.append(("\\quad experimental", EXP_AFTER[r[1]]))
-    with open(os.path.join(HERE, "db_comparison.tex"), "w") as f:
+    with open(os.path.join(OUT_DIR, "db_comparison.tex"), "w") as f:
         f.write(table([new, SPECTRE_DB], main_rows, ["MARINA-DB", "SPECTRE-DB"]))
-    with open(os.path.join(HERE, "db_comparison_private.tex"), "w") as f:
+    with open(os.path.join(OUT_DIR, "db_comparison_private.tex"), "w") as f:
         f.write(table([priv, new], COUNT_ROWS, ["MARINA-DB-PRIVATE", "MARINA-DB"]))
-    with open(os.path.join(HERE, "db_comparison_dev.tex"), "w") as f:
+    with open(os.path.join(OUT_DIR, "db_comparison_dev.tex"), "w") as f:
         f.write(table([partial, priv, new], COUNT_ROWS, ["MARINA-DB-PARTIAL", "MARINA-DB-PRIVATE", "MARINA-DB"]))
     print("MARINA-DB-PARTIAL", partial)
     print("MARINA-DB", new)

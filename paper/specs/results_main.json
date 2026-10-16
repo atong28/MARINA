@@ -5,7 +5,7 @@
     "definition": "cosine between the predicted probabilities (sigmoid) and each retrieval row's fingerprint (rankingset rows are L2-normalised on-bit sets)",
     "rank": "strict: retrieval rows with cosine >= cosine(prediction, gold) count against the gold, minus the gold's own row (ties count against)",
     "eval_flag": "--rank_metric cosine (RANK_METRIC=cosine, the run_eval.sh default)",
-    "comparison": "binary-Tanimoto (jaccard) results for the same tables are kept in paper/results/raw-jaccard and tables-jaccard"
+    "comparison": "binary-Tanimoto (jaccard) results for the same tables are kept in paper/results/raw-jaccard and tables-jaccard (release; the 2026-10-02 package: raw-jaccard-466, tables-jaccard-466)"
   },
   "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
   "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
@@ -16,24 +16,24 @@
   "model": "MARINA",
   "fingerprint": "RankingEntropyUniqueMultiplicity (16,384 bits)",
   "experiments": [
-    "marina-db-open-chnmr-uniqmult-formula-s0",
-    "marina-db-open-chnmr-uniqmult-formula-s1",
-    "marina-db-open-chnmr-uniqmult-formula-s2"
+    "marina-db-flagship-uniqmult-s0",
+    "marina-db-flagship-uniqmult-s1",
+    "marina-db-flagship-uniqmult-s2"
   ],
-  "training_dataset": "MARINA-DB-OPEN-OLD (CH-NMR-NP-first; disk Datasets/MARINA-DB-OPEN-OLD)",
+  "training_dataset": "MARINA-DB (release, disk Datasets/MARINA-DB, zip sha256 49442996b190d250586fb293d87396c35266ac9813bc61b4eb629abdd83dc868; FP vocab recomputed; NIST23 molecules have no MS/MS)",
   "retrieval_set": {
-    "name": "MARINA-DB",
+    "name": "MARINA-DB (release vocab)",
     "size": 531927,
     "work_dir": "data/MARINA-DB"
   },
   "benchmark": {
-    "name": "MARINA-Bench (journal; experimental NMR + ICEBERG-simulated MS/MS)",
+    "name": "MARINA-Bench 456 (journal; experimental NMR + ICEBERG-simulated MS/MS; 10 NIST23 compounds dropped 2026-10-14)",
     "bench": "full",
     "file": "Benchmark/benchmark-sim.pkl",
     "paper_split": "test",
     "n": {
-      "test": 234,
-      "val": 232
+      "test": 229,
+      "val": 227
     },
     "also_built": [
       "val"

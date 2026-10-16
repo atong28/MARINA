@@ -8,11 +8,11 @@
   "description": "Single-atom multiplicity bits (the fingerprint's radius-0 heavy-atom count features): NMR vs NMR+Formula",
   "model": "MARINA",
   "experiments": [
-    "marina-db-open-chnmr-uniqmult-formula-s0",
-    "marina-db-open-chnmr-uniqmult-formula-s1",
-    "marina-db-open-chnmr-uniqmult-formula-s2"
+    "marina-db-flagship-uniqmult-s0",
+    "marina-db-flagship-uniqmult-s1",
+    "marina-db-flagship-uniqmult-s2"
   ],
-  "benchmark": "MARINA-Bench val+test pooled (n=466)",
+  "benchmark": "MARINA-Bench 456 val+test pooled (n=456)",
   "from": "raw-cosine/singleatom/<exp>.json (scripts/benchmark/single_atom_bit_eval.py, run_eval.sh singleatom)",
   "aggregation": "val+test pooled per seed (n-weighted), then the mean of 3 seeds",
   "metrics": {
@@ -25,5 +25,6 @@
   "outputs": [
     "single_atom_formula_overall.tex",
     "single_atom_formula_perelement.tex"
-  ]
+  ],
+  "note": "single-atom bit set taken from the release vocab"
 }

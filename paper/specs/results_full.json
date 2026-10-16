@@ -13,25 +13,25 @@
   "model": "MARINA",
   "fingerprint": "RankingEntropyUniqueMultiplicity",
   "experiments": [
-    "marina-db-open-chnmr-uniqmult-formula-s0",
-    "marina-db-open-chnmr-uniqmult-formula-s1",
-    "marina-db-open-chnmr-uniqmult-formula-s2"
+    "marina-db-flagship-uniqmult-s0",
+    "marina-db-flagship-uniqmult-s1",
+    "marina-db-flagship-uniqmult-s2"
   ],
   "ranking": {
     "metric": "cosine"
   },
   "retrieval_set": {
-    "name": "MARINA-DB",
+    "name": "MARINA-DB (release vocab)",
     "size": 531927
   },
   "experimental": {
-    "benchmark": "MARINA-Bench (journal)",
+    "benchmark": "MARINA-Bench 456 (journal; experimental NMR + ICEBERG-simulated MS/MS; 10 NIST23 compounds dropped 2026-10-14)",
     "bench": "full",
     "split": "val",
-    "n": 232
+    "n": 227
   },
   "simulated": {
-    "benchmark": "MARINA-DB test split (24,500)",
+    "benchmark": "release MARINA-DB test split (24,500); combos with MS/MS score only the molecules that have MS/MS (NIST23 test molecules, 1,345, have none)",
     "from": "<exp>_sim_results.json (24 combos, run_eval.sh simfull)"
   },
   "aggregation": "mean ± sample std over seeds 0/1/2",

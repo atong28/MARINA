@@ -5,7 +5,7 @@
     "definition": "cosine between the predicted probabilities (sigmoid) and each retrieval row's fingerprint (rankingset rows are L2-normalised on-bit sets)",
     "rank": "strict: retrieval rows with cosine >= cosine(prediction, gold) count against the gold, minus the gold's own row (ties count against)",
     "eval_flag": "--rank_metric cosine (RANK_METRIC=cosine, the run_eval.sh default)",
-    "comparison": "binary-Tanimoto (jaccard) results for the same tables are kept in paper/results/raw-jaccard and tables-jaccard"
+    "comparison": "binary-Tanimoto (jaccard) results for the same tables are kept in paper/results/raw-jaccard and tables-jaccard (release; the 2026-10-02 package: raw-jaccard-466, tables-jaccard-466)"
   },
   "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos during training; patience 30, 750-epoch cap) — see paper/checkpoints/<experiment>.json",
   "aggregation": "MARINA: mean ± sample std (n-1) over seeds 0/1/2",
@@ -16,13 +16,13 @@
   "models": {
     "MARINA": {
       "experiments": [
-        "marina-db-open-chnmr-uniqmult-formula-s0",
-        "marina-db-open-chnmr-uniqmult-formula-s1",
-        "marina-db-open-chnmr-uniqmult-formula-s2"
+        "marina-db-flagship-uniqmult-s0",
+        "marina-db-flagship-uniqmult-s1",
+        "marina-db-flagship-uniqmult-s2"
       ],
       "fingerprint": "RankingEntropyUniqueMultiplicity",
       "retrieval_set": {
-        "name": "MARINA-DB",
+        "name": "MARINA-DB (release vocab)",
         "size": 531927,
         "work_dir": "data/MARINA-DB"
       }
@@ -32,7 +32,7 @@
       "fingerprint": "RankingEntropy (Sherlock, 16,384 bits)",
       "flags": "--project_name SPECTRE --fp_type RankingEntropy --legacy_spectre",
       "retrieval_set": {
-        "name": "SPECTRE-DB retrieval (526,163) + the clean-subset query structures appended (augment_rankingset.py)",
+        "name": "deployed SPECTRE retrieval (526,316) + the clean-subset structures it lacks (paper/tools/augment_spectre_bank.py): test +196 = 526,512, val +199 = 526,515",
         "work_dir": {
           "test": "data/SPECTRE-clean-test",
           "val": "data/SPECTRE-clean-val"
@@ -50,7 +50,7 @@
     "paper_split": "test",
     "n": {
       "test": 205,
-      "val": 207
+      "val": 206
     }
   },
   "rows": [

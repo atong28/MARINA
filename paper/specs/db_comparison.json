@@ -5,12 +5,12 @@
   "eval_group": null,
   "description": "MARINA-DB vs SPECTRE-DB spectral/molecule counts (main) + MARINA-DB-PRIVATE vs MARINA-DB (supplement); development datasets MARINA-DB-PARTIAL vs MARINA-DB-PRIVATE vs MARINA-DB (counts only, no experimental rows)",
   "inputs": {
-    "MARINA-DB": "Datasets/MARINA-DB-OPEN-OLD (= the 2026-09-29 build the committed table was generated from; renamed from MARINA-DB-OPEN 2026-10-15; zip sha256 2780459f70eb732d7c374939bf607035a490eedcaacd2dc17cbfcc015fed9eee). Release build = Datasets/MARINA-DB (49442996...): regeneration on it is the paper session's call",
+    "MARINA-DB": "Datasets/MARINA-DB (release, zip sha256 49442996...)",
     "MARINA-DB-PRIVATE": "Datasets/MARINA-DB-PRIVATE",
     "SPECTRE-DB": "constants from the SPECTRE paper (no local artifact)",
     "MARINA-DB-PARTIAL": "Datasets/MARINA1 (the MARINA1-era dataset; no negative-mode MS/MS, so that count is 0)"
   },
-  "how": "python paper/db_comparison/gen_db_comparison.py (counts = molecules with each has_* flag; experimental = nmr_sources.parquet source 'chnmr')",
+  "how": "python paper/db_comparison/gen_db_comparison.py",
   "outputs": [
     "paper/db_comparison/db_comparison.tex",
     "paper/db_comparison/db_comparison_private.tex",
