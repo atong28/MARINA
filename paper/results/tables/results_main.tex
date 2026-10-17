@@ -1,0 +1,34 @@
+% results_main — journal test, flagship: marina-db-flagship-uniqmult-s0, marina-db-flagship-uniqmult-s1, marina-db-flagship-uniqmult-s2; ranking = cosine.
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l cc cc cc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}}
+      & \multicolumn{2}{c}{\hd{@1}}
+      & \multicolumn{2}{c}{\hd{@5}}
+      & \multicolumn{2}{c}{\hd{@10}} \\
+  \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      & \hd{Base} & \hd{$+$F} & \hd{Base} & \hd{$+$F} & \hd{Base} & \hd{$+$F} \\
+  \midrule
+  \multicolumn{7}{@{}l}{\hd{(a) Structure dereplication}~(exp-rank@$k$)} \\
+  \addlinespace[2pt]
+  NMR$+$MS/MS* & 67.83\%\pmm{1.53} & $+$1.75\pmm{0.76} & 87.77\%\pmm{0.76} & $+$1.60\pmm{1.65} & 90.68\%\pmm{0.67} & $+$1.16\pmm{0.91} \\
+  NMR          & 56.77\%\pmm{2.73} & $+$9.61\pmm{2.43} & 76.42\%\pmm{0.87} & $+$9.46\pmm{2.91} & 81.80\%\pmm{1.82} & $+$7.42\pmm{0.44} \\
+  ME-HSQC      & 43.96\%\pmm{2.81} & $+$13.97\pmm{2.00} & 65.21\%\pmm{1.65} & $+$12.95\pmm{1.53} & 71.91\%\pmm{1.33} & $+$12.08\pmm{0.91} \\
+  $^{13}$C     & 18.63\%\pmm{1.76} & $+$11.64\pmm{2.67} & 40.90\%\pmm{1.33} & $+$15.14\pmm{1.53} & 49.64\%\pmm{1.33} & $+$16.59\pmm{2.18} \\
+  $^{1}$H      & 0.73\%\pmm{0.25} & $+$5.82\pmm{0.67} & 3.06\%\pmm{1.16} & $+$15.43\pmm{1.76} & 4.95\%\pmm{0.91} & $+$17.76\pmm{1.65} \\
+  \midrule
+  \multicolumn{7}{@{}l}{\hd{(b) Structure annotation}~(exp-ann@$k$)} \\
+  \addlinespace[2pt]
+  NMR$+$MS/MS* & 81.80\%\pmm{0.67} & $+$1.60\pmm{0.25} & 90.98\%\pmm{0.91} & $+$1.16\pmm{0.50} & 93.01\%\pmm{0.87} & $+$1.02\pmm{0.25} \\
+  NMR          & 69.00\%\pmm{1.31} & $+$10.19\pmm{0.91} & 81.37\%\pmm{0.50} & $+$8.01\pmm{1.82} & 85.59\%\pmm{1.31} & $+$5.82\pmm{1.10} \\
+  ME-HSQC      & 57.21\%\pmm{3.73} & $+$12.95\pmm{2.84} & 70.74\%\pmm{2.18} & $+$11.06\pmm{0.91} & 76.56\%\pmm{1.97} & $+$8.73\pmm{1.57} \\
+  $^{13}$C     & 29.99\%\pmm{1.01} & $+$13.39\pmm{3.71} & 49.49\%\pmm{1.53} & $+$13.68\pmm{1.97} & 55.90\%\pmm{1.51} & $+$13.97\pmm{2.86} \\
+  $^{1}$H      & 2.77\%\pmm{0.67} & $+$8.30\pmm{0.44} & 5.97\%\pmm{1.40} & $+$16.59\pmm{1.90} & 8.01\%\pmm{1.65} & $+$18.49\pmm{2.24} \\
+  \bottomrule
+\end{tabular}
+\endgroup

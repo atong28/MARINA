@@ -1,0 +1,31 @@
+% sim_exp_gap — flagship: marina-db-flagship-uniqmult-s0, marina-db-flagship-uniqmult-s1, marina-db-flagship-uniqmult-s2; test set = MARINA-DB test split; benchmark = MARINA-Bench test with Mnova-simulated / experimental NMR; ranking = cosine.
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}l l S[table-format=2.1] S[table-format=2.1] S[table-format=2.1] S[table-format=1.3]@{}}
+  \toprule
+  & & \multicolumn{3}{c}{\hd{Retrieval accuracy (\%)}} & \\
+  \cmidrule(lr){3-5}
+  \hd{Spectra} & \hd{Input} & {\hd{Top-1}} & {\hd{Top-5}} & {\hd{Top-10}} & {\hd{Mean cos}} \\
+  \midrule
+  \multirow{3}{*}{NMR (all)}   & MARINA-DB Test (sim) & 76.8 & 92.9 & 95.0 & 0.943 \\
+                               & MARINA-Bench Test (sim) & 71.2 & 90.4 & 94.0 & 0.923 \\
+                               & MARINA-Bench Test (exp) & 56.8 & 76.4 & 81.8 & 0.869 \\
+  \midrule
+  \multirow{3}{*}{HSQC}        & MARINA-DB Test (sim) & 69.5 & 88.1 & 91.1 & 0.915 \\
+                               & MARINA-Bench Test (sim) & 62.0 & 84.9 & 90.1 & 0.892 \\
+                               & MARINA-Bench Test (exp) & 44.0 & 65.2 & 71.9 & 0.826 \\
+  \midrule
+  \multirow{3}{*}{$^{13}$C}    & MARINA-DB Test (sim) & 45.4 & 70.4 & 76.7 & 0.860 \\
+                               & MARINA-Bench Test (sim) & 30.3 & 58.1 & 67.2 & 0.832 \\
+                               & MARINA-Bench Test (exp) & 18.6 & 40.9 & 49.6 & 0.782 \\
+  \midrule
+  \multirow{3}{*}{$^{1}$H}     & MARINA-DB Test (sim) & 18.0 & 36.5 & 44.2 & 0.761 \\
+                               & MARINA-Bench Test (sim) & 5.8 & 17.2 & 23.3 & 0.734 \\
+                               & MARINA-Bench Test (exp) & 0.7 & 3.1 & 4.9 & 0.648 \\
+  \bottomrule
+\end{tabular}
+\endgroup

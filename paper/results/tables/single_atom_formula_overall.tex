@@ -1,0 +1,20 @@
+% single_atom_formula_overall — single-atom multiplicity bits, NMR vs NMR+Formula; flagship: marina-db-flagship-uniqmult-s0, marina-db-flagship-uniqmult-s1, marina-db-flagship-uniqmult-s2;
+% MARINA-Bench val+test pooled (n=456), mean of 3 seeds. Element-count acc. and All counts
+% correct are phantom-penalising (a predicted element absent from the molecule counts as an error).
+\begingroup
+\color{cInk}
+\sisetup{retain-explicit-plus=true}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}l S[table-format=+1.2] S[table-format=+2.2] S[table-format=+2.1] S[table-format=+2.1]@{}}
+  \toprule
+  \hd{Input} & {\hd{Wrong bits/mol $\downarrow$}} & {\hd{Bit acc.\ \%}}
+    & {\hd{Element-count acc.\ \%}} & {\hd{All counts correct \%}} \\
+  \midrule
+  NMR                & 4.79 & 98.47 & 37.6 & 15.4 \\
+  NMR $+$ Formula    & \best{2.88} & \best{99.08} & \best{70.5} & \best{49.1} \\
+  \addlinespace[2pt]
+  $\Delta$ (Formula) & -1.91 & +0.61 & +32.9 & +33.7 \\
+  \bottomrule
+\end{tabular}
+\endgroup

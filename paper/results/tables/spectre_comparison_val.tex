@@ -1,0 +1,27 @@
+% spectre_comparison — SPECTRE-clean journal val (n=206), flagship: marina-db-flagship-uniqmult-s0, marina-db-flagship-uniqmult-s1, marina-db-flagship-uniqmult-s2; ranking = cosine for both models.
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l cc cc cc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}}
+      & \multicolumn{2}{c}{\hd{exp-rank@1}}
+      & \multicolumn{2}{c}{\hd{exp-rank@5}}
+      & \multicolumn{2}{c}{\hd{exp-rank@10}} \\
+  \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      & \hd{MARINA} & \hd{SPECTRE}
+      & \hd{MARINA} & \hd{SPECTRE}
+      & \hd{MARINA} & \hd{SPECTRE} \\
+  \midrule
+  NMR$+$MS/MS$+$Formula*    & \best{66.83}\pmm{1.70} & \na & \best{84.79}\pmm{1.01} & \na & \best{88.83}\pmm{0.00} & \na \\
+  NMR$+$MS/MS*              & \best{64.89}\pmm{2.84} & \na & \best{82.85}\pmm{0.74} & \na & \best{87.22}\pmm{0.56} & \na \\
+  NMR                       & \best{51.94}\pmm{1.46} & 17.48 & \best{69.90}\pmm{0.84} & 43.20 & \best{75.08}\pmm{2.44} & 51.94 \\
+  ME-HSQC                   & \best{38.51}\pmm{1.96} & 18.45 & \best{59.06}\pmm{1.12} & 40.78 & \best{67.48}\pmm{1.28} & 49.03 \\
+  $^{13}$C                  & \best{17.48}\pmm{2.70} & 2.43 & \best{33.33}\pmm{4.04} & 11.17 & \best{42.72}\pmm{3.85} & 16.50 \\
+  $^{1}$H                   & \best{1.13}\pmm{0.28} & 0.00 & \best{3.07}\pmm{1.01} & 0.00 & \best{3.88}\pmm{0.00} & 0.00 \\
+  \bottomrule
+\end{tabular}
+\endgroup
