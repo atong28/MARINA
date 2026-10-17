@@ -1,13 +1,15 @@
 #!/bin/bash
 # Generate MARINA-DB-NMRNET-MERGED (v3) flagship-recipe Jobs (Arm A plain / Arm B typejit) for Nautilus.
-# Usage: ARM=uniqmult SEEDS="0 1 2" STAMP=$(date -u +%Y%m%d-%H%M) [CPU_REQ=8 MEM_REQ=48Gi] bash gen.sh > jobs.yaml
+# Usage: ARM=uniqmult SEEDS="0 1 2" STAMP=$(date -u +%Y%m%d-%H%M) [NGPU=1 ACCUM=2 CPU_REQ=.. MEM_REQ=..] bash gen.sh > jobs.yaml
+# Global batch = 256 x NGPU x ACCUM (512 for NGPU=2 ACCUM=1 or NGPU=1 ACCUM=2).
 set -euo pipefail
 ARM=${ARM:-uniqmult}; SEEDS=${SEEDS:-"0 1 2"}; STAMP=${STAMP:?}; COMMIT=${COMMIT:-6e8bafbee6ae549ed6cc9855a7625b34423d07ab}
+NGPU=${NGPU:-1}; ACCUM=${ACCUM:-2}
 CPU_REQ=${CPU_REQ:-8}; CPU_LIM=${CPU_LIM:-9}; MEM_REQ=${MEM_REQ:-48Gi}; MEM_LIM=${MEM_LIM:-56Gi}; EXTRA=${EXTRA:-}
 for s in $SEEDS; do cat <<YAML
 ---
 # MARINA-DB-NMRNET-MERGED (v3, zip 0ae421b4) flagship recipe, arm ${ARM}, seed ${s}. MARINA @ ${COMMIT}.
-# 2 GPUs x bs256 x accum1 = global 512 (the Delta recipe), bf16, --resume (ckpts on the PVC, Moonshot/results/).
+# ${NGPU} GPU(s) x bs256 x accum${ACCUM} = global 512, bf16, --resume (ckpts on the PVC, Moonshot/results/).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -52,9 +54,9 @@ spec:
               cp "\$ZIP" /workspace/ds.zip; echo "\$ZIP_SHA  /workspace/ds.zip" | sha256sum -c;
               unzip -q /workspace/ds.zip -d /workspace; rm /workspace/ds.zip;
               pixi install; pixi run python scripts/dataset/pack_arrow.py --root /workspace;
-              pixi run torchrun --standalone --nproc_per_node 2 --module src.main marina
+              pixi run torchrun --standalone --nproc_per_node ${NGPU} --module src.main marina
               --experiment_name marina-db-nmrnet-${ARM}-s${s} --fp_type RankingEntropyUniqueMultiplicity --seed ${s}
-              --batch_size 256 --accumulate_grad_batches_num 1 --precision bf16-mixed
+              --batch_size 256 --accumulate_grad_batches_num ${ACCUM} --precision bf16-mixed
               --input_types hsqc c_nmr h_nmr mass_spec mass_spec_neg mw formula --resume ${EXTRA};
               echo "ALL DONE";
           volumeMounts:
@@ -63,8 +65,8 @@ spec:
             - { mountPath: /code, name: code-workdir }
             - { mountPath: /workspace, name: data-local }
           resources:
-            requests: { cpu: "${CPU_REQ}", memory: ${MEM_REQ}, nvidia.com/gpu: "2", ephemeral-storage: 60Gi }
-            limits:   { cpu: "${CPU_LIM}", memory: ${MEM_LIM}, nvidia.com/gpu: "2", ephemeral-storage: 80Gi }
+            requests: { cpu: "${CPU_REQ}", memory: ${MEM_REQ}, nvidia.com/gpu: "${NGPU}", ephemeral-storage: 60Gi }
+            limits:   { cpu: "${CPU_LIM}", memory: ${MEM_LIM}, nvidia.com/gpu: "${NGPU}", ephemeral-storage: 80Gi }
       volumes:
         - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }
         - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
