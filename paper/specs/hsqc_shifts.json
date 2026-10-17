@@ -1,0 +1,76 @@
+{
+  "table": "hsqc_shifts",
+  "ranking": {
+    "metric": "cosine",
+    "rank": "strict (ties count against)",
+    "eval_flag": "--rank_metric cosine"
+  },
+  "checkpoint_selection": "per seed, the single early-stopping-best epoch_*.ckpt (max val/mean_cos; patience 30, 750-epoch cap)",
+  "aggregation": "mean ± sample std (n-1) over seeds 0/1/2",
+  "label": "tab:hsqc_shifts",
+  "section": "Supplement (HSQC vs ME-HSQC on the release MARINA-DB)",
+  "description": "Flagship recipe with multiplicity-edited HSQC (dC, dH, sign) vs the same recipe with a shifts-only HSQC encoder (dC, dH; the sign column dropped in training, simulated test and benchmark alike: --nmr_dim_coords 392 392 --nmr_is_sign_encoding False False, MARINA 6e8bafb)",
+  "training_dataset": "MARINA-DB (release, disk Datasets/MARINA-DB, zip sha256 49442996...)",
+  "arms": {
+    "ME-HSQC": {
+      "experiments": [
+        "marina-db-flagship-uniqmult-s0",
+        "marina-db-flagship-uniqmult-s1",
+        "marina-db-flagship-uniqmult-s2"
+      ]
+    },
+    "HSQC": {
+      "experiments": [
+        "marina-db-flagship-hsqcshifts-s0",
+        "marina-db-flagship-hsqcshifts-s1",
+        "marina-db-flagship-hsqcshifts-s2"
+      ],
+      "note": "shifts-only HSQC arms; Delta 2xA100 bs256x2, best epochs 638/670/532"
+    }
+  },
+  "retrieval_set": {
+    "name": "MARINA-DB release (531,927)",
+    "size": 531927,
+    "work_dir": "data/MARINA-DB"
+  },
+  "benchmark": {
+    "name": "MARINA-Bench 456 (journal; experimental NMR + ICEBERG-simulated MS/MS)",
+    "bench": "full",
+    "paper_split": "test",
+    "n": {
+      "test": 229,
+      "val": 227
+    }
+  },
+  "rows": [
+    [
+      "HSQC",
+      "hsqc"
+    ],
+    [
+      "HSQC$+$F",
+      "hsqc_formula"
+    ],
+    [
+      "NMR",
+      "nmr"
+    ],
+    [
+      "NMR$+$F",
+      "nmr_formula"
+    ],
+    [
+      "NMR$+$MS/MS*",
+      "nmr_msms"
+    ],
+    [
+      "NMR$+$MS/MS$+$F*",
+      "nmr_msms_formula"
+    ]
+  ],
+  "metrics": {
+    "exp-rank@1/5/10": "strict, %"
+  },
+  "bold": "the larger of the two arms per input and k",
+  "run": "run_eval.sh flagship <arm experiments> (bench full)"
+}

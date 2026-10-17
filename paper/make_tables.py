@@ -204,6 +204,40 @@ def spectre_comparison(raw, spec, split):
     return note + head + "\n".join(lines) + "\n" + POST, data
 
 
+def hsqc_shifts(raw, spec, split):
+    """Supplement: ME-HSQC flagship vs the shifts-only-HSQC arms, exp-rank@k per input (bold = larger arm)."""
+    bench = spec["benchmark"]["bench"]
+    arms = spec["arms"]
+    seeds = {lab: [raw.journal(bench, e) for e in a["experiments"]] for lab, a in arms.items()}
+    data = {"split": split, "arms": {lab: a["experiments"] for lab, a in arms.items()}, "rows": {}}
+    lines = []
+    for label, sub in spec["rows"]:
+        cells, drow = [], {}
+        for k in KS:
+            st_ = {lab: seed_stat([jmetrics(s, f"{split}/{sub}") if s else None for s in ss], f"rank@{k}")
+                   for lab, ss in seeds.items()}
+            best = max((v["mean"] for v in st_.values() if v), default=None)
+            for lab, v in st_.items():
+                c = cell(v, pct=False)
+                if v is not None and best is not None and v["mean"] == best and r"\pmm" in c:
+                    c = r"\best{" + c.replace(r"\pmm", r"}\pmm", 1)
+                cells.append(c)
+            drow[f"rank@{k}"] = st_
+        data["rows"][label] = drow
+        lines.append(f"  {label:<20}& " + " & ".join(cells) + " \\\\")
+    labs = list(arms)
+    sub_hd = " & ".join(f"\\hd{{{l}}}" for l in labs)
+    head = (PRE % ("", "6pt", "1.2") + "\\begin{tabular}{@{}l cc cc cc@{}}\n  \\toprule\n"
+            "  \\multirow{2}{*}{\\hd{Input}}\n"
+            "      & \\multicolumn{2}{c}{\\hd{exp-rank@1}}\n      & \\multicolumn{2}{c}{\\hd{exp-rank@5}}\n"
+            "      & \\multicolumn{2}{c}{\\hd{exp-rank@10}} \\\\\n"
+            "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
+            f"      & {sub_hd}\n      & {sub_hd}\n      & {sub_hd} \\\\\n  \\midrule\n")
+    note = (f"% {spec['table']} — ME-HSQC flagship vs shifts-only HSQC arms, MARINA-Bench {split}; "
+            f"ranking = {LABEL[METRIC][2]}.\n")
+    return note + head + "\n".join(lines) + "\n" + POST, data
+
+
 def fp_comparison(raw, spec, split, main_only):
     bench, sub = spec["benchmark"]["bench"], spec["input"]["subset"]
     arms = {lab: a for lab, a in spec["arms"].items() if a["main"] or not main_only}
@@ -457,7 +491,8 @@ def main():
     OUT_DIR = a.out or os.path.join(HERE, "results", ("tables" if METRIC == "cosine" else "tables-jaccard") + SET)
     has = lambda k: os.path.exists(os.path.join(S, f"{k}.json"))
     load = lambda k: json.load(open(os.path.join(S, f"{k}.json")))
-    specs = {k: load(k) for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime")
+    specs = {k: load(k) for k in ("results_main", "spectre_comparison", "fp_comparison", "results_training_regime",
+                                  "hsqc_shifts")
              if has(k)}
     specs_extra = {k: load(k) for k in ("sim_exp_gap",) if has(k)}
     summary = {}
@@ -470,6 +505,8 @@ def main():
                 tex, data = results_main(raw, spec, split)
             elif table == "spectre_comparison":
                 tex, data = spectre_comparison(raw, spec, split)
+            elif table == "hsqc_shifts":
+                tex, data = hsqc_shifts(raw, spec, split)
             elif table == "fp_comparison":
                 tex, data = fp_comparison(raw, spec, split, main_only=True)
                 atex, adata = fp_comparison(raw, spec, split, main_only=False)

@@ -1,0 +1,27 @@
+% hsqc_shifts — ME-HSQC flagship vs shifts-only HSQC arms, MARINA-Bench test; ranking = cosine.
+\begingroup
+\color{cInk}
+\providecommand{\pmm}[1]{\ensuremath{{\scriptscriptstyle\,\pm#1}}}
+\providecommand{\tbd}{--}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l cc cc cc@{}}
+  \toprule
+  \multirow{2}{*}{\hd{Input}}
+      & \multicolumn{2}{c}{\hd{exp-rank@1}}
+      & \multicolumn{2}{c}{\hd{exp-rank@5}}
+      & \multicolumn{2}{c}{\hd{exp-rank@10}} \\
+  \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      & \hd{ME-HSQC} & \hd{HSQC}
+      & \hd{ME-HSQC} & \hd{HSQC}
+      & \hd{ME-HSQC} & \hd{HSQC} \\
+  \midrule
+  HSQC                & \best{43.96}\pmm{2.81} & 31.59\pmm{4.06} & \best{65.21}\pmm{1.65} & 54.73\pmm{2.41} & \best{71.91}\pmm{1.33} & 61.43\pmm{1.65} \\
+  HSQC$+$F            & \best{57.93}\pmm{1.40} & 49.05\pmm{0.91} & \best{78.17}\pmm{2.31} & 72.20\pmm{1.76} & \best{83.99}\pmm{1.10} & 76.56\pmm{1.53} \\
+  NMR                 & \best{56.77}\pmm{2.73} & 46.72\pmm{2.31} & \best{76.42}\pmm{0.87} & 70.01\pmm{0.50} & \best{81.80}\pmm{1.82} & 77.44\pmm{0.91} \\
+  NMR$+$F             & \best{66.38}\pmm{1.16} & 58.52\pmm{0.76} & \best{85.88}\pmm{2.77} & 80.49\pmm{0.50} & \best{89.23}\pmm{1.40} & 86.03\pmm{0.76} \\
+  NMR$+$MS/MS*        & \best{67.83}\pmm{1.53} & 65.79\pmm{3.64} & \best{87.77}\pmm{0.76} & 86.32\pmm{1.10} & \best{90.68}\pmm{0.67} & 89.52\pmm{1.16} \\
+  NMR$+$MS/MS$+$F*    & \best{69.58}\pmm{1.65} & 67.98\pmm{3.71} & \best{89.37}\pmm{0.91} & 87.63\pmm{0.67} & \best{91.85}\pmm{0.50} & 91.41\pmm{1.40} \\
+  \bottomrule
+\end{tabular}
+\endgroup
