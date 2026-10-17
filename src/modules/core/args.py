@@ -72,6 +72,15 @@ class SMARTArgs:
     # NMR is moved to a solvent drawn from the journal mix, see modules/data/solvent.py. 0 = off.
     solvent_jitter_p: float = 0.0
 
+    # type-aware jitter (training only; needs the {C,H,HSQC}_NMR_TYPE shards, e.g. MARINA-DB-NMRNET-MERGED):
+    # per-peak sigma by atom type instead of the global `jittering`. Unknown type (-1, e.g. experimental
+    # spectra) keeps the global sigma. None = off. c: [C, CH, CH2, CH3]; h: [C-H, exchangeable];
+    # hsqc_c / hsqc_h: [CH, CH2, CH3] for the dC / dH columns.
+    type_jitter_c: Optional[List[float]] = None
+    type_jitter_h: Optional[List[float]] = None
+    type_jitter_hsqc_c: Optional[List[float]] = None
+    type_jitter_hsqc_h: Optional[List[float]] = None
+
     # BCE and cosine similarity loss lambda. 0 for full cosine similarity loss, 1 for full BCE loss.
     lambda_hybrid: float = 0.5
     

@@ -39,7 +39,8 @@ class SpectralInputLoader:
     - MS/MS ('mass_spec')
     - Molecular Weight ('mw')
     '''
-    def __init__(self, root: str, data_dict: dict, split: Optional[str] = None, dtype=torch.float32):
+    def __init__(self, root: str, data_dict: dict, split: Optional[str] = None, dtype=torch.float32,
+                 type_jitter: Optional[Dict[str, list]] = None):
         '''
         In index.pkl, it is stored idx: data_dict pairs. Feed this in for initialization.
         We read from Arrow shards under {root}/arrow/{split}/{MODALITY}.parquet.
@@ -62,6 +63,15 @@ class SpectralInputLoader:
             path = os.path.join(arrow_split_dir, f"{mod}.parquet")
             if os.path.isfile(path):
                 self._arrow[mod] = open_tensor_store(path)
+
+        # type-aware jitter: {'c': [...], 'h': [...], 'hsqc_c': [...], 'hsqc_h': [...]}, None entries = global sigma
+        self.type_jitter = type_jitter if type_jitter and any(v is not None for v in type_jitter.values()) else None
+        if self.type_jitter is not None:
+            for mod in ("HSQC_NMR", "H_NMR", "C_NMR"):
+                path = os.path.join(arrow_split_dir, f"{mod}_TYPE.parquet")
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(f"type-aware jitter needs {path}")
+                self._arrow[f"{mod}_TYPE"] = open_tensor_store(path)
 
     # ---- public API ----
     def load(self, idx, input_types: Iterable[INPUT_TYPES], jittering: float = 0.0, augmenter=None) -> Dict[str, torch.Tensor]:
@@ -90,9 +100,28 @@ class SpectralInputLoader:
         return t.to(dtype=self.dtype)
 
     # ---- individual modality loaders ----
+    def _peak_sigma(self, idx: int, mod: str, sigmas, first_type: int, default: float, n: int) -> torch.Tensor:
+        """Per-peak jitter sigma from the {mod}_TYPE shard: sigmas[type - first_type] for a known type,
+        `default` (the global sigma) for unknown (-1) or when `sigmas` is None."""
+        if sigmas is None:
+            return torch.full((n,), default, dtype=self.dtype)
+        t = self._arrow[f"{mod}_TYPE"].get_tensor(idx).view(-1).long()
+        if t.numel() != n:
+            raise ValueError(f"{mod}_TYPE idx {idx}: {t.numel()} types for {n} peaks")
+        out = torch.full((n,), default, dtype=self.dtype)
+        known = t >= first_type
+        out[known] = torch.tensor(sigmas, dtype=self.dtype)[t[known] - first_type]
+        return out
+
     def _load_hsqc(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         hsqc = self._get_tensor(idx, 'HSQC_NMR')
-        if jittering > 0:
+        if jittering > 0 and self.type_jitter is not None:
+            n = hsqc.shape[0]
+            hsqc[:,0] = hsqc[:,0] + torch.randn_like(hsqc[:,0]) * self._peak_sigma(
+                idx, 'HSQC_NMR', self.type_jitter.get('hsqc_c'), 1, jittering, n)
+            hsqc[:,1] = hsqc[:,1] + torch.randn_like(hsqc[:,1]) * self._peak_sigma(
+                idx, 'HSQC_NMR', self.type_jitter.get('hsqc_h'), 1, jittering * 0.1, n)
+        elif jittering > 0:
             hsqc[:,0] = hsqc[:,0] + torch.randn_like(hsqc[:,0]) * jittering
             hsqc[:,1] = hsqc[:,1] + torch.randn_like(hsqc[:,1]) * jittering * 0.1
         return {'hsqc': hsqc}
@@ -147,14 +176,20 @@ class MARINAInputLoader(SpectralInputLoader):
     def _load_c_nmr(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         c_nmr = self._get_tensor(idx, 'C_NMR')
         c_nmr = c_nmr.view(-1,1)                   # (N,1)
-        if jittering > 0:
+        if jittering > 0 and self.type_jitter is not None:
+            sigma = self._peak_sigma(idx, 'C_NMR', self.type_jitter.get('c'), 0, jittering, c_nmr.shape[0])
+            c_nmr = c_nmr + torch.randn_like(c_nmr) * sigma.view(-1, 1)
+        elif jittering > 0:
             c_nmr = c_nmr + torch.randn_like(c_nmr) * jittering
         return {'c_nmr': c_nmr}
 
     def _load_h_nmr(self, idx: int, jittering: float = 0.0) -> Dict[str, torch.Tensor]:
         h_nmr = self._get_tensor(idx, 'H_NMR')
         h_nmr = h_nmr.view(-1,1)                    # (N,1)
-        if jittering > 0:
+        if jittering > 0 and self.type_jitter is not None:
+            sigma = self._peak_sigma(idx, 'H_NMR', self.type_jitter.get('h'), 0, jittering * 0.1, h_nmr.shape[0])
+            h_nmr = h_nmr + torch.randn_like(h_nmr) * sigma.view(-1, 1)
+        elif jittering > 0:
             h_nmr = h_nmr + torch.randn_like(h_nmr) * jittering * 0.1
         return {'h_nmr': h_nmr}
 

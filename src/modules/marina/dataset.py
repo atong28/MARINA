@@ -105,8 +105,11 @@ class MARINADataset(Dataset):
                     f'[MARINADataset] Dataset split {split} is empty!')
 
             self.jittering = args.jittering if split == 'train' else 0.0
+            type_jitter = ({'c': args.type_jitter_c, 'h': args.type_jitter_h,
+                            'hsqc_c': args.type_jitter_hsqc_c, 'hsqc_h': args.type_jitter_hsqc_h}
+                           if split == 'train' else None)
             self.spectral_loader = MARINAInputLoader(
-                DATASET_ROOT, data, split=split)
+                DATASET_ROOT, data, split=split, type_jitter=type_jitter)
             self.mfp_loader = MFInputLoader(fp_loader)
 
             if split == 'train' and (args.aug_add_prob > 0 or args.aug_remove_prob > 0):
