@@ -80,12 +80,12 @@ const GROUP_HINT: Record<BitGroup, string> = {
 const GROUP_ORDER: BitGroup[] = ['missing', 'match', 'unexpected', 'uncertain']
 
 const CALIBRATION_HINT =
-  'Calibrated against the MARINA1 test split, so the percentage is the measured ' +
+  'Calibrated against the MARINA-DB test split, so the percentage is the measured ' +
   'fraction of the time a substructure predicted at this confidence is really present.'
 
 const RAW_HINT =
   'This model ships no calibration curve, so these are raw model outputs. They ' +
-  'overstate presence — a bit shown at 82% is present about 70% of the time.'
+  'overstate presence — a bit shown at 82% is present about 73% of the time.'
 
 /** Radius-0 bits have no fragment SMILES; they are a bare atom. */
 function bitLabel(bit: BitExplanation): string {

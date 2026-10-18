@@ -1,10 +1,11 @@
 """
 Isotonic recalibration of predicted fingerprint bit probabilities.
 
-The raw sigmoid is not a probability. Measured over the full MARINA1 test split
-(analysis/bit-confidence), a bit predicted at 0.82 is actually present 0.70 of
-the time, and one predicted at 0.90 is present 0.88. The error is two-sided:
-the head is over-confident above ~0.45 and under-confident below it.
+The raw sigmoid is not a probability. Measured over the release MARINA-DB test
+split (23,138 molecules, analysis/bit-confidence) for the flagship
+marina-db-flagship-uniqmult-s0, a bit predicted at 0.82 is actually present 0.73
+of the time, and one predicted at 0.90 is present 0.82. The error is two-sided:
+the head is over-confident above ~0.4 and slightly under-confident below it.
 
 `calibration.json` in the model root carries a monotone lookup table fitted
 there. Applying it brings every confidence bucket within 0.4 points of the

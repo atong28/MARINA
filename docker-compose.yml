@@ -69,9 +69,10 @@ services:
     image: marina-backend:latest
     container_name: marina-backend
     # Resident size is ~3 GB per model copy, and there are
-    # UVICORN_WORKERS * (1 + MAX_COMPUTE_WORKERS) copies (3 by default, ~9.5 GB).
+    # UVICORN_WORKERS * (1 + MAX_COMPUTE_WORKERS) copies (3 by default, ~9.5 GB)
+    # per model. Two models (flagship + shifts-only fallback) measure ~17.5 GB.
     # Raise this with the worker counts.
-    mem_limit: ${BACKEND_MEM_LIMIT:-16g}
+    mem_limit: ${BACKEND_MEM_LIMIT:-28g}
     environment:
       # ── Inference device ────────────────────────────────────────────────────
       # "cpu" | "cuda" | "cuda:0"
@@ -87,8 +88,8 @@ services:
       MARINA_ROOT: /marina
       # The model data directory is mounted at /data.
       DATA_DIR: /data
-      MODEL_ROOT: /data/marina_db_s1
-      DEFAULT_MODEL_ID: marina_db_s1
+      MODEL_ROOT: /data/marina_flag_s0
+      DEFAULT_MODEL_ID: marina_flag_s0
       MODELS_JSON_PATH: /data/models.json
 
       # ── Compute pool ─────────────────────────────────────────────────────────

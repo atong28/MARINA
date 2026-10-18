@@ -48,7 +48,7 @@ docker compose logs -f backend
 Wait for:
 
 ```
-Model marina_db_s1 ready
+Model marina_flag_s0 ready
 MARINA backend ready
 ```
 

@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
-# Downloads the website model and writes the models.json the backend serves.
+# Downloads the website models and writes the models.json the backend serves.
 #
 # Usage (from anywhere):
-#   bash scripts/website/download_model.sh           # skip a model already on disk
+#   bash scripts/website/download_model.sh           # skip models already on disk
 #   bash scripts/website/download_model.sh --force   # re-download
 #
-# Each id is a publicly shared Google Drive file: a zip whose entries sit at the
-# model-directory root (params.json, best.ckpt, calibration.json, the
-# RankingEntropy* vocabulary, ...), so it unpacks straight into checkpoints/<root>/.
-# Needs only curl + unzip; gdown is used instead when it is installed.
+# The bundle is one zip that unpacks into checkpoints/:
+#   marina_flag_s0/   marina-db-flagship-uniqmult-s0 ep616 -- the served model (release MARINA-DB;
+#                     RankingEntropyUniqueMultiplicity, radius 10, formula-capable)
+#   marina_shifts_s0/ marina-db-flagship-hsqcshifts-s0 ep638 -- shifts-only HSQC fallback: answers only
+#                     an HSQC with no sign/intensity column ("role": "hsqc_unsigned"); its retrieval bank,
+#                     metadata and indexes are symlinks to marina_flag_s0/
+#   models.json
+# Bundle: marina_db_release_s0.zip, sha256 fd0e86289480492986980133b32c4c25e321be89e20f793923c92e756c81c9a2.
+# Needs only curl + unzip; gdown is used for Google Drive when it is installed.
 set -euo pipefail
 
-# marina_db_s1 = marina-db-open-chnmr-uniqmult-formula-s1 ep738 (MARINA-DB-OPEN-OLD, CH-NMR-NP-first;
-# RankingEntropyUniqueMultiplicity, radius 10, formula-capable), the served default.
-# Override with the env var.
-MARINA_DB_S1_ID="${MARINA_DB_S1_ID:-1PtxGL84MJppAtn8Sqn-sQia3nA5Kdn7S}"
+# Where the bundle comes from, first set wins (both can be exported instead of edited):
+#   MARINA_BUNDLE_URL  a direct download URL, e.g. a Zenodo record file
+#                      (https://zenodo.org/records/<id>/files/marina_db_release_s0.zip?download=1)
+#   MARINA_RELEASE_ID  a Google Drive file id shared as "Anyone with the link"
+MARINA_BUNDLE_URL="${MARINA_BUNDLE_URL:-}"
+MARINA_RELEASE_ID="${MARINA_RELEASE_ID:-}"     # not uploaded yet
+BUNDLE_SHA256="fd0e86289480492986980133b32c4c25e321be89e20f793923c92e756c81c9a2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../.."
@@ -31,43 +39,57 @@ for tool in curl unzip; do
 done
 
 mkdir -p "$MODEL_DATA_DIR"
+ROOTS=(marina_flag_s0 marina_shifts_s0)
 
-fetch() {
-    local root=$1 id=$2
-    local dest="$MODEL_DATA_DIR/$root" zip="$MODEL_DATA_DIR/$root.zip"
-    if [[ -f "$dest/best.ckpt" ]] && ! $FORCE; then
-        info "$root already present, skipping (--force to re-download)"
-        return
-    fi
-    if [[ -z "$id" ]]; then
-        error "no Google Drive id set for $root (edit this script or export the id variable)"
+present=true
+for root in "${ROOTS[@]}"; do
+    [[ -f "$MODEL_DATA_DIR/$root/best.ckpt" ]] || present=false
+done
+
+if $present && ! $FORCE; then
+    info "${ROOTS[*]} already present, skipping (--force to re-download)"
+else
+    zip="$MODEL_DATA_DIR/marina_db_release_s0.zip"
+    if [[ -n "$MARINA_BUNDLE_URL" ]]; then
+        info "downloading the model bundle from $MARINA_BUNDLE_URL ..."
+        curl -fL --retry 3 --progress-bar -o "$zip" "$MARINA_BUNDLE_URL"
+    elif [[ -n "$MARINA_RELEASE_ID" ]]; then
+        info "downloading the model bundle from Google Drive ..."
+        if command -v gdown >/dev/null; then
+            gdown "$MARINA_RELEASE_ID" --output "$zip"
+        else
+            # confirm=t skips Drive's "can't scan this file for viruses" page on large files.
+            curl -fL --retry 3 --progress-bar -o "$zip" \
+                "https://drive.usercontent.google.com/download?id=${MARINA_RELEASE_ID}&export=download&confirm=t"
+        fi
+    else
+        error "no download source for the model bundle: set MARINA_BUNDLE_URL or MARINA_RELEASE_ID"
+        error "(or place marina_flag_s0/ and marina_shifts_s0/ in $MODEL_DATA_DIR yourself)"
         exit 1
     fi
-    info "downloading $root ..."
-    if command -v gdown >/dev/null; then
-        gdown "$id" --output "$zip"
-    else
-        # confirm=t skips Drive's "can't scan this file for viruses" page on large files.
-        curl -fL --retry 3 --progress-bar -o "$zip" \
-            "https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t"
+    if command -v sha256sum >/dev/null; then
+        got=$(sha256sum "$zip" | cut -d' ' -f1)
+        if [[ "$got" != "$BUNDLE_SHA256" ]]; then
+            error "$zip has sha256 $got, expected $BUNDLE_SHA256 -- incomplete download or wrong file"
+            exit 1
+        fi
     fi
     if ! unzip -tq "$zip" >/dev/null; then
-        error "$zip is not a valid zip -- is the Drive file shared as 'Anyone with the link'?"
+        error "$zip is not a valid zip -- is the file shared publicly?"
         exit 1
     fi
-    rm -rf "$dest"
-    unzip -q -o "$zip" -d "$dest"
+    for root in "${ROOTS[@]}"; do rm -rf "${MODEL_DATA_DIR:?}/$root"; done
+    unzip -q -o "$zip" -d "$MODEL_DATA_DIR"
     rm "$zip"
-    chmod -R a+rX "$dest"
-    info "$root -> $dest"
-}
-
-fetch marina_db_s1 "$MARINA_DB_S1_ID"
-
-# The previous default model is no longer served; it is left on disk for rollback.
-if [[ -d "$MODEL_DATA_DIR/marina_uniqmult_s1" ]]; then
-    info "marina_uniqmult_s1 (previous model) is unused; remove it to free ~2.3 GB: rm -rf $MODEL_DATA_DIR/marina_uniqmult_s1"
+    info "${ROOTS[*]} -> $MODEL_DATA_DIR"
 fi
+
+# Earlier default models are no longer served; they are left on disk for rollback.
+for old in marina_db_s1 marina_uniqmult_s1; do
+    if [[ -d "$MODEL_DATA_DIR/$old" ]]; then
+        info "$old (previous model) is unused; remove it to free ~2.3 GB: rm -rf $MODEL_DATA_DIR/$old"
+    fi
+done
 
 # The backend container runs as an unprivileged user, so the weights must be
 # world-readable (checkpoints copied in by hand are often owner-only).
@@ -78,11 +100,18 @@ cat << EOF > "$MODEL_DATA_DIR/models.json"
 {
     "models": [
         {
-            "id": "marina_db_s1",
-            "root": "marina_db_s1",
+            "id": "marina_flag_s0",
+            "root": "marina_flag_s0",
             "type": "marina",
             "default": true,
-            "display_name": "MARINA-DB-OPEN-OLD (unique-multiplicity, formula-capable)"
+            "display_name": "MARINA-DB flagship (unique-multiplicity, formula-capable)"
+        },
+        {
+            "id": "marina_shifts_s0",
+            "root": "marina_shifts_s0",
+            "type": "marina",
+            "role": "hsqc_unsigned",
+            "display_name": "MARINA-DB HSQC shifts-only (no multiplicity sign)"
         }
     ]
 }

@@ -3,13 +3,15 @@ import { bitMeta, bitTitle, formatPct } from './BitPanel'
 import type { BitExplanation } from '../../services/api'
 
 /**
- * The isotonic curve fitted on the MARINA1 test split tops out at 0.9984, so no
- * confidence the backend can produce justifies telling a user a substructure is
- * certainly present. Plain rounding would render that as "100%".
+ * The isotonic curves fitted on the release MARINA-DB test split top out at 0.9990
+ * (flagship) and 0.9988 (shifts-only), so no confidence the backend can produce
+ * justifies telling a user a substructure is certainly present. Plain rounding
+ * would render those as "100%".
  */
 describe('formatPct', () => {
-  it('never renders 100% for the highest value the curve can emit', () => {
-    expect(formatPct(0.9984)).toBe('99.8%')
+  it('never renders 100% for the highest value the curves can emit', () => {
+    expect(formatPct(0.9990)).toBe('99.9%')
+    expect(formatPct(0.9988)).toBe('99.8%')
   })
 
   it('keeps a decimal place across the whole saturating range', () => {

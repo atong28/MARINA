@@ -59,7 +59,8 @@ The SPA calls the API from the **browser** at the relative path `VITE_API_BASE`
   The Cloudflare overlay uses the `!reset` YAML tag, which needs Compose **v2.24+**.
 - ~10 GB free disk for images (the backend image includes PyTorch).
 - ~6 GB RAM per model copy. Total copies in memory =
-  `UVICORN_WORKERS × (1 + MAX_COMPUTE_WORKERS)` — 3 at the stack defaults.
+  `UVICORN_WORKERS × (1 + MAX_COMPUTE_WORKERS)` per model, 3 at the stack defaults. The two served models
+  measure ~17.5 GB together (the container cap defaults to 28 GB).
 - GPU inference additionally needs the
   [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
 
@@ -78,54 +79,74 @@ bash scripts/website/download_model.sh          # skips a model already on disk
 bash scripts/website/download_model.sh --force  # re-download
 ```
 
-The Google Drive file id sits at the top of the script (`MARINA_DB_S1_ID`, also
-overridable from the environment). It points at a self-contained zip, shared
-as "Anyone with the link", whose entries sit at the model-directory root, so it
-unpacks straight into `checkpoints/marina_db_s1/`. The script then writes
+The download source is set at the top of the script, or exported: `MARINA_BUNDLE_URL` for a direct URL (e.g. a
+Zenodo record file) or `MARINA_RELEASE_ID` for a Google Drive file id shared as "Anyone with the link". The bundle,
+`marina_db_release_s0.zip`, is not public yet; until it is, the script stops and says so. The script checks the
+download's sha256 (`fd0e8628…`) and unpacks the two model directories into `checkpoints/`. It then writes
 `checkpoints/models.json`:
 
 ```json
 {
     "models": [
         {
-            "id": "marina_db_s1",
-            "root": "marina_db_s1",
+            "id": "marina_flag_s0",
+            "root": "marina_flag_s0",
             "type": "marina",
             "default": true,
-            "display_name": "MARINA-DB-OPEN-OLD (unique-multiplicity, formula-capable)"
+            "display_name": "MARINA-DB flagship (unique-multiplicity, formula-capable)"
+        },
+        {
+            "id": "marina_shifts_s0",
+            "root": "marina_shifts_s0",
+            "type": "marina",
+            "role": "hsqc_unsigned",
+            "display_name": "MARINA-DB HSQC shifts-only (no multiplicity sign)"
         }
     ]
 }
 ```
 
-`marina_db_s1` is the flagship `marina-db-open-chnmr-uniqmult-formula-s1` checkpoint
-(epoch 738; trained on MARINA-DB-OPEN-OLD, the 2026-09-29 CH-NMR-NP-first build; `RankingEntropyUniqueMultiplicity`,
-radius 10), ranking against the 531,927-structure MARINA-DB-OPEN-OLD retrieval set (same rows as the release MARINA-DB). It replaced
-`marina_uniqmult_s1` (MARINA-DB-PRIVATE) in October 2026. Its `calibration.json`, count
-table and vocabulary are only valid for this checkpoint: copying them across
-models would silently serve wrong confidences or rank in the wrong space.
+- **`marina_flag_s0`** is the flagship `marina-db-flagship-uniqmult-s0` checkpoint (epoch 616). It was trained on the
+  release MARINA-DB with `RankingEntropyUniqueMultiplicity`, radius 10, and ranks against the 531,927-structure
+  MARINA-DB retrieval set. It answers every request, except one kind:
+- **`marina_shifts_s0`** is `marina-db-flagship-hsqcshifts-s0` (epoch 638). It was trained on HSQC shifts without the
+  multiplicity-edit sign. Its `"role": "hsqc_unsigned"` keeps it out of ordinary selection: it answers exactly the
+  requests whose HSQC has **no** sign/intensity column (every third value of `raw.hsqc` null). A column missing for
+  only some rows is rejected as incomplete. The response names the model that answered, and the UI says so above
+  the results. On MARINA-Bench 456 test it trails the flagship (rank@1 HSQC-only 31.6 vs 44.0, NMR 46.7 vs 56.8, 3-seed
+  means), but it does far better than feeding the flagship a made-up sign.
+
+Seed s0 is the best of three on validation (MARINA-Bench 456, NMR + formula, rank@1) for both. These replaced
+`marina_db_s1` (MARINA-DB-OPEN-OLD) in October 2026. Each model's `calibration.json` and `metrics.json` are only valid
+for that checkpoint. Copying them across models would silently serve wrong confidences. The vocabulary must match
+the checkpoint too, or retrieval ranks in the wrong space.
 
 Expected layout afterwards:
 
 ```
 checkpoints/
 ├── models.json
-└── marina_db_s1/
-    ├── params.json
-    ├── best.ckpt
-    ├── calibration.json
-    ├── metrics.json
-    ├── count_unique_multiplicity_under_radius_10.pkl
-    ├── index.pkl
-    ├── retrieval.pkl
-    ├── metadata.json
-    ├── npclassifier.json
-    ├── mw_index.json
-    ├── formula_index.json
-    └── RankingEntropyUniqueMultiplicity/
-        ├── rankingset.pt
-        └── bitinfo_to_idx.pkl
+├── marina_flag_s0/
+│   ├── params.json
+│   ├── best.ckpt
+│   ├── calibration.json
+│   ├── metrics.json
+│   ├── index.pkl
+│   ├── retrieval.pkl
+│   ├── metadata.json
+│   ├── npclassifier.json
+│   ├── mw_index.json
+│   ├── formula_index.json
+│   └── RankingEntropyUniqueMultiplicity/
+│       ├── rankingset.pt
+│       └── bitinfo_to_idx.pkl
+└── marina_shifts_s0/
+    ├── params.json, best.ckpt, calibration.json, metrics.json
+    └── everything else: symlinks to ../marina_flag_s0/ (same release bank)
 ```
+
+Two models need roughly twice the memory of one: about 17.5 GB with the stack defaults, so set
+`BACKEND_MEM_LIMIT` above that (e.g. `28g`) in `.env`. The fallback loads on its first request.
 
 `root` is resolved relative to the mounted data directory. A `root` that does
 not exist is skipped with a warning at startup rather than crashing the backend,
@@ -141,7 +162,7 @@ at roughly 2k structures/s — minutes for a full database — and happens on th
 first MW-filtered request unless it is precomputed:
 
 ```bash
-python scripts/website/build_mw_index.py checkpoints/marina_db_s1
+python scripts/website/build_mw_index.py checkpoints/marina_flag_s0
 ```
 
 Precompute it whenever a model directory is first deployed. The download bundles
