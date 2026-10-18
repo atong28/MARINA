@@ -114,3 +114,48 @@ def test_falls_back_to_default_when_no_metrics(isolated):
     sel = model_selection.select_model(["hsqc"])
     assert sel.model_id in {"a", "b"}
     assert sel.reason == "eligible, no metrics"
+
+
+# ── shifts-only HSQC fallback (manifest role "hsqc_unsigned") ─────────────────
+
+ALL7 = ["hsqc", "c_nmr", "h_nmr", "mass_spec", "mass_spec_neg", "mw", "formula"]
+
+
+def _flag_and_shifts(isolated, shifts_scores_higher=True):
+    _model_dir(isolated, "flag", ALL7, [_m(["hsqc"], 0.70)])
+    _model_dir(isolated, "shifts", ALL7, [_m(["hsqc"], 0.90 if shifts_scores_higher else 0.50)])
+    _load(isolated, [
+        {"id": "flag", "root": "flag", "type": "marina", "default": True},
+        {"id": "shifts", "root": "shifts", "type": "marina", "role": "hsqc_unsigned"},
+    ])
+
+
+def test_role_model_never_wins_ordinary_selection(isolated):
+    # Even scoring higher on [hsqc], the shifts-only model must not serve a signed HSQC.
+    _flag_and_shifts(isolated)
+    assert model_selection.select_model(["hsqc"]).model_id == "flag"
+    assert model_selection.select_model(["hsqc", "c_nmr", "formula"]).model_id == "flag"
+
+
+def test_unsigned_hsqc_goes_to_the_shifts_model(isolated):
+    _flag_and_shifts(isolated, shifts_scores_higher=False)
+    sel = model_selection.select_model(["hsqc", "c_nmr"], hsqc_unsigned=True)
+    assert sel.model_id == "shifts"
+    assert sel.reason == "hsqc without sign column"
+
+
+def test_unsigned_hsqc_without_a_shifts_model_is_refused(isolated):
+    _model_dir(isolated, "flag", ALL7, [_m(["hsqc"], 0.70)])
+    _load(isolated, [{"id": "flag", "root": "flag", "type": "marina", "default": True}])
+    with pytest.raises(model_selection.NoUnsignedHsqcModel):
+        model_selection.select_model(["hsqc"], hsqc_unsigned=True)
+
+
+def test_unknown_role_drops_the_entry(isolated):
+    _model_dir(isolated, "flag", ALL7)
+    _model_dir(isolated, "odd", ALL7)
+    _load(isolated, [
+        {"id": "flag", "root": "flag", "type": "marina", "default": True},
+        {"id": "odd", "root": "odd", "type": "marina", "role": "mystery"},
+    ])
+    assert [e.id for e in manifest.list_models()] == ["flag"]

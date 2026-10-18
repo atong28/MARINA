@@ -20,12 +20,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import HelpButton from '../common/HelpButton'
 import { HELP } from '../../helpContent'
+import { hsqcRows } from '../../services/hsqc'
 import './SpectraPreview.css'
 
 // ── Palette (validated: see dataviz palette, light surface) ───────────────────
 
 const SERIES_BLUE = '#2a78d6' // slot 1 — negative HSQC phase (CH₂), 1-D sticks
 const SERIES_RED = '#e34948' // slot 8 — positive HSQC phase (CH / CH₃)
+const UNSIGNED = '#6b7280' // HSQC without a sign column (shifts only)
 const GRID = '#e1e0d9'
 const AXIS = '#c3c2b7'
 
@@ -404,7 +406,9 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
             cy,
             lines: [
               `δH ${fmtShift(best.h)} ppm · δC ${fmtShift(best.c)} ppm`,
-              `intensity ${fmtIntensity(best.i)}${best.i < 0 ? ' (CH₂)' : ''}`,
+              Number.isFinite(best.i)
+                ? `intensity ${fmtIntensity(best.i)}${best.i < 0 ? ' (CH₂)' : ''}`
+                : 'no sign (shifts only)',
             ],
           }
         : null,
@@ -473,7 +477,7 @@ function HSQCPlot({ points }: { points: HSQCPoint[] }) {
           />
           <g clipPath={`url(#${clipId})`}>
             {placed.map(({ px, py, p }, idx) => (
-              <circle key={idx} cx={px} cy={py} r={3} fill={p.i < 0 ? SERIES_BLUE : SERIES_RED} />
+              <circle key={idx} cx={px} cy={py} r={3} fill={!Number.isFinite(p.i) ? UNSIGNED : p.i < 0 ? SERIES_BLUE : SERIES_RED} />
             ))}
           </g>
           <rect
@@ -730,14 +734,11 @@ function parseMsPeaks(flat: number[]): MSPeak[] {
 function SpectraPreview({ hsqc, h_nmr, c_nmr, mass_spec, mass_spec_neg }: SpectraPreviewProps) {
   // The store arrays are NaN-padded to preserve spreadsheet row positions;
   // a row only counts once every column it needs is filled.
-  const hsqcPoints = useMemo(() => {
-    const out: HSQCPoint[] = []
-    for (let i = 0; i + 2 < hsqc.length; i += 3) {
-      const [h, c, v] = [hsqc[i], hsqc[i + 1], hsqc[i + 2]]
-      if (Number.isFinite(h) && Number.isFinite(c) && Number.isFinite(v)) out.push({ h, c, i: v })
-    }
-    return out
-  }, [hsqc])
+  // A shifts-only HSQC (no sign column at all) plots with i = NaN, drawn neutral.
+  const hsqcPoints = useMemo(
+    () => hsqcRows(hsqc).rows.map(([h, c, v]): HSQCPoint => ({ h, c, i: v ?? NaN })),
+    [hsqc],
+  )
 
   const msPeaks = useMemo(() => parseMsPeaks(mass_spec), [mass_spec])
   const msNegPeaks = useMemo(() => parseMsPeaks(mass_spec_neg), [mass_spec_neg])

@@ -16,6 +16,9 @@ Inputs to the decision:
 If no model has a metric for the exact combination we fall back deterministically
 (largest measured subset, then the manifest default), so selection degrades to
 the old "default model" behaviour rather than failing when metrics are absent.
+
+Models with a manifest ``role`` sit outside this: an HSQC that arrives without its
+sign/intensity column goes to the ``hsqc_unsigned`` model, and nothing else does.
 """
 from __future__ import annotations
 
@@ -124,9 +127,13 @@ def clear_cache() -> None:
 
 # ── selection ─────────────────────────────────────────────────────────────────
 
-def select_model(present: Iterable[str]) -> Selection:
+class NoUnsignedHsqcModel(LookupError):
+    """An HSQC without its sign column was sent, but no model is configured to take one."""
+
+
+def select_model(present: Iterable[str], hsqc_unsigned: bool = False) -> Selection:
     """Pick the best checkpoint for the modalities actually supplied."""
-    from app.manifest import list_models, get_default_model_id, get_model_info
+    from app.manifest import list_models, get_default_model_id, get_model_info, ROLE_HSQC_UNSIGNED
 
     present_set = set(present)
     present_key = combo_key(present_set)
@@ -136,6 +143,19 @@ def select_model(present: Iterable[str]) -> Selection:
     def _display(mid: str) -> Optional[str]:
         info = get_model_info(mid)
         return (info.display_name or info.id) if info else None
+
+    if hsqc_unsigned:
+        # A sign-blind model is the only correct reader of shifts-only HSQC: a signed
+        # model would read the missing column as "no multiplicity information".
+        for e in entries:
+            if e.role == ROLE_HSQC_UNSIGNED and (not e.input_types or present_set <= set(e.input_types)):
+                return Selection(e.id, _display(e.id), True, "hsqc without sign column")
+        raise NoUnsignedHsqcModel(
+            "This HSQC has no sign/intensity column, and this server has no shifts-only HSQC model. "
+            "Add the multiplicity-edit sign (+1 for CH/CH3, -1 for CH2) to every HSQC row.")
+
+    # Role models only serve their role's inputs.
+    entries = [e for e in entries if e.role is None]
 
     if not entries:
         return Selection(default_id, None, True, "no manifest")

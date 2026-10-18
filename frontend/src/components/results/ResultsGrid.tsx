@@ -21,6 +21,8 @@ function ResultsGrid({
   results, customResults = [], onRemoveCustom, predFp, modelId, resultSource,
 }: ResultsGridProps) {
   const detail = useAppStore((s) => s.detail)
+  const modelNote = useAppStore((s) => s.modelNote)
+  const modelName = useAppStore((s) => s.activeModelName)
   const closeDetail = useAppStore((s) => s.closeDetail)
   const [coreOverlays, setCoreOverlays] = useState<Array<CoreOverlay | null> | null>(null)
   const resultSmiles = useMemo(() => results.map((r) => r.smiles), [results])
@@ -54,6 +56,11 @@ function ResultsGrid({
           <h2 className="results-grid__heading">
             Results <span className="results-grid__count">({results.length})</span>
           </h2>
+          {modelNote && (
+            <p className="results-grid__model-note" role="status">
+              <strong>Answered by {modelName ?? 'the fallback model'}.</strong> {modelNote}
+            </p>
+          )}
           {resultSource === 'prediction' && (
             <p className="results-grid__note">
               Results are retrieved from the MARINA retrieval database. The model does not

@@ -7,12 +7,19 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_TYPES = frozenset({"marina", "spectre"})
+
+# Optional models.json "role": a model with a role is not a candidate for ordinary
+# selection and only serves the inputs its role names.
+#   hsqc_unsigned -- trained on HSQC shifts without the multiplicity-edit sign; serves
+#                    requests whose HSQC has no sign/intensity column at all.
+ROLE_HSQC_UNSIGNED = "hsqc_unsigned"
+SUPPORTED_ROLES = frozenset({ROLE_HSQC_UNSIGNED})
 
 
 @dataclass
@@ -27,6 +34,7 @@ class ModelEntry:
     # by dynamic model selection to gate eligibility (a model can only serve
     # inputs it supports). Empty when the model ships no params.json input_types.
     input_types:  List[str] = field(default_factory=list)
+    role:         Optional[str] = None
 
 
 def _read_input_types(model_root: str) -> List[str]:
@@ -83,6 +91,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
         typ          = m.get("type")
         is_default   = bool(m.get("default", False))
         display_name = m.get("display_name") or None
+        role         = m.get("role") or None
 
         if not isinstance(mid, str) or not mid:
             logger.warning("models.json[%d]: invalid 'id'", i)
@@ -114,13 +123,17 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
             logger.warning("models.json: model %r has unsupported type %r", mid, typ)
             continue
 
+        if role is not None and role not in SUPPORTED_ROLES:
+            logger.warning("models.json: model %r has unsupported role %r", mid, role)
+            continue
+
         if is_default:
             default_count += 1
 
         entries.append(ModelEntry(
             id=mid, root=root_abs, root_rel=root_rel,
             type=typ, default=is_default, display_name=display_name,
-            input_types=_read_input_types(root_abs),
+            input_types=_read_input_types(root_abs), role=role,
         ))
 
     if not entries:
@@ -128,12 +141,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
 
     if default_count == 0:
         # Implicitly treat the first entry as default
-        e = entries[0]
-        entries[0] = ModelEntry(
-            id=e.id, root=e.root, root_rel=e.root_rel,
-            type=e.type, default=True, display_name=e.display_name,
-            input_types=e.input_types,
-        )
+        entries[0] = replace(entries[0], default=True)
     elif default_count > 1:
         logger.warning("models.json: more than one entry has default=true; keeping first")
         patched, found = [], False
@@ -142,11 +150,7 @@ def load_models_json(path: Optional[str] = None) -> List[ModelEntry]:
                 found = True
                 patched.append(e)
             elif e.default:
-                patched.append(ModelEntry(
-                    id=e.id, root=e.root, root_rel=e.root_rel,
-                    type=e.type, default=False, display_name=e.display_name,
-                    input_types=e.input_types,
-                ))
+                patched.append(replace(e, default=False))
             else:
                 patched.append(e)
         entries = patched

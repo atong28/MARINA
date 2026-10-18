@@ -204,3 +204,30 @@ def test_refine_rejects_unknown_metric(client):
 def test_shared_core_needs_two_compounds(client):
     r = client.post("/api/refine/shared-core", json={"smiles": ["CCO"], "target": "CCO"})
     assert r.status_code == 422
+
+
+# ── HSQC without its sign column ──────────────────────────────────────────────
+
+def test_spectral_input_marks_an_hsqc_with_every_sign_null_as_unsigned():
+    from app.schemas import SpectralInput
+    s = SpectralInput(hsqc=[1.2, 20.0, None, 3.4, 70.0, None])
+    assert s.hsqc_unsigned is True
+    assert SpectralInput(hsqc=[1.2, 20.0, 1.0]).hsqc_unsigned is False
+
+
+def test_partly_missing_hsqc_sign_column_is_rejected(client):
+    r = client.post("/api/predict", json={"raw": {"hsqc": [1.2, 20.0, None, 3.4, 70.0, -1.0]}, "k": 5})
+    assert r.status_code == 422
+    assert "1 of 2 rows" in r.text
+
+
+def test_null_hsqc_shift_is_rejected(client):
+    r = client.post("/api/predict", json={"raw": {"hsqc": [None, 20.0, 1.0]}, "k": 5})
+    assert r.status_code == 422
+
+
+def test_preprocess_zeroes_a_missing_sign_column(marina_src):
+    from app.predictor import preprocess_inputs
+    import torch
+    t = preprocess_inputs({"hsqc": [1.2, 20.0, None, 3.4, 70.0, None]})["hsqc"]
+    assert torch.allclose(t, torch.tensor([[20.0, 1.2, 0.0], [70.0, 3.4, 0.0]]))

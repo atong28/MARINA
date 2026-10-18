@@ -21,7 +21,7 @@ async def predict(request: Request, body: PredictRequest):
     Run MARINA/SPECTRE inference on spectral data and return top-k candidate molecules.
     """
     from app.manifest import resolve_model_id
-    from app.model_selection import select_model
+    from app.model_selection import NoUnsignedHsqcModel, select_model
     from app.registry import ensure_loaded
     from app.config import MAX_TOP_K, PREDICT_TIMEOUT_S, MOLECULE_IMG_SIZE
     from app.result_builder import build_result_cards
@@ -51,13 +51,26 @@ async def predict(request: Request, body: PredictRequest):
 
     # Model choice: an explicit model_id pins the checkpoint (back-compat / testing);
     # otherwise auto-select the best checkpoint for the modalities actually supplied.
+    # An HSQC without its sign column can only be read by the shifts-only model.
+    unsigned = body.raw.hsqc_unsigned
     if body.model_id:
+        from app.manifest import get_model_info as _info, ROLE_HSQC_UNSIGNED
         mid, err = resolve_model_id(body.model_id)
         if err:
             raise HTTPException(status_code=err[0], detail=err[1])
+        pinned = _info(mid)
+        if unsigned != (pinned is not None and pinned.role == ROLE_HSQC_UNSIGNED):
+            raise HTTPException(
+                status_code=422,
+                detail=(f"Model {mid!r} needs an HSQC {'with' if unsigned else 'without'} the sign/intensity "
+                        "column; leave model_id unset to have the server choose."),
+            )
         selection = None
     else:
-        selection = select_model(raw.keys())
+        try:
+            selection = select_model(raw.keys(), hsqc_unsigned=unsigned)
+        except NoUnsignedHsqcModel as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
         mid = selection.model_id
 
     # {element: (min, max)} for the atom-count filter; picklable for the worker pool.
@@ -134,4 +147,7 @@ async def predict(request: Request, body: PredictRequest):
         model_display_name=(selection.display_name if selection
                             else (info.display_name or info.id) if info else mid),
         auto_selected=selection is not None,
+        fallback_reason=(
+            "The HSQC has no multiplicity-edit sign column, so the shifts-only HSQC model answered."
+            if unsigned else None),
     )

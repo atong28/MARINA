@@ -5,7 +5,8 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface SpectralInput {
-  hsqc?: number[]
+  /** [H, C, I, ...]; every I null for an HSQC without its sign column (a shifts-only model answers). */
+  hsqc?: Array<number | null>
   h_nmr?: number[]
   c_nmr?: number[]
   mass_spec?: number[]
@@ -102,6 +103,8 @@ export interface PredictResponse {
   model_display_name?: string
   /** False when the client pinned model_id explicitly. */
   auto_selected?: boolean
+  /** Set when a fallback model answered instead of the primary one, saying why. */
+  fallback_reason?: string | null
 }
 
 export interface SmilesSearchRequest {

@@ -56,7 +56,12 @@ data/
 ```
 
 `type` must be `"marina"` or `"spectre"`.  
-`root` is resolved relative to `DATA_DIR` (or as an absolute path).
+`root` is resolved relative to `DATA_DIR` (or as an absolute path).  
+`role` (optional) takes a model out of ordinary selection and gives it one job. The only role is
+`"hsqc_unsigned"`: a model trained on HSQC shifts without the multiplicity-edit sign. It answers exactly
+the requests whose HSQC has **no** sign/intensity column. In `/predict` that means every third value of
+`raw.hsqc` is `null`. A column that is null for some rows only is rejected as incomplete. The response then
+carries `fallback_reason`. Without such a model, a sign-less HSQC gets a 422 asking for the sign.
 
 ### Hosting a SPECTRE model
 

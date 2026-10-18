@@ -51,8 +51,10 @@ class _SmilesInput(BaseModel):
 
 class SpectralInput(BaseModel):
     """Combined spectral data payload for /predict."""
-    hsqc:      Optional[List[float]] = Field(None, max_length=_MAX_HSQC_LEN,
-                                             description="HSQC triplets [H1,C1,I1, ...]")
+    hsqc:      Optional[List[Optional[float]]] = Field(
+        None, max_length=_MAX_HSQC_LEN,
+        description="HSQC triplets [H1,C1,I1, ...]. I carries the multiplicity-edit sign (+ CH/CH3, - CH2); "
+                    "set every I to null when the spectrum has no sign column, and a shifts-only model answers")
     h_nmr:     Optional[List[float]] = Field(None, max_length=MAX_NMR_PEAKS,
                                              description="¹H NMR shifts (ppm)")
     c_nmr:     Optional[List[float]] = Field(None, max_length=MAX_NMR_PEAKS,
@@ -67,10 +69,26 @@ class SpectralInput(BaseModel):
 
     @field_validator("hsqc")
     @classmethod
-    def hsqc_triplets(cls, v: Optional[List[float]]) -> Optional[List[float]]:
-        if v is not None and len(v) % 3 != 0:
+    def hsqc_triplets(cls, v: Optional[List[Optional[float]]]) -> Optional[List[Optional[float]]]:
+        if v is None:
+            return v
+        if len(v) % 3 != 0:
             raise ValueError("hsqc must contain triplets (length divisible by 3)")
+        if any(x is None for i, x in enumerate(v) if i % 3 != 2):
+            raise ValueError("hsqc shifts (H and C) cannot be null")
+        signs = v[2::3]
+        missing = sum(x is None for x in signs)
+        if 0 < missing < len(signs):
+            # Only a wholly absent column means "no sign"; a partial one is incomplete data.
+            raise ValueError(
+                f"hsqc sign/intensity is missing for {missing} of {len(signs)} rows: give every row a "
+                "value, or none of them for a shifts-only HSQC")
         return v
+
+    @property
+    def hsqc_unsigned(self) -> bool:
+        """True when the HSQC came without its sign/intensity column (every I is null)."""
+        return bool(self.hsqc) and all(x is None for x in self.hsqc[2::3])
 
     @field_validator("mass_spec", "mass_spec_neg")
     @classmethod
@@ -262,6 +280,8 @@ class PredictResponse(BaseModel):
     model_id:           Optional[str] = None
     model_display_name: Optional[str] = None
     auto_selected:      bool = True
+    # Set when a fallback model answered instead of the primary one, saying why.
+    fallback_reason:    Optional[str] = None
 
 
 # ── SMILES search response ────────────────────────────────────────────────────

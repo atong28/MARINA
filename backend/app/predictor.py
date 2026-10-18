@@ -46,6 +46,10 @@ def preprocess_inputs(raw: Dict[str, Any]) -> Dict[str, torch.Tensor]:
             continue
         if not isinstance(v, (list, tuple)):
             continue
+        if mod == "hsqc":
+            # A missing sign column (every intensity null) only reaches the shifts-only
+            # model, which ignores the third coordinate; zero keeps the tensor shape.
+            v = [0.0 if x is None else x for x in v]
         t = torch.tensor(v, dtype=torch.float32)
         # Malformed modalities are rejected rather than dropped: silently
         # skipping one returns a confident prediction computed from less data

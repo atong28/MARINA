@@ -16,6 +16,7 @@ import 'handsontable/styles/handsontable.min.css'
 import 'handsontable/styles/ht-theme-main.min.css'
 import Toast, { type ToastMessage } from '../common/Toast'
 import { parseMnovaTable, peakCount, KIND_LABELS, MnovaParseError, type MnovaPaste } from '../../services/mnovaPaste'
+import { incompleteHsqcRows } from '../../services/hsqc'
 import './SpreadsheetTable.css'
 
 registerAllModules()
@@ -155,6 +156,7 @@ function SpreadsheetTable({
   const toastSeq = useRef(0)
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
+  const [hsqcUnsigned, setHsqcUnsigned] = useState(false)
   const [validation, setValidation] = useState<Omit<ValidationSummary, 'anyInvalid'>>({
     hsqcInvalid: 0, hInvalid: 0, cInvalid: 0, msInvalid: 0, msNegInvalid: 0,
   })
@@ -211,7 +213,8 @@ function SpreadsheetTable({
     const msOut    = new Array<number>(MAX_ROWS * 2).fill(NaN)
     const msNegOut = new Array<number>(MAX_ROWS * 2).fill(NaN)
 
-    let hsqcInvalid = 0, hInvalid = 0, cInvalid = 0, msInvalid = 0, msNegInvalid = 0
+    let hInvalid = 0, cInvalid = 0, msInvalid = 0, msNegInvalid = 0
+    const hsqcCells: Array<[number | null, number | null, number | null]> = []
 
     grid.forEach((row, i) => {
       const h  = parseNum(row[COL_HSQC_H]), hc = parseNum(row[COL_HSQC_C]), hi = parseNum(row[COL_HSQC_I])
@@ -230,9 +233,7 @@ function SpreadsheetTable({
       msNegOut[i * 2]     = nmz ?? NaN
       msNegOut[i * 2 + 1] = nmi ?? NaN
 
-      // Validate: partial HSQC rows (some but not all three filled) are invalid.
-      const hsqcFilled = [h, hc, hi].filter((v) => v !== null).length
-      if (hsqcFilled > 0 && hsqcFilled < 3) hsqcInvalid++
+      hsqcCells.push([h, hc, hi])
 
       // Validate: partial MS rows (m/z without intensity or vice-versa) are invalid.
       if ([mz, mi].filter((v) => v !== null).length === 1) msInvalid++
@@ -241,6 +242,11 @@ function SpreadsheetTable({
       if (hn !== null && !Number.isFinite(hn)) hInvalid++
       if (cn !== null && !Number.isFinite(cn)) cInvalid++
     })
+
+    // Partial HSQC rows are invalid, except shifts without a sign when no row has one
+    // (a shifts-only HSQC, answered by the shifts-only model).
+    const hsqcInvalid = incompleteHsqcRows(hsqcCells)
+    setHsqcUnsigned(hsqcInvalid === 0 && hsqcCells.some(([h, c, i]) => h !== null && c !== null && i === null))
 
     const summary: ValidationSummary = {
       hsqcInvalid, hInvalid, cInvalid, msInvalid, msNegInvalid,
@@ -409,6 +415,10 @@ function SpreadsheetTable({
         {anyInvalid ? (
           <span className="spreadsheet-table__validation-error">
             Incomplete rows — HSQC: {validation.hsqcInvalid} · H: {validation.hInvalid} · C: {validation.cInvalid} · MS+: {validation.msInvalid} · MS−: {validation.msNegInvalid}
+          </span>
+        ) : hsqcUnsigned ? (
+          <span className="spreadsheet-table__validation-ok">
+            HSQC has no sign column: the shifts-only HSQC model will answer
           </span>
         ) : (
           <span className="spreadsheet-table__validation-ok">No validation errors</span>

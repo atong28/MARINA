@@ -11,6 +11,9 @@ interface AppState {
   // scoring so they share the fingerprint space that produced these results.
   activeModelId: string | null
   activeModelName: string | null
+  // Why a fallback model served the current results (e.g. an HSQC without its
+  // sign column went to the shifts-only model); null when the primary one did.
+  modelNote: string | null
 
   // Spectral input data
   hsqc: number[]
@@ -77,7 +80,7 @@ interface AppState {
   setHighlightEnabled: (enabled: boolean) => void
 
   setPredictResults: (results: ResultCard[], predictedFp: number[] | null,
-                      model?: { id?: string | null; name?: string | null }) => void
+                      model?: { id?: string | null; name?: string | null; note?: string | null }) => void
   setSmilesResults: (results: ResultCard[], queryFp: number[] | null,
                      model?: { id?: string | null; name?: string | null }) => void
 
@@ -137,6 +140,7 @@ function writeStoredHighlight(enabled: boolean) {
 export const useAppStore = create<AppState>((set) => ({
   activeModelId: null,
   activeModelName: null,
+  modelNote: null,
 
   hsqc: [],
   h_nmr: [],
@@ -184,14 +188,14 @@ export const useAppStore = create<AppState>((set) => ({
   setPredictResults: (results, predictedFp, model) =>
     set({
       results, predictedFp, queryFp: null, resultSource: 'prediction', customResults: [],
-      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
+      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null, modelNote: model?.note ?? null,
       detail: null,
     }),
 
   setSmilesResults: (results, queryFp, model) =>
     set({
       results, queryFp, predictedFp: null, resultSource: 'smiles-search', customResults: [],
-      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null,
+      activeModelId: model?.id ?? null, activeModelName: model?.name ?? null, modelNote: null,
       detail: null,
     }),
 

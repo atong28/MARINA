@@ -17,6 +17,7 @@ import SpreadsheetTable, { type ValidationSummary } from '../components/spreadsh
 import SpectraPreview from '../components/spectra/SpectraPreview'
 import ResultsGrid from '../components/results/ResultsGrid'
 import { HELP } from '../helpContent'
+import { hsqcPayload } from '../services/hsqc'
 import './MainPage.css'
 
 type Tab = 'spectral' | 'smiles'
@@ -77,7 +78,7 @@ function MainPage() {
     onSuccess: (data) => {
       if (predSeq.current !== seqRef.current) return
       setPredictResults(data.results, data.pred_fp ?? null,
-        { id: data.model_id, name: data.model_display_name })
+        { id: data.model_id, name: data.model_display_name, note: data.fallback_reason })
       setCustomError(null)
     },
     // Stop polling for a place in line once the request is no longer in flight.
@@ -127,7 +128,7 @@ function MainPage() {
     setActiveRequestId(requestId)
 
     const raw: SpectralInput = {}
-    const validHSQC = filterValid(hsqc)
+    const validHSQC = hsqcPayload(hsqc)
     const validHNMR = filterValid(h_nmr)
     const validCNMR = filterValid(c_nmr)
     const validMS    = filterValid(mass_spec)
