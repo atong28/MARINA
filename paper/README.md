@@ -57,7 +57,7 @@ DATASET_ROOT=/tmp pixi run python paper/make_tables.py --set 466          # -> r
 MARINA_DB_BUILD=MARINA-DB-OPEN-OLD OUT_DIR=$PWD/paper/db_comparison/466 pixi run python paper/db_comparison/gen_db_comparison.py
 ```
 The sections below were written for the 2026-10-02 package (their Benchmarks/Datasets rows, run names and paths are its
-own, now under `-466`). The ranking, rank@k, annotation, checkpoint-selection and aggregation conventions apply to both.
+own, now under `-466`, the legacy Bench-466 package). The ranking, rank@k, annotation, checkpoint-selection and aggregation conventions apply to both.
 Plan, checks and provenance: wiki `MARINA/paper-results-provenance.md`.
 
 ## Conventions shared by every table

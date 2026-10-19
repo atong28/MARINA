@@ -474,7 +474,7 @@ def main():
     global OUT_DIR, METRIC
     ap = argparse.ArgumentParser()
     ap.add_argument("--metric", default="cosine", choices=["cosine", "jaccard"])
-    ap.add_argument("--set", default="release", choices=["release", "466"],
+    ap.add_argument("--set", default="release", choices=["release", "466"],  # 466 = legacy Bench-466 package
                     help="release (default: release MARINA-DB + MARINA-Bench 456) or 466 (the 2026-10-02 package); "
                          "picks specs<SET>/, results/raw-<metric><SET>/ and results/tables[-jaccard]<SET>/")
     ap.add_argument("--raw", default=None, help="default paper/results/raw-<metric><SET>")
