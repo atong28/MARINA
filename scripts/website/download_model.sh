@@ -19,9 +19,10 @@ set -euo pipefail
 # Where the bundle comes from, first set wins (both can be exported instead of edited):
 #   MARINA_BUNDLE_URL  a direct download URL, e.g. a Zenodo record file
 #                      (https://zenodo.org/records/<id>/files/marina_db_release_s0.zip?download=1)
-#   MARINA_RELEASE_ID  a Google Drive file id shared as "Anyone with the link"
+#   MARINA_RELEASE_ID  a Google Drive file id shared as "Anyone with the link"; defaults to the
+#                      published bundle (https://drive.google.com/file/d/132U2C8XleodH7e1PJvfCaJHq-GhQbSls/view)
 MARINA_BUNDLE_URL="${MARINA_BUNDLE_URL:-}"
-MARINA_RELEASE_ID="${MARINA_RELEASE_ID:-}"     # not uploaded yet
+MARINA_RELEASE_ID="${MARINA_RELEASE_ID:-132U2C8XleodH7e1PJvfCaJHq-GhQbSls}"
 BUNDLE_SHA256="fd0e86289480492986980133b32c4c25e321be89e20f793923c92e756c81c9a2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -79,11 +79,11 @@ bash scripts/website/download_model.sh          # skips a model already on disk
 bash scripts/website/download_model.sh --force  # re-download
 ```
 
-The download source is set at the top of the script, or exported: `MARINA_BUNDLE_URL` for a direct URL (e.g. a
-Zenodo record file) or `MARINA_RELEASE_ID` for a Google Drive file id shared as "Anyone with the link". The bundle,
-`marina_db_release_s0.zip`, is not public yet; until it is, the script stops and says so. The script checks the
-download's sha256 (`fd0e8628…`) and unpacks the two model directories into `checkpoints/`. It then writes
-`checkpoints/models.json`:
+The bundle, `marina_db_release_s0.zip` (2.86 GB), is published on Google Drive as file id
+`132U2C8XleodH7e1PJvfCaJHq-GhQbSls`, the script's default. To fetch it from elsewhere, export `MARINA_BUNDLE_URL` with a
+direct URL (e.g. a Zenodo record file); it takes precedence. `MARINA_RELEASE_ID` overrides the Drive id. The script
+checks the download's sha256 (`fd0e86289480492986980133b32c4c25e321be89e20f793923c92e756c81c9a2`) and unpacks the two
+model directories into `checkpoints/`. It then writes `checkpoints/models.json`:
 
 ```json
 {
