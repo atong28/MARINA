@@ -461,6 +461,10 @@ def benchmark_marina(
     base = args.input_types if args.restrictions is None else args.restrictions
     if load_from_checkpoint is not None:
         load_model(args, model)
+    else:
+        # Post-training path (test.py): Lightning moves the module back to CPU after trainer.test(), so
+        # without this the 531k-row ranking runs on CPU with the GPU idle (~8 s/molecule).
+        model.to('cuda' if torch.cuda.is_available() else 'cpu')
     # Lightning leaves the module in train mode after trainer.test(); without this the in-training
     # journal benchmark runs with dropout active.
     model.eval()
