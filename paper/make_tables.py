@@ -302,7 +302,7 @@ def results_training_regime(raw, spec, split):
     head = (PRE % ("\\small\n", "5pt", "1.15") + "\\begin{tabular}{@{}l l cccc cccc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Training}} & \\multirow{2}{*}{\\hd{Eval input}}\n"
             f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{n_exp}$)}}}}\n"
-            "      & \\multicolumn{4}{c}{\\hd{Predicted (MARINA-DB-PRIVATE test)}} \\\\\n"
+            "      & \\multicolumn{4}{c}{\\hd{Predicted (MARINA-DB-0.2 test)}} \\\\\n"
             "  \\cmidrule(lr){3-6}\\cmidrule(lr){7-10}\n"
             "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "}\n"
             "        & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "} \\\\\n  \\midrule\n")

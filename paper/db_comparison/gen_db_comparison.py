@@ -78,9 +78,9 @@ def main():
     with open(os.path.join(OUT_DIR, "db_comparison.tex"), "w") as f:
         f.write(table([new, SPECTRE_DB], COUNT_ROWS, ["MARINA-DB", "SPECTRE-DB"]))
     with open(os.path.join(OUT_DIR, "db_comparison_private.tex"), "w") as f:
-        f.write(table([priv, new], COUNT_ROWS, ["MARINA-DB-PRIVATE", "MARINA-DB"]))
+        f.write(table([priv, new], COUNT_ROWS, ["MARINA-DB-0.2", "MARINA-DB"]))
     with open(os.path.join(OUT_DIR, "db_comparison_dev.tex"), "w") as f:
-        f.write(table([partial, priv, new], COUNT_ROWS, ["MARINA-DB-PARTIAL", "MARINA-DB-PRIVATE", "MARINA-DB"]))
+        f.write(table([partial, priv, new], COUNT_ROWS, ["MARINA-DB-0.1", "MARINA-DB-0.2", "MARINA-DB"]))
     print("MARINA-DB-PARTIAL", partial)
     print("MARINA-DB", new)
     print("MARINA-DB-PRIVATE", priv)
