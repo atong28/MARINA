@@ -169,7 +169,7 @@ The Jobs write to `atong-spectre:/root/gurusmart/paper-eval/results/full/benchma
   annotation identical to the stored Draft-2 results (130/130 records; |Δcos| ≤ 1.6e-4, CPU vs GPU).
 - `make_tables.py` fed the stored Draft-2 cosine results reproduces Draft-2 Table 2 and the MARINA column of
   Table 3 digit for digit, and Table 4's unique-multiplicity row (64.08 ± 3.03 on `nmr_formula`).
-- Draft-2 Table 4 used `nmr_mw_formula` (MW included); identical to `nmr_formula` for unique multiplicity.
+- Draft-2 Table 4 used `nmr_mw_formula` (MW included); identical to `nmr_formula` for the PRIVATE-era unique-multiplicity models. Not true for the release flagship: test mean cos `nmr_formula` vs `nmr_mw_formula` s0 0.8944 / 0.8940, s1 0.8883 / 0.8811, s2 0.8861 / 0.8758 (r@1 66.38 vs 65.94). No release table uses `nmr_mw_formula`.
 
 ## Known caveats
 
