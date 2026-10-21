@@ -75,7 +75,7 @@
         }
       }
     },
-    "HSQC$+$F": {
+    "HSQC$+$Formula": {
       "rank@1": {
         "ME-HSQC": {
           "mean": 55.65345080763583,
@@ -199,7 +199,7 @@
         }
       }
     },
-    "NMR$+$F": {
+    "NMR$+$Formula": {
       "rank@1": {
         "ME-HSQC": {
           "mean": 64.90455212922174,
@@ -323,7 +323,7 @@
         }
       }
     },
-    "NMR$+$MS/MS$+$F*": {
+    "NMR$+$MS/MS$+$Formula*": {
       "rank@1": {
         "ME-HSQC": {
           "mean": 68.28193832599119,

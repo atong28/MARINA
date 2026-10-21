@@ -152,11 +152,9 @@ def results_main(raw, spec, split):
             cells, row = [], {}
             for k in KS:
                 b = seed_stat(base, f"{metric}@{k}")
-                f = [None if (x is None or y is None) else y[f"{metric}@{k}"] - x[f"{metric}@{k}"]
-                     for x, y in zip(base, withf)]
-                d = agg(f)
-                cells += [cell(b), cell(d, sign=True)]
-                row[f"{metric}@{k}"], row[f"{metric}@{k}_plusF_delta"] = b, d
+                f = seed_stat(withf, f"{metric}@{k}")
+                cells += [cell(b), cell(f)]
+                row[f"{metric}@{k}"], row[f"{metric}@{k}_formula"] = b, f
             data["rows"].setdefault(label, {}).update(row)
             lines.append(f"  {label:<13}& " + " & ".join(cells) + " \\\\")
     head = (PRE % ("", "6pt", "1.2") + "\\begin{tabular}{@{}l cc cc cc@{}}\n  \\toprule\n"
@@ -164,7 +162,7 @@ def results_main(raw, spec, split):
             "      & \\multicolumn{2}{c}{\\hd{@1}}\n      & \\multicolumn{2}{c}{\\hd{@5}}\n"
             "      & \\multicolumn{2}{c}{\\hd{@10}} \\\\\n"
             "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
-            "      & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} & \\hd{Base} & \\hd{$+$F} \\\\\n  \\midrule\n")
+            "      & \\hd{Spectra} & \\hd{$+$Formula} & \\hd{Spectra} & \\hd{$+$Formula} & \\hd{Spectra} & \\hd{$+$Formula} \\\\\n  \\midrule\n")
     note = f"% {spec['table']} — journal {split}, flagship: {', '.join(exps)}; ranking = {LABEL[METRIC][2]}.\n"
     return note + head + "\n".join(lines) + "\n" + POST, data
 
@@ -304,7 +302,7 @@ def results_training_regime(raw, spec, split):
     head = (PRE % ("\\small\n", "5pt", "1.15") + "\\begin{tabular}{@{}l l cccc cccc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Training}} & \\multirow{2}{*}{\\hd{Eval input}}\n"
             f"      & \\multicolumn{{4}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{n_exp}$)}}}}\n"
-            "      & \\multicolumn{4}{c}{\\hd{Simulated (MARINA-DB-PRIVATE test)}} \\\\\n"
+            "      & \\multicolumn{4}{c}{\\hd{Predicted (MARINA-DB-PRIVATE test)}} \\\\\n"
             "  \\cmidrule(lr){3-6}\\cmidrule(lr){7-10}\n"
             "      & & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "}\n"
             "        & \\hd{r@1} & \\hd{r@5} & \\hd{r@10} & \\hd{" + LABEL[METRIC][1] + "} \\\\\n  \\midrule\n")
@@ -385,7 +383,7 @@ def results_full(raw, spec, kind):
             f"\\begin{{tabular}}{{@{{}}l l {'c' * n} {'c' * n}@{{}}}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Input}} & \\multirow{2}{*}{\\hd{}}\n"
             f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Experimental (MARINA-Bench {split}, $n{{=}}{n_exp}$)}}}}\n"
-            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Simulated (MARINA-DB test)}}}} \\\\\n"
+            f"      & \\multicolumn{{{n}}}{{c}}{{\\hd{{Predicted (MARINA-DB test)}}}} \\\\\n"
             f"  \\cmidrule(lr){{3-{2 + n}}}\\cmidrule(lr){{{3 + n}-{2 + 2 * n}}}\n"
             f"      & & {sub_hd}\n        & {sub_hd} \\\\\n  \\midrule\n")
     what = "dereplication" if kind == "derep" else "annotation (a top-k retrieval has ECFP4 cos >= 0.8 to the true structure)"

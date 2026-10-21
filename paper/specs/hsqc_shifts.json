@@ -48,7 +48,7 @@
       "hsqc"
     ],
     [
-      "HSQC$+$F",
+      "HSQC$+$Formula",
       "hsqc_formula"
     ],
     [
@@ -56,7 +56,7 @@
       "nmr"
     ],
     [
-      "NMR$+$F",
+      "NMR$+$Formula",
       "nmr_formula"
     ],
     [
@@ -64,7 +64,7 @@
       "nmr_msms"
     ],
     [
-      "NMR$+$MS/MS$+$F*",
+      "NMR$+$MS/MS$+$Formula*",
       "nmr_msms_formula"
     ]
   ],

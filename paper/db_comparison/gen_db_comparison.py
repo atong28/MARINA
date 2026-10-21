@@ -46,9 +46,9 @@ def stats(root, sources=False):
     return s
 
 
-COUNT_ROWS = [("Training Size", "train"), ("Validation Size", "val"), ("Test Size", "test"), None,
-              ("HSQC Count", "has_hsqc"), ("$^{13}$C Count", "has_c_nmr"), ("$^{1}$H Count", "has_h_nmr"),
+COUNT_ROWS = [("HSQC Count", "has_hsqc"), ("$^{13}$C Count", "has_c_nmr"), ("$^{1}$H Count", "has_h_nmr"),
               ("MS/MS (+)", "has_mass_spec"), ("MS/MS ($-$)", "has_mass_spec_neg"), None,
+              ("Training Size", "train"), ("Validation Size", "val"), ("Test Size", "test"), None,
               ("Total Size", "total"), ("Retrieval Set Size", "retrieval")]
 EXP_AFTER = {"has_hsqc": "exp_hsqc", "has_c_nmr": "exp_c_nmr", "has_h_nmr": "exp_h_nmr"}
 
