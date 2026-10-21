@@ -50,7 +50,6 @@ COUNT_ROWS = [("HSQC Count", "has_hsqc"), ("$^{13}$C Count", "has_c_nmr"), ("$^{
               ("MS/MS (+)", "has_mass_spec"), ("MS/MS ($-$)", "has_mass_spec_neg"), None,
               ("Training Size", "train"), ("Validation Size", "val"), ("Test Size", "test"), None,
               ("Total Size", "total"), ("Retrieval Set Size", "retrieval")]
-EXP_AFTER = {"has_hsqc": "exp_hsqc", "has_c_nmr": "exp_c_nmr", "has_h_nmr": "exp_h_nmr"}
 
 
 def table(cols, rows, header):
@@ -75,13 +74,9 @@ def main():
     priv = stats(os.path.join(DATASETS, "MARINA-DB-PRIVATE"))
     partial = stats(os.path.join(DATASETS, "MARINA1"))
     os.makedirs(OUT_DIR, exist_ok=True)
-    main_rows = []
-    for r in COUNT_ROWS:
-        main_rows.append(r)
-        if r and r[1] in EXP_AFTER:
-            main_rows.append(("\\quad experimental", EXP_AFTER[r[1]]))
+    # experimental sub-rows dropped from the main table (owner, 2026-10-20); counts are given in the text
     with open(os.path.join(OUT_DIR, "db_comparison.tex"), "w") as f:
-        f.write(table([new, SPECTRE_DB], main_rows, ["MARINA-DB", "SPECTRE-DB"]))
+        f.write(table([new, SPECTRE_DB], COUNT_ROWS, ["MARINA-DB", "SPECTRE-DB"]))
     with open(os.path.join(OUT_DIR, "db_comparison_private.tex"), "w") as f:
         f.write(table([priv, new], COUNT_ROWS, ["MARINA-DB-PRIVATE", "MARINA-DB"]))
     with open(os.path.join(OUT_DIR, "db_comparison_dev.tex"), "w") as f:
