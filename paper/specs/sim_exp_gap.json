@@ -45,12 +45,12 @@
   ],
   "rows": [
     {
-      "label": "MARINA-DB Test (prd)",
+      "label": "MARINA-DB Test (Predicted)",
       "source": "release MARINA-DB test split (24,500), the general simulated-test numbers",
       "from": "<exp>_sim_results.json"
     },
     {
-      "label": "MARINA-Bench Test (prd)",
+      "label": "MARINA-Bench Test (Predicted)",
       "source": "MARINA-Bench 456 test (n=229), the same compounds with Mnova-simulated NMR (Benchmark/benchmark-sim-nmr-466.pkl, holds 456)",
       "bench": "simnmr"
     },

@@ -243,19 +243,20 @@ def fp_comparison(raw, spec, split, main_only):
     for lab, a in arms.items():
         per = [jmetrics(raw.journal(bench, e), f"{split}/{sub}") for e in a["experiments"]]
         stats[lab] = {**{f"rank@{k}": seed_stat(per, f"rank@{k}") for k in KS}, "sim": seed_stat(per, "sim")}
-    cols = [f"rank@{k}" for k in KS] + ["sim"]
+    # mean similarity is not reported: the two fingerprints define different similarity spaces (not comparable)
+    cols = [f"rank@{k}" for k in KS]
     best = {c: max((s[c]["mean"] for s in stats.values() if s[c]), default=None) for c in cols}
     lines = []
     for lab, s in stats.items():
         cells = []
         for c in cols:
-            txt = cell(s[c], pct=False, digits=3 if c == "sim" else 2)
+            txt = cell(s[c], pct=False, digits=2)
             if s[c] and best[c] is not None and s[c]["mean"] == best[c] and len(stats) > 1:
                 txt = r"\best{" + txt.replace(r"\pmm", r"}\pmm", 1)
             cells.append(txt)
         lines.append(f"  {lab:<24}& " + " & ".join(cells) + " \\\\")
-    head = (PRE % ("", "7pt", "1.2") + "\\begin{tabular}{@{}l cccc@{}}\n  \\toprule\n  \\hd{Fingerprint}\n"
-            "      & \\hd{rank@1} & \\hd{rank@5} & \\hd{rank@10} & \\hd{" + LABEL[METRIC][0] + "} \\\\\n  \\midrule\n")
+    head = (PRE % ("", "7pt", "1.2") + "\\begin{tabular}{@{}l ccc@{}}\n  \\toprule\n  \\hd{Fingerprint}\n"
+            "      & \\hd{rank@1} & \\hd{rank@5} & \\hd{rank@10} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — {spec['training_dataset'].split(' (')[0]} arms, journal {split}, input {sub} (NMR + formula; MW and MS/MS "
             f"withheld); ranking = {LABEL[METRIC][2]}; {'main rows' if main_only else 'all five fingerprints (appendix)'}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, {"split": split, "subset": sub, "rows": stats}
