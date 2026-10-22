@@ -55,7 +55,7 @@
       "bench": "simnmr"
     },
     {
-      "label": "MARINA-Bench Test (exp)",
+      "label": "MARINA-Bench Test",
       "source": "MARINA-Bench 456 test (n=229), experimental NMR",
       "bench": "full"
     }

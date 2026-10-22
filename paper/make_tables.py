@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 KS = (1, 5, 10)
 METRIC = "cosine"                       # ranking metric of the raw results; set from --metric
 SIM = {"cosine": "cos", "jaccard": "tani"}  # per-record / sim-json key of the mean similarity column
-LABEL = {"cosine": ("exp-mean-cos", "cos", "cosine"), "jaccard": ("exp-mean-Tanimoto", "Tani", "binary Tanimoto")}
+LABEL = {"cosine": ("mean-cos", "cos", "cosine"), "jaccard": ("mean-Tanimoto", "Tani", "binary Tanimoto")}
 
 PRE = r"""\begingroup
 \color{cInk}
@@ -140,8 +140,8 @@ def results_main(raw, spec, split):
     seeds = [raw.journal(bench, e) for e in exps]
     data = {"experiments": exps, "flagship": which, "split": split, "rows": {}}
     lines = []
-    for part, (title, unit, metric) in enumerate([("(a) Structure dereplication", "exp-rank@$k$", "rank"),
-                                                   ("(b) Structure annotation", "exp-ann@$k$", "ann")]):
+    for part, (title, unit, metric) in enumerate([("(a) Structure dereplication", "rank@$k$", "rank"),
+                                                   ("(b) Structure annotation", "ann@$k$", "ann")]):
         if part:
             lines.append("  \\midrule")
         lines.append(f"  \\multicolumn{{7}}{{@{{}}l}}{{\\hd{{{title}}}~({unit})}} \\\\")
@@ -192,8 +192,8 @@ def spectre_comparison(raw, spec, split):
         lines.append(f"  {label:<26}& " + " & ".join(cells) + " \\\\")
     head = (PRE % ("", "6pt", "1.2") + "\\begin{tabular}{@{}l cc cc cc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Input}}\n"
-            "      & \\multicolumn{2}{c}{\\hd{exp-rank@1}}\n      & \\multicolumn{2}{c}{\\hd{exp-rank@5}}\n"
-            "      & \\multicolumn{2}{c}{\\hd{exp-rank@10}} \\\\\n"
+            "      & \\multicolumn{2}{c}{\\hd{rank@1}}\n      & \\multicolumn{2}{c}{\\hd{rank@5}}\n"
+            "      & \\multicolumn{2}{c}{\\hd{rank@10}} \\\\\n"
             "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
             "      & \\hd{MARINA} & \\hd{SPECTRE}\n      & \\hd{MARINA} & \\hd{SPECTRE}\n"
             "      & \\hd{MARINA} & \\hd{SPECTRE} \\\\\n  \\midrule\n")
@@ -203,7 +203,7 @@ def spectre_comparison(raw, spec, split):
 
 
 def hsqc_shifts(raw, spec, split):
-    """Supplement: ME-HSQC flagship vs the shifts-only-HSQC arms, exp-rank@k per input (bold = larger arm)."""
+    """Supplement: ME-HSQC flagship vs the shifts-only-HSQC arms, rank@k per input (bold = larger arm)."""
     bench = spec["benchmark"]["bench"]
     arms = spec["arms"]
     seeds = {lab: [raw.journal(bench, e) for e in a["experiments"]] for lab, a in arms.items()}
@@ -227,8 +227,8 @@ def hsqc_shifts(raw, spec, split):
     sub_hd = " & ".join(f"\\hd{{{l}}}" for l in labs)
     head = (PRE % ("", "6pt", "1.2") + "\\begin{tabular}{@{}l cc cc cc@{}}\n  \\toprule\n"
             "  \\multirow{2}{*}{\\hd{Input}}\n"
-            "      & \\multicolumn{2}{c}{\\hd{exp-rank@1}}\n      & \\multicolumn{2}{c}{\\hd{exp-rank@5}}\n"
-            "      & \\multicolumn{2}{c}{\\hd{exp-rank@10}} \\\\\n"
+            "      & \\multicolumn{2}{c}{\\hd{rank@1}}\n      & \\multicolumn{2}{c}{\\hd{rank@5}}\n"
+            "      & \\multicolumn{2}{c}{\\hd{rank@10}} \\\\\n"
             "  \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\n"
             f"      & {sub_hd}\n      & {sub_hd}\n      & {sub_hd} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — ME-HSQC flagship vs shifts-only HSQC arms, MARINA-Bench {split}; "
@@ -255,7 +255,7 @@ def fp_comparison(raw, spec, split, main_only):
             cells.append(txt)
         lines.append(f"  {lab:<24}& " + " & ".join(cells) + " \\\\")
     head = (PRE % ("", "7pt", "1.2") + "\\begin{tabular}{@{}l cccc@{}}\n  \\toprule\n  \\hd{Fingerprint}\n"
-            "      & \\hd{exp-rank@1} & \\hd{exp-rank@5} & \\hd{exp-rank@10} & \\hd{" + LABEL[METRIC][0] + "} \\\\\n  \\midrule\n")
+            "      & \\hd{rank@1} & \\hd{rank@5} & \\hd{rank@10} & \\hd{" + LABEL[METRIC][0] + "} \\\\\n  \\midrule\n")
     note = (f"% {spec['table']} — {spec['training_dataset'].split(' (')[0]} arms, journal {split}, input {sub} (NMR + formula; MW and MS/MS "
             f"withheld); ranking = {LABEL[METRIC][2]}; {'main rows' if main_only else 'all five fingerprints (appendix)'}.\n")
     return note + head + "\n".join(lines) + "\n" + POST, {"split": split, "subset": sub, "rows": stats}

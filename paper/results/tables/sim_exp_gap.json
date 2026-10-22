@@ -81,7 +81,7 @@
         ]
       }
     },
-    "NMR (all) | MARINA-Bench Test (exp)": {
+    "NMR (all) | MARINA-Bench Test": {
       "rank@1": {
         "mean": 56.76855895196507,
         "std": 2.7270733617460245,
@@ -195,7 +195,7 @@
         ]
       }
     },
-    "HSQC | MARINA-Bench Test (exp)": {
+    "HSQC | MARINA-Bench Test": {
       "rank@1": {
         "mean": 43.95924308588064,
         "std": 2.8074674704491858,
@@ -309,7 +309,7 @@
         ]
       }
     },
-    "$^{13}$C | MARINA-Bench Test (exp)": {
+    "$^{13}$C | MARINA-Bench Test": {
       "rank@1": {
         "mean": 18.63173216885007,
         "std": 1.7648261503613003,
@@ -423,7 +423,7 @@
         ]
       }
     },
-    "$^{1}$H | MARINA-Bench Test (exp)": {
+    "$^{1}$H | MARINA-Bench Test": {
       "rank@1": {
         "mean": 0.727802037845706,
         "std": 0.2521180214801859,
