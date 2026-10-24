@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: atong-mdbnmrnet-uniqmult-s2-eval-20261024-1747
+  labels: { owner: atong }
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsUser: 0, runAsGroup: 0, fsGroup: 0 }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-A40, NVIDIA-RTX-A6000, NVIDIA-RTX-A5000, NVIDIA-A10,
+                             NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-4090, NVIDIA-L40, NVIDIA-L40S]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [nautilus-ext-gpu01.fullerton.edu, hcc-chase-shor-c4705.unl.edu, k8s-3090-01.usd.edu, hcc-nrp-shor-c6017.unl.edu]
+      containers:
+        - name: eval
+          image: gitlab-registry.nrp-nautilus.io/a8tong/smart-moonshot/pixi-cuda:12.8.1
+          env:
+            - { name: COMMIT, value: "bc20d54" }
+            - { name: ZIP, value: "/root/gurusmart/marina-db-nmrnet/v3-merged/MARINA-DB-NMRNET-MERGED.zip" }
+            - { name: RUN, value: "/root/gurusmart/Moonshot/results/marina-db-nmrnet-uniqmult-s2/mdbnmrnet-uniqmult-s2-20261017-2104" }
+            - { name: OUT, value: "/root/gurusmart/paper-eval/results-nmrnet/full" }
+            - { name: PIXI_CACHE_DIR, value: /code/.pixi-cache }
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -eo pipefail
+              echo "[bootstrap] node=$(hostname) gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader) start=$(date -u)"
+              mkdir -p ~/.ssh && cp /root/gurusmart/.ssh/id_rsa ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+              git clone -q git@github.com:atong28/MARINA.git /code/MARINA && cd /code/MARINA && git checkout -q "$COMMIT"
+              git log -1 --format='[bootstrap] code @ %h %s'
+              mkdir -p /workspace/data /workspace/bench "$OUT"
+              unzip -q /root/gurusmart/marina-db-nmrnet/v3-merged/MARINA-DB-NMRNET-MERGED.zip index.pkl retrieval.pkl 'RankingEntropyUniqueMultiplicity/*' -d /workspace/data
+              cp /root/gurusmart/Benchmark/benchmark-sim.pkl /workspace/bench/benchmark-journal.pkl
+              echo "[bootstrap] journal sha256 $(sha256sum /workspace/bench/benchmark-journal.pkl | cut -c1-16) (expect bf97a5ff2fff00ef = MARINA-Bench 456 + ICEBERG MS/MS)"
+              pixi install
+              DATASET_ROOT=/workspace/data BENCHMARK_ROOT=/workspace/bench PYTHONPATH=/code/MARINA \
+                pixi run python scripts/benchmark/eval_journal_benchmark.py --rank_metric cosine --deltas \
+                --ckpt "$RUN/epoch_epoch=520.ckpt" --params "$RUN/params.json" --name marina-db-nmrnet-uniqmult-s2 \
+                2>&1 | grep -v -E 'it/s\]|s/it\]|kekulize|marked aromatic|UserWarning'
+              cp -v /workspace/bench/benchmarks/* "$OUT/"
+              echo "ALL DONE $(date -u)"
+          resources:
+            requests: { cpu: "4", memory: 20Gi, ephemeral-storage: 20Gi, nvidia.com/gpu: "1" }
+            limits:   { cpu: "4", memory: 24Gi, ephemeral-storage: 30Gi, nvidia.com/gpu: "1" }
+          volumeMounts:
+            - { name: atong-spectre, mountPath: /root/gurusmart }
+            - { name: dshm,          mountPath: /dev/shm }
+            - { name: data-unzip,    mountPath: /workspace }
+            - { name: code-workdir,  mountPath: /code }
+      volumes:
+        - { name: atong-spectre, persistentVolumeClaim: { claimName: atong-spectre } }
+        - { name: dshm,          emptyDir: { medium: Memory } }
+        - { name: data-unzip,    emptyDir: {} }
+        - { name: code-workdir,  emptyDir: {} }
