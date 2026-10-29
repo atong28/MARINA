@@ -268,11 +268,16 @@
 @media (max-width: 820px) {
   .compound-detail__backdrop { padding: 0; }
   .compound-detail { border-radius: 0; height: 100%; width: 100%; }
-  /* One column on narrow screens: pinning is impossible, so the dialog scrolls
-     as a whole and the columns give up their own scrollers. */
-  .compound-detail__body { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
-  .compound-detail__left,
-  .compound-detail__right { overflow: visible; }
-  .compound-detail__right .bit-panel,
-  .compound-detail__tabpanel--scroll { overflow: visible; }
+  /* One column on narrow screens, still in a fixed window: the compound on top
+     (at most 45% of the height, scrolling on its own) and the tab panel below it
+     with its own scroller, so a long substructure list never pushes the dialog
+     past the drawing. */
+  .compound-detail__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 45%) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .compound-detail__figure .molecule-viewer__stack {
+    max-width: max(140px, calc(45dvh - 120px));
+  }
 }
