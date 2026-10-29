@@ -151,6 +151,26 @@ def selection_smiles(smiles: str, atoms: Iterable[int]) -> str:
         return ""
 
 
+def selection_query(smiles: str, atoms: Iterable[int]):
+    """
+    The selected atoms as a substructure query (for "require this region"): their
+    elements, aromaticity and the bonds between them, with open valences, so a
+    compound matches whatever its substituents are. A selection in several pieces
+    must match as several pieces.
+    """
+    from rdkit import Chem
+    mol = _parse(smiles)
+    sel = sorted({int(a) for a in atoms})
+    bad = [a for a in sel if not 0 <= a < mol.GetNumAtoms()]
+    if not sel or bad:
+        raise ValueError(f"Atom indices {bad[:5] or sel} are not valid for this molecule")
+    smarts = Chem.MolFragmentToSmarts(mol, atomsToUse=sel, isomericSmarts=False)
+    query = Chem.MolFromSmarts(smarts)
+    if query is None:
+        raise ValueError("The selected region could not be turned into a substructure query")
+    return smarts, query
+
+
 # ── Fingerprint arithmetic ────────────────────────────────────────────────────
 
 def shift_query(p: torch.Tensor, counts: Dict[str, int], ladders) -> torch.Tensor:

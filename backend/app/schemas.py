@@ -316,11 +316,14 @@ class CustomSmilesCardResponse(BaseModel):
 # ── Fragment deletion retrieval (hybrid compounds) ──────────────────────────
 
 class RefineOperation(_SmilesInput):
-    """A region of one retrieved compound to delete from the query."""
+    """A region of one retrieved compound: deleted from the query, or required in every result."""
     smiles: str       = Field(..., min_length=1, max_length=MAX_SMILES_LENGTH,
                               description="The compound the region was selected on")
     atoms:  List[int] = Field(..., min_length=1, max_length=MAX_HEAVY_ATOMS,
                               description="Selected atom indices, in the depiction's atom order")
+    mode:   Literal["delete", "require"] = Field(
+        "delete", description="delete: subtract the region from the query; "
+                              "require: every result must contain it as a substructure")
 
 
 class RefineRequest(BaseModel):
@@ -342,8 +345,11 @@ class UnexplainedBit(BaseModel):
 
 
 class RefineOperationSummary(BaseModel):
+    mode:                 str = "delete"
     selection_smiles:     str = Field(..., description="The selected atoms as a SMILES fragment")
     removed_occurrences:  int = Field(..., description="Fragment occurrences the selection accounts for")
+    matches:              Optional[int] = Field(
+        None, description="require: how many bank compounds contain this substructure")
 
 
 class RefineResponse(BaseModel):
@@ -353,6 +359,8 @@ class RefineResponse(BaseModel):
     operations:        List[RefineOperationSummary]
     confident_before:  int = Field(..., description="Bits at p ≥ 0.5 in the original query")
     confident_after:   int = Field(..., description="Bits at p ≥ 0.5 after the edit")
+    require_matches:   Optional[int] = Field(
+        None, description="With require edits: bank compounds containing every required substructure")
     calibrated:        bool
     metric:            str
     model_id:          Optional[str] = None

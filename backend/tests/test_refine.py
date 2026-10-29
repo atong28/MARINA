@@ -172,3 +172,43 @@ def test_shared_core_reports_every_copy():
     dimer = "OC(=O)C=Cc1ccc(OCCOc2ccc(C=CC(=O)O)cc2)cc1"
     _, cores = shared_cores(["OC(=O)C=Cc1ccc(O)cc1", dimer], matches=True)
     assert len(cores[0]["matches"][1]) == 2
+
+
+# ── require: substructure filter ──────────────────────────────────────────────
+
+def test_selection_query_matches_compounds_holding_the_region():
+    from rdkit import Chem
+    from app.refine import selection_query
+    smarts, q = selection_query(HYBRID, _hybrid_atoms("C=Cc1ccc(O)cc1"))
+    assert Chem.MolFromSmiles(COUMARIC).HasSubstructMatch(q)
+    assert Chem.MolFromSmiles(HYBRID).HasSubstructMatch(q)
+    assert not Chem.MolFromSmiles(CYCLOHEXANOL).HasSubstructMatch(q)
+
+
+def test_selection_query_allows_other_substituents():
+    from rdkit import Chem
+    from app.refine import selection_query
+    _, q = selection_query(HYBRID, _hybrid_atoms("c1ccccc1"))      # the ring alone
+    assert Chem.MolFromSmiles("Clc1ccc(Br)cc1").HasSubstructMatch(q)
+
+
+def test_selection_query_rejects_bad_atoms():
+    from app.refine import selection_query
+    with pytest.raises(ValueError):
+        selection_query(HYBRID, [999])
+
+
+def test_substructure_index_finds_bank_rows(tmp_path, session):
+    import threading
+    from app import substructure
+    from app.refine import selection_query
+    bank = [HYBRID, COUMARIC, CYCLOHEXANOL]
+    session.model_root = str(tmp_path)
+    (tmp_path / "metadata.json").write_text("{}")
+    session._metadata = {str(i): {"canonical_2d_smiles": s} for i, s in enumerate(bank)}
+    session.get_entry = lambda i: session._metadata.get(str(i))
+    substructure._indexes.pop(substructure._key(session), None)
+    _, q = selection_query(HYBRID, _hybrid_atoms("C=Cc1ccc(O)cc1"))
+    assert substructure.matches(session, q, wait_s=30) == {0, 1}
+    _, q = selection_query(HYBRID, _hybrid_atoms(CYCLOHEXANOL))
+    assert substructure.matches(session, q, wait_s=30) == {0, 2}

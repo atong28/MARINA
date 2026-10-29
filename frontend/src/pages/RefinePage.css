@@ -121,6 +121,134 @@
   overflow: hidden;
 }
 
+.refine-op--require {
+  border-color: #bbf7d0;
+}
+
+.refine-op.is-editing {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.refine-op__mode {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.refine-op__mode--delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.refine-op__mode--require {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* A required region is drawn green; a deleted one keeps the overlay's red. */
+.refine-op--require .fragment-overlay__fill,
+.refine-op--require .fragment-overlay__outline {
+  fill: #16a34a;
+  stroke: #16a34a;
+}
+
+.refine-op__hint {
+  margin: 4px 10px 0;
+  font-size: 11px;
+  color: #1d4ed8;
+}
+
+.refine-op__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 0;
+}
+
+.refine-op__modes {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.refine-op__modes label {
+  padding: 2px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.refine-op__modes label + label {
+  border-left: 1px solid #d1d5db;
+}
+
+.refine-op__modes label.is-active {
+  background: #1f2937;
+  color: #fff;
+}
+
+.refine-op__modes input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.refine-op__btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.refine-op__btn:hover {
+  background: #f3f4f6;
+}
+
+.refine-op__btn--remove {
+  color: #b91c1c;
+  margin-left: auto;
+}
+
+.refine-page__rerun {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refine-page__rerun-btn {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refine-page__rerun-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.refine-page__revert {
+  border: none;
+  background: none;
+  color: #6b7280;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .refine-op__header {
   display: flex;
   align-items: center;

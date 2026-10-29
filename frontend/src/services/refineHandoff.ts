@@ -1,5 +1,5 @@
 /**
- * Hand a secondary search (delete a region, then retrieve again) to a new
+ * Hand a secondary search (delete or require regions, then retrieve again) to a new
  * browser tab.
  *
  * The opening tab writes the search — the original predicted fingerprint plus
@@ -13,13 +13,14 @@
  * rather than ~300 KB of JSON; the oldest searches are dropped past MAX_STORED so
  * the origin's quota is never the limit.
  */
-import type { DepictionGeometry, RefineMetric, RefineOperation } from './api'
+import type { DepictionGeometry, RefineMetric, RefineMode, RefineOperation } from './api'
 
 const PREFIX = 'marina.refine.'
 export const MAX_STORED = 30
 
 /** One edit, plus what the new tab needs to draw it. */
 export interface RefineOpSpec extends RefineOperation {
+  mode: RefineMode
   /** Where the region was selected, e.g. "original #1" or "step 1 · #3". */
   sourceLabel: string
   sourceName: string
@@ -117,15 +118,17 @@ export function loadSearch(id: string, storage: KV = localStorage): RefineSearch
   if (!raw) return null
   try {
     const stored = JSON.parse(raw) as StoredSpec
-    return { ...stored, predFp: decodeFp(stored.predFp) }
+    // Searches saved before "require" existed carry no mode, or the retired "hold".
+    const operations = stored.operations.map((o) => ({ ...o, mode: o.mode === 'require' ? 'require' : 'delete' } as RefineOpSpec))
+    return { ...stored, operations, predFp: decodeFp(stored.predFp) }
   } catch {
     return null
   }
 }
 
-/** Persist a change made in the search tab (e.g. the scoring), so a reload keeps it. */
+/** Persist a change made in the search tab (scoring, edited regions), so a reload keeps it. */
 export function updateSearch(
-  id: string, patch: Partial<Pick<RefineSearchSpec, 'metric'>>, storage: KV = localStorage,
+  id: string, patch: Partial<Pick<RefineSearchSpec, 'metric' | 'operations'>>, storage: KV = localStorage,
 ) {
   const spec = loadSearch(id, storage)
   if (spec) write(storage, { ...spec, ...patch })

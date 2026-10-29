@@ -240,7 +240,10 @@ export interface BitExplainResponse {
   total_available: number
 }
 
-// ── Fragment deletion retrieval (hybrid compounds) ──────────────────────────
+// ── Fragment deletion / required-substructure retrieval (hybrid compounds) ──
+
+/** `delete`: subtract the region from the query. `require`: every result must contain it. */
+export type RefineMode = 'delete' | 'require'
 /** `cosine`: whole-molecule similarity. `containment`: contains the remainder, extra parts not penalised. */
 export type RefineMetric = 'cosine' | 'containment'
 
@@ -249,6 +252,7 @@ export interface RefineOperation {
   smiles: string
   /** Atom indices in the depiction's atom order. */
   atoms: number[]
+  mode?: RefineMode
 }
 
 export interface RefineRequest {
@@ -269,8 +273,11 @@ export interface UnexplainedBit {
 }
 
 export interface RefineOperationSummary {
+  mode: RefineMode
   selection_smiles: string
   removed_occurrences: number
+  /** require: bank compounds containing this substructure. */
+  matches?: number | null
 }
 
 export interface RefineResponse {
@@ -281,6 +288,8 @@ export interface RefineResponse {
   operations: RefineOperationSummary[]
   confident_before: number
   confident_after: number
+  /** With require edits: bank compounds containing every required substructure. */
+  require_matches?: number | null
   calibrated: boolean
   metric: RefineMetric
   model_id?: string

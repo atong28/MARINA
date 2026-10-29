@@ -22,7 +22,7 @@ function memoryStorage(quota = Infinity) {
 
 const spec = (predFp: number[]) => ({
   predFp,
-  operations: [{ smiles: 'CCO', atoms: [0, 1], sourceLabel: 'original #1', sourceName: '' }],
+  operations: [{ smiles: 'CCO', atoms: [0, 1], mode: 'delete' as const, sourceLabel: 'original #1', sourceName: '' }],
   metric: 'cosine' as const,
   k: 10,
 })
@@ -70,6 +70,21 @@ describe('saveSearch / loadSearch', () => {
     let last = ''
     for (let i = 0; i < 12; i++) last = saveSearch(spec([0.1]), storage)
     expect(loadSearch(last, storage)).not.toBeNull()
+  })
+
+  it('persists edited regions', () => {
+    const storage = memoryStorage()
+    const id = saveSearch(spec([0.1]), storage)
+    const ops = [{ smiles: 'CCO', atoms: [2], mode: 'require' as const, sourceLabel: 'original #1', sourceName: '' }]
+    updateSearch(id, { operations: ops }, storage)
+    expect(loadSearch(id, storage)?.operations).toEqual(ops)
+  })
+
+  it('reads searches saved before require existed as deletions', () => {
+    const storage = memoryStorage()
+    const old = { ...spec([0.1]), operations: [{ smiles: 'CCO', atoms: [0], mode: 'hold', sourceLabel: '', sourceName: '' }] }
+    const id = saveSearch(old as never, storage)
+    expect(loadSearch(id, storage)?.operations[0].mode).toBe('delete')
   })
 
   it('persists a metric change', () => {

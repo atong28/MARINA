@@ -72,6 +72,15 @@ async def lifespan(app: FastAPI):
             logger.error("Failed to preload model %s: %s", entry.id, exc, exc_info=True)
             raise
 
+    # Build the substructure index for "require this region" searches in the
+    # background (~1 min, shared by every model on the same bank).
+    from app import substructure
+    from app.registry import get as _loaded
+    for entry in to_preload:
+        session = _loaded(entry.id)
+        if session is not None and entry.type == "marina":
+            substructure.warm(session)
+
     logger.info("MARINA backend ready")
     yield
 

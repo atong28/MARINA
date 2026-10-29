@@ -23,7 +23,8 @@ router = APIRouter()
 @router.post("/refine/search", response_model=RefineResponse, status_code=status.HTTP_200_OK)
 async def refine_search(body: RefineRequest) -> RefineResponse:
     """
-    Subtract the selected regions from the query fingerprint and retrieve again.
+    Subtract the `delete` regions from the query fingerprint and retrieve again,
+    keeping only compounds that contain every `require` region as a substructure.
     Runs in the main process: no model forward pass.
     """
     from app.manifest import resolve_model_id
@@ -31,7 +32,7 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
     from app.calibration import load_calibrator
     from app.config import MOLECULE_IMG_SIZE
     from app.result_builder import build_result_cards
-    from app import refine
+    from app import refine, substructure
 
     mid, err = resolve_model_id(body.model_id)
     if err:
@@ -52,20 +53,37 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
     def _run():
         ladders = refine._ladders(session)
         p = torch.tensor(body.pred_fp, dtype=torch.float32).clamp(0.0, 1.0)
-        removed, summaries = Counter(), []
+        removed, summaries, required = Counter(), [], None
         for op in body.operations:
-            counts = refine.selection_counts(session, op.smiles.strip(), op.atoms)
-            removed.update(counts)
-            summaries.append({
-                "selection_smiles": refine.selection_smiles(op.smiles.strip(), op.atoms),
-                "removed_occurrences": sum(counts.values()),
-            })
+            smi = op.smiles.strip()
+            summary = {"mode": op.mode, "selection_smiles": refine.selection_smiles(smi, op.atoms),
+                       "removed_occurrences": 0}
+            if op.mode == "require":
+                _, query = refine.selection_query(smi, op.atoms)
+                hits = substructure.matches(session, query)
+                summary["matches"] = len(hits)
+                required = hits if required is None else required & hits
+            else:
+                counts = refine.selection_counts(session, smi, op.atoms)
+                removed.update(counts)
+                summary["removed_occurrences"] = sum(counts.values())
+            summaries.append(summary)
         q = refine.shift_query(p, removed, ladders)
         scores = refine.score_bank(session, q, body.metric)
-        n = min(body.k, scores.numel())
-        top, idx = torch.topk(scores, n)
+        if required is not None:
+            # Only compounds holding every required substructure can be retrieved.
+            keep = torch.tensor(sorted(required), dtype=torch.long)
+            if keep.numel():
+                n = min(body.k, keep.numel())
+                top, pos = torch.topk(scores[keep], n)
+                idx = keep[pos]
+            else:
+                top, idx = torch.empty(0), torch.empty(0, dtype=torch.long)
+        else:
+            n = min(body.k, scores.numel())
+            top, idx = torch.topk(scores, n)
         pairs = [(int(i), float(min(max(s, 0.0), 1.0))) for s, i in zip(top.tolist(), idx.tolist())]
-        cards = build_result_cards(session, pairs, q, img_size=MOLECULE_IMG_SIZE, max_cards=n)
+        cards = build_result_cards(session, pairs, q, img_size=MOLECULE_IMG_SIZE, max_cards=len(pairs))
         conf = (lambda v: calibrator(float(v))) if calibrator else float
         return {
             "results": cards,
@@ -74,12 +92,15 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
             "operations": summaries,
             "confident_before": sum(1 for v in p.tolist() if v >= 0.05 and conf(v) >= 0.5),
             "confident_after": sum(1 for v in q.tolist() if v >= 0.05 and conf(v) >= 0.5),
+            "require_matches": len(required) if required is not None else None,
         }
 
     try:
         out = await asyncio.to_thread(_run)
     except refine.RefineUnsupported as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    except substructure.IndexNotReady as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -93,6 +114,7 @@ async def refine_search(body: RefineRequest) -> RefineResponse:
         operations=out["operations"],
         confident_before=out["confident_before"],
         confident_after=out["confident_after"],
+        require_matches=out["require_matches"],
         calibrated=calibrator is not None,
         metric=body.metric,
         model_id=mid,
@@ -108,7 +130,7 @@ async def refine_shared_core(body: SharedCoreRequest) -> SharedCoreResponse:
     each is also located on every compound, with the geometry to draw it over
     the result cards.
     """
-    from app import refine
+    from app import refine, substructure
     from app.config import MOLECULE_IMG_SIZE
     from app.renderer import depiction_geometry
 
